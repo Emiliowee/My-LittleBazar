@@ -1077,6 +1077,7 @@ function ExitoVenta({ info, onNueva }) {
 
 /* ── Devolución ────────────────────────────────────────────────────── */
 
+
 function BanquetaWorkspace() {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const banquetaApi = typeof window !== 'undefined' ? window.bazar?.banqueta : undefined
@@ -1091,6 +1092,7 @@ function BanquetaWorkspace() {
   const [nuevaOpen, setNuevaOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [cierreOpen, setCierreOpen] = useState(false)
+  const [tabIndex, setTabIndex] = useState('activas')
 
   const cargarDetalle = useCallback(async (id) => {
     if (!id || !api?.getBanquetaSalidaDetail) { setDetail(null); return null }
@@ -1106,7 +1108,6 @@ function BanquetaWorkspace() {
       const rows = await api.listBanquetaSalidas()
       const lista = Array.isArray(rows) ? rows : []
       setSalidas(lista)
-      // El inicio es la LISTA; solo conservamos la selección si sigue existiendo.
       setSelId((prev) => (prev && lista.some((s) => s.id === prev) ? prev : null))
     } catch {
       setSalidas([])
@@ -1152,11 +1153,11 @@ function BanquetaWorkspace() {
     if (res?.id) setSelId(res.id)
     setNuevaOpen(false)
     return res
-  }, 'Salida creada. Agregá prendas y luego activala.')
+  }, 'Salida programada.')
 
   const agregar = async (cod, cant) => {
     const codeUse = String(cod ?? codigo).trim()
-    if (!codeUse) { toast.error('Escaneá o escribí un código.'); return }
+    if (!codeUse) { toast.error('Escanea o escribe un código.'); return }
     await withBusy(async () => {
       await api.addProductToBanquetaSalida({ salidaId: selId, codigo: codeUse, cantidad: Math.max(1, Math.floor(Number(cant ?? cantidad) || 1)) })
       setCodigo(''); setCantidad('1')
@@ -1172,7 +1173,7 @@ function BanquetaWorkspace() {
   const activar = () => withBusy(async () => {
     await api.activateBanquetaSalida(selId)
     await refrescar()
-  }, 'Salida activada. Ya podés sacar las prendas y registrar lo vendido.')
+  }, '¡Salida en marcha! Ya puedes registrar ventas.')
 
   const imprimirHoja = () => withBusy(async () => {
     if (!banquetaApi?.printSheet) throw new Error('La impresión es solo en la app de escritorio.')
@@ -1192,7 +1193,7 @@ function BanquetaWorkspace() {
     const r = await api.closeBanquetaSalida(selId)
     await refrescar()
     return r
-  }, (r) => `Salida cerrada. Ingreso ${formatPrice(r?.ingreso || 0)} · ${r?.sold || 0} vendidas · ${r?.desactivados || 0} desactivadas.`)
+  }, (r) => `Salida cerrada. Ingreso ${formatPrice(r?.ingreso || 0)}.`)
 
   const eliminar = () => withBusy(async () => {
     await api.deleteBanquetaSalida(selId)
@@ -1201,176 +1202,207 @@ function BanquetaWorkspace() {
   }, 'Salida eliminada.')
 
   const setEdit = (id, key, val) => setEdits((m) => ({ ...m, [id]: { ...(m[id] || {}), [key]: val } }))
-  const estadoBadge = (s) => (s === 'activa' ? 'Activa' : s === 'cerrada' ? 'Cerrada' : 'Borrador')
+  const estadoBadge = (s) => (s === 'activa' ? 'En Curso' : s === 'cerrada' ? 'Cerrada' : 'Borrador')
   const fechaPlan = (f) => {
-    if (!f) return 'sin fecha'
+    if (!f) return 'Sin fecha'
     const s = String(f).slice(0, 10)
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
     if (!m) return s
     return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
   }
-  const STEP = cerrada ? 4 : enCurso ? 3 : 2
+
+  const salidasFiltradas = salidas.filter(s => {
+    if (tabIndex === 'activas') return s.estado === 'activa'
+    if (tabIndex === 'borradores') return s.estado === 'borrador'
+    return s.estado === 'cerrada'
+  })
 
   return (
     <section className="pos-tool pos-tool--banqueta" aria-label="Banqueta">
-      <div className="pos-tool__panel">
+      <div className="pos-tool__panel" style={{ padding: '24px 32px' }}>
         {!salida ? (
-          /* ───────── Ventana 1 · Inicio (lista de salidas) ───────── */
+          /* ───────── Ventana 1 · Inicio (Dashboard) ───────── */
           <>
-            <div className="pos-tool__head">
-              <div className="pos-tool__title">
-                <span className="pos-tool__icon"><Store size={19} strokeWidth={1.8} /></span>
-                <div>
-                  <h2>Banqueta</h2>
-                  <p>Saca a la calle lo que no se vende y registra lo vendido.</p>
-                </div>
-              </div>
-              <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => setNuevaOpen(true)}><Plus size={16} /> Nueva salida</button>
+            <div className="bq-hero">
+              <h2 className="bq-hero__title">Salidas a Banqueta</h2>
+              <button type="button" className="pos-confirm-btn" style={{ padding: '12px 24px', fontSize: 14, borderRadius: 12, display: 'flex', gap: 8, alignItems: 'center' }} disabled={busy} onClick={() => setNuevaOpen(true)}><Plus size={18} /> Programar Salida</button>
             </div>
+            
+            <div className="bq-home-tabs">
+              <button type="button" className={`bq-home-tab ${tabIndex === 'activas' ? 'is-active' : ''}`} onClick={() => setTabIndex('activas')}>En Curso</button>
+              <button type="button" className={`bq-home-tab ${tabIndex === 'borradores' ? 'is-active' : ''}`} onClick={() => setTabIndex('borradores')}>Borradores</button>
+              <button type="button" className={`bq-home-tab ${tabIndex === 'cerradas' ? 'is-active' : ''}`} onClick={() => setTabIndex('cerradas')}>Cerradas</button>
+            </div>
+
             {loading ? (
-              <div className="bq-empty">Cargando banqueta…</div>
-            ) : salidas.length === 0 ? (
+              <div className="bq-empty">Cargando salidas…</div>
+            ) : salidasFiltradas.length === 0 ? (
               <div className="bq-empty">
-                <Store size={38} strokeWidth={1.4} />
-                <h3>Todavía no hay salidas</h3>
-                <p>Crea una salida para separar las prendas que vas a sacar a banqueta.</p>
+                <Store size={48} strokeWidth={1.2} style={{ opacity: 0.5, margin: '0 auto 16px' }} />
+                <h3>No hay salidas en esta sección</h3>
+                <p>Las salidas que programes y no hayas activado aparecerán en "Borradores".</p>
               </div>
             ) : (
-              <div className="bq-cards">
-                {salidas.map((s) => (
-                  <button key={s.id} type="button" className="bq-card" onClick={() => setSelId(s.id)}>
-                    <div>
-                      <div className="bq-card__name">{s.nombre || `#${s.id}`}</div>
-                      <div className="bq-card__meta">
-                        {s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)} · {s.item_count} piezas
-                        {s.estado === 'cerrada' ? ` · vendió ${formatPrice(s.sold_total)}` : ''}
+              <div className="bq-grid">
+                {salidasFiltradas.map((s) => {
+                  return (
+                    <div key={s.id} className="bq-card" onClick={() => setSelId(s.id)}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div className="bq-card__name">{s.nombre || `#${s.id}`}</div>
+                          <span className={`bq-badge bq-badge--${s.estado}`}>{estadoBadge(s.estado)}</span>
+                        </div>
+                        <div className="bq-card__meta">
+                          {s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)}
+                        </div>
+                      </div>
+                      <div className="bq-card__foot">
+                        <div style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>{s.item_count} prendas</div>
+                        {s.estado !== 'borrador' && (
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--mlb-text-primary)' }}>{formatPrice(s.sold_total || 0)}</div>
+                        )}
                       </div>
                     </div>
-                    <span className={`bq-badge bq-badge--${s.estado}`}>{estadoBadge(s.estado)}</span>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
         ) : (
-          /* ───────── Detalle: armar (borrador) · vender (activa) · cerrada ───────── */
+          /* ───────── Detalle: Split View Premium ───────── */
           <>
-            <div className="pos-tool__head">
-              <div className="pos-tool__title">
-                <button type="button" className="pos-tool__back" onClick={() => setSelId(null)} aria-label="Volver a salidas"><ArrowLeft size={18} /></button>
-                <div>
-                  <h2>{salida.nombre || `#${salida.id}`}</h2>
-                  <p>
-                    {salida.lugar ? `${salida.lugar} · ` : ''}{fechaPlan(salida.fecha_planeada)}{' '}
-                    <span className={`bq-badge bq-badge--${estado}`}>{estadoBadge(estado)}</span>
-                  </p>
+            <div className="bq-hero" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <button type="button" className="pos-tool__ghost" style={{ padding: 10, borderRadius: '50%' }} onClick={() => setSelId(null)} aria-label="Volver"><ArrowLeft size={20} /></button>
+                <h2 className="bq-hero__title" style={{ fontSize: 24, margin: 0 }}>{salida.nombre || `#${salida.id}`}</h2>
+              </div>
+            </div>
+
+            <div className="bq-layout">
+              {/* Columna Izquierda: Área de Trabajo */}
+              <div className="bq-main">
+                {editable && (
+                  <form onSubmit={(e) => { e.preventDefault(); void agregar() }} className="bq-scan-modern">
+                    <Barcode size={20} strokeWidth={2} style={{ color: 'var(--mlb-text-muted)' }} />
+                    <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea el código de barras o escribe para buscar…" />
+                    <div style={{ width: 1, height: 24, background: 'var(--mlb-border-strong)', margin: '0 8px' }} />
+                    <input className="pos-input" style={{ width: 48, background: 'transparent', border: 'none', textAlign: 'center', fontSize: 16, fontWeight: 600 }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
+                    <button type="button" className="pos-tool__ghost" onClick={() => setAddOpen(true)} style={{ marginLeft: 8 }}><Search size={18} /></button>
+                    <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
+                  </form>
+                )}
+
+                <div className="bq-table-container">
+                  <table className="bq-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '45%' }}>Prenda</th>
+                        <th style={{ width: '20%' }}>Referencia</th>
+                        <th style={{ width: '15%' }}>Estado</th>
+                        <th style={{ width: '20%', textAlign: 'right' }}>Venta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>
+                            <div className="bq-empty" style={{ padding: '32px 16px' }}>
+                              Aún no hay prendas en esta salida.<br />{editable && 'Usa el escáner superior para empezar.'}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : items.map((it) => {
+                        const e = edits[it.id] || {}
+                        const multi = Number(it.cantidad) > 1
+                        const vend = Number(it.vendido) === 1
+                        return (
+                          <tr key={it.id} className={vend ? 'is-sold' : ''}>
+                            <td>
+                              <div style={{ fontWeight: 700, marginBottom: 2 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
+                              <div style={{ fontSize: 12, color: 'var(--mlb-text-secondary)', fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</div>
+                            </td>
+                            <td style={{ color: 'var(--mlb-text-secondary)' }}>{formatPrice(it.precio_snapshot)}</td>
+                            <td>
+                              {cerrada ? (
+                                <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
+                                  {vend ? formatPrice(it.precio_vendido) : 'Desactivada'}
+                                </span>
+                              ) : (
+                                <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 500 }}>
+                                  {vend ? 'Vendida' : 'Pendiente'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                                {editable && (
+                                  <button type="button" className="pos-tool__ghost" style={{ padding: 8, borderRadius: 8 }} disabled={busy} onClick={() => void quitar(it.id)} title="Quitar"><Trash2 size={16} /></button>
+                                )}
+                                {enCurso && (
+                                  <>
+                                    {multi && (
+                                      <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 32, borderRadius: 8 }} inputMode="numeric" title="Cantidad" />
+                                    )}
+                                    <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 76, height: 32, textAlign: 'right', borderRadius: 8 }} inputMode="decimal" placeholder="$" />
+                                    <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 32, padding: '0 12px', borderRadius: 8, fontSize: 13 }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(editable || enCurso) && (
-                  <button type="button" className="pos-tool__ghost" disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={15} /> Hoja</button>
-                )}
-                {(editable || cerrada) && (
-                  <button type="button" className="pos-tool__ghost" disabled={busy} onClick={() => void eliminar()}><Trash2 size={15} /> {cerrada ? 'Borrar' : 'Eliminar'}</button>
-                )}
-              </div>
-            </div>
 
-            <BanquetaStepper step={STEP} />
-
-            {(enCurso || cerrada) && (
-              <div className="bq-metrics">
-                <div className="bq-metric-box"><div className="bq-metric-box__label">Vendidas</div><div className="bq-metric-box__value">{vendidos.length}{cerrada ? '' : ` / ${items.length}`}</div></div>
-                <div className="bq-metric-box"><div className="bq-metric-box__label">Ingreso</div><div className="bq-metric-box__value is-pos">{formatPrice(ingreso)}</div></div>
-                <div className="bq-metric-box"><div className="bq-metric-box__label">{cerrada ? 'No vendidas' : 'Pendientes'}</div><div className="bq-metric-box__value">{items.length - vendidos.length}</div></div>
-              </div>
-            )}
-
-            {editable && (
-              <>
-                <form className="bq-add-row" onSubmit={(e) => { e.preventDefault(); void agregar() }}>
-                  <div className="bq-scan">
-                    <Barcode size={18} strokeWidth={1.8} />
-                    <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea una etiqueta…" autoFocus />
+              {/* Columna Derecha: Sidebar Panel de Control */}
+              <div className="bq-sidebar">
+                <div className="bq-widget">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', marginBottom: 2 }}>{salida.lugar || 'Sin ubicación'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{fechaPlan(salida.fecha_planeada)}</div>
+                    </div>
+                    <span className={`bq-badge bq-badge--${estado}`}>{estadoBadge(estado)}</span>
                   </div>
-                  <input className="pos-input bq-qty" value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad (repetibles)" />
-                  <button type="submit" className="pos-confirm-btn" disabled={busy} aria-label="Agregar"><Plus size={16} /></button>
-                  <button type="button" className="pos-tool__ghost" onClick={() => setAddOpen(true)}><Search size={15} /> Inventario</button>
-                </form>
-                <div className="bq-hint">Pasa etiquetas con el lector, o abre el inventario para elegir a mano y por categoría.</div>
-              </>
-            )}
+                  
+                  {(enCurso || cerrada) && (
+                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 16 }}>
+                      <div className="bq-stat"><span className="bq-stat__label">Total Prendas</span><span className="bq-stat__val">{items.length}</span></div>
+                      <div className="bq-stat"><span className="bq-stat__label">Vendidas</span><span className="bq-stat__val">{vendidos.length}</span></div>
+                      <div className="bq-stat"><span className="bq-stat__label">Pendientes</span><span className="bq-stat__val">{items.length - vendidos.length}</span></div>
+                      <div className="bq-stat" style={{ marginTop: 8 }}><span className="bq-stat__label">Ingresos</span><span className="bq-stat__val is-pos">{formatPrice(ingreso)}</span></div>
+                    </div>
+                  )}
 
-            <div style={{ overflowX: 'auto', border: '1px solid var(--mlb-border-strong)', borderRadius: 4, marginTop: 16 }}>
-              <table className="bq-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40%' }}>Artículo</th>
-                    <th style={{ width: '20%' }}>Código</th>
-                    <th style={{ width: '20%' }}>Estado</th>
-                    <th style={{ width: '20%', textAlign: 'right' }}>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="bq-empty">La salida no tiene prendas. Agrégalas con el escáner o desde el inventario.</td>
-                    </tr>
-                  ) : items.map((it) => {
-                    const e = edits[it.id] || {}
-                    const multi = Number(it.cantidad) > 1
-                    const vend = Number(it.vendido) === 1
-                    return (
-                      <tr key={it.id} className={vend ? 'is-sold' : ''}>
-                        <td>
-                          <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
-                          <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>ref {formatPrice(it.precio_snapshot)}</div>
-                        </td>
-                        <td style={{ fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</td>
-                        <td>
-                          {cerrada ? (
-                            <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
-                              {vend ? formatPrice(it.precio_vendido) : 'No vendida'}
-                            </span>
-                          ) : (
-                            <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
-                              {vend ? 'Vendida' : 'Pendiente'}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                            {editable && (
-                              <button type="button" className="pos-tool__ghost" style={{ padding: '4px 8px' }} disabled={busy} onClick={() => void quitar(it.id)} title="Quitar"><Trash2 size={15} /></button>
-                            )}
-                            {enCurso && (
-                              <>
-                                {multi && (
-                                  <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 30 }} inputMode="numeric" title="Cantidad vendida" />
-                                )}
-                                <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 70, height: 30, textAlign: 'right' }} inputMode="decimal" placeholder="$" />
-                                <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 30, padding: '0 8px' }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                  {editable && (
+                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 16 }}>
+                      <div className="bq-stat"><span className="bq-stat__label">Prendas preparadas</span><span className="bq-stat__val">{items.length}</span></div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {editable && (
+                    <button type="button" className="bq-smart-btn bq-smart-btn--active" disabled={busy || items.length === 0} onClick={() => void activar()}>Activar Salida →</button>
+                  )}
+                  {enCurso && (
+                    <button type="button" className="bq-smart-btn bq-smart-btn--draft" disabled={busy} onClick={() => setCierreOpen(true)}>Cerrar Venta →</button>
+                  )}
+                  
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    {(editable || enCurso) && (
+                      <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, borderRadius: 10, fontSize: 13 }} disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={16} /> Imprimir Hoja</button>
+                    )}
+                    {(editable || cerrada) && (
+                      <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, borderRadius: 10, fontSize: 13, color: 'var(--mlb-danger)' }} disabled={busy} onClick={() => void eliminar()}><Trash2 size={16} /> {cerrada ? 'Eliminar Registro' : 'Descartar'}</button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {editable && (
-              <div className="bq-foot">
-                <button type="button" className="pos-confirm-btn" disabled={busy || items.length === 0} onClick={() => void activar()}><Check size={16} /> Activar salida</button>
-              </div>
-            )}
-            {enCurso && (
-              <div className="bq-foot">
-                <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => setCierreOpen(true)}><Check size={16} /> Cerrar venta</button>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -1384,27 +1416,6 @@ function BanquetaWorkspace() {
     </section>
   )
 }
-
-/* Stepper de banqueta: Programar → Armar → Vender → Cerrar. */
-function BanquetaStepper({ step }) {
-  const pasos = ['Programar', 'Armar', 'Vender', 'Cerrar']
-  const pct = Math.max(0, Math.min(100, ((step - 1) / (pasos.length - 1)) * 100))
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div className="bq-progress__labels">
-        {pasos.map((p, i) => {
-          const n = i + 1
-          const cls = n === step ? 'is-active' : n < step ? 'is-done' : ''
-          return <span key={p} className={cls}>{p}</span>
-        })}
-      </div>
-      <div className="bq-progress">
-        <div className="bq-progress__bar" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
-
 /* Modal: crear salida con nombre, lugar y fecha programada. */
 function BanquetaNuevaModal({ onClose, onCreate }) {
   const [nombre, setNombre] = useState('')
