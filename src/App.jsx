@@ -310,11 +310,13 @@ function MlbShell() {
                 transition={{ duration: 0.18, ease: PREMIUM_EASE }}
                 className="flex min-h-0 flex-1"
               >
-                <MlbWorkspaceRail
-                  section={section}
-                  onNavigate={goSection}
-                  onBackHome={() => void goSection('inicio')}
-                />
+                {section !== 'ajustes' && (
+                  <MlbWorkspaceRail
+                    section={section}
+                    onNavigate={goSection}
+                    onBackHome={() => void goSection('inicio')}
+                  />
+                )}
                 <main
                   data-mlb-workspace-main
                   className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
