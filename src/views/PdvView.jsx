@@ -1221,130 +1221,117 @@ function BanquetaWorkspace() {
     <section className="pos-tool pos-tool--banqueta" aria-label="Banqueta">
       <div className="pos-tool__panel" style={{ padding: '24px 32px' }}>
         {!salida ? (
-          /* ───────── Ventana 1 · Inicio (Dashboard) ───────── */
+          /* ───────── Ventana 1 · Inicio ───────── */
           <>
-            <div className="bq-hero">
-              <h2 className="bq-hero__title">Salidas a Banqueta</h2>
-              <button type="button" className="pos-confirm-btn" style={{ padding: '12px 24px', fontSize: 14, borderRadius: 12, display: 'flex', gap: 8, alignItems: 'center' }} disabled={busy} onClick={() => setNuevaOpen(true)}><Plus size={18} /> Programar Salida</button>
+            <div className="pos-tool__head" style={{ paddingBottom: 0, borderBottom: 'none', marginBottom: 24 }}>
+              <div className="pos-tool__head-left">
+                <h2>Salidas a Banqueta</h2>
+              </div>
+              <button type="button" className="pos-confirm-btn" style={{ width: 'auto', padding: '0 16px', height: 38, borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }} disabled={busy} onClick={() => setNuevaOpen(true)}>
+                <Plus size={16} /> Programar Salida
+              </button>
             </div>
             
-            <div className="bq-home-tabs">
-              <button type="button" className={`bq-home-tab ${tabIndex === 'activas' ? 'is-active' : ''}`} onClick={() => setTabIndex('activas')}>En Curso</button>
-              <button type="button" className={`bq-home-tab ${tabIndex === 'borradores' ? 'is-active' : ''}`} onClick={() => setTabIndex('borradores')}>Borradores</button>
-              <button type="button" className={`bq-home-tab ${tabIndex === 'cerradas' ? 'is-active' : ''}`} onClick={() => setTabIndex('cerradas')}>Cerradas</button>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--mlb-border)', paddingBottom: 12 }}>
+              <button type="button" className={tabIndex === 'activas' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('activas')}>En Curso</button>
+              <button type="button" className={tabIndex === 'borradores' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('borradores')}>Borradores</button>
+              <button type="button" className={tabIndex === 'cerradas' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('cerradas')}>Cerradas</button>
             </div>
 
             {loading ? (
-              <div className="bq-empty">Cargando salidas…</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--mlb-text-muted)' }}>Cargando salidas…</div>
             ) : salidasFiltradas.length === 0 ? (
-              <div className="bq-empty">
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--mlb-text-muted)' }}>
                 <Store size={48} strokeWidth={1.2} style={{ opacity: 0.5, margin: '0 auto 16px' }} />
-                <h3>No hay salidas en esta sección</h3>
-                <p>Las salidas que programes y no hayas activado aparecerán en "Borradores".</p>
+                <h3 style={{ color: 'var(--mlb-text-primary)', marginBottom: 8 }}>No hay salidas aquí</h3>
+                <p>Usa las pestañas superiores para navegar.</p>
               </div>
             ) : (
-              <div className="bq-grid">
-                {salidasFiltradas.map((s) => {
-                  return (
-                    <div key={s.id} className="bq-card" onClick={() => setSelId(s.id)}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div className="bq-card__name">{s.nombre || `#${s.id}`}</div>
-                          <span className={`bq-badge bq-badge--${s.estado}`}>{estadoBadge(s.estado)}</span>
-                        </div>
-                        <div className="bq-card__meta">
-                          {s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)}
-                        </div>
-                      </div>
-                      <div className="bq-card__foot">
-                        <div style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>{s.item_count} prendas</div>
-                        {s.estado !== 'borrador' && (
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--mlb-text-primary)' }}>{formatPrice(s.sold_total || 0)}</div>
-                        )}
-                      </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                {salidasFiltradas.map((s) => (
+                  <div key={s.id} onClick={() => setSelId(s.id)} style={{ padding: 16, border: '1px solid var(--mlb-border)', borderRadius: 8, cursor: 'pointer', background: 'var(--mlb-bg-app)', transition: 'border-color 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--mlb-border-strong)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--mlb-border)'}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <strong style={{ fontSize: 14 }}>{s.nombre || `#${s.id}`}</strong>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: s.estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: s.estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 600 }}>{estadoBadge(s.estado)}</span>
                     </div>
-                  )
-                })}
+                    <div style={{ fontSize: 12, color: 'var(--mlb-text-secondary)', marginBottom: 12 }}>{s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--mlb-border)', paddingTop: 12 }}>
+                      <span style={{ fontSize: 12, color: 'var(--mlb-text-muted)' }}>{s.item_count} prendas</span>
+                      {s.estado !== 'borrador' && <strong style={{ color: 'var(--mlb-text-primary)' }}>{formatPrice(s.sold_total || 0)}</strong>}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </>
         ) : (
-          /* ───────── Detalle: Split View Premium ───────── */
+          /* ───────── Detalle: Layout de 2 columnas nativo ───────── */
           <>
-            <div className="bq-hero" style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <button type="button" className="pos-tool__ghost" style={{ padding: 10, borderRadius: '50%' }} onClick={() => setSelId(null)} aria-label="Volver"><ArrowLeft size={20} /></button>
-                <h2 className="bq-hero__title" style={{ fontSize: 24, margin: 0 }}>{salida.nombre || `#${salida.id}`}</h2>
+            <div className="pos-tool__head" style={{ paddingBottom: 16, marginBottom: 16 }}>
+              <div className="pos-tool__head-left" style={{ gap: 12 }}>
+                <button type="button" className="pos-tool__ghost" style={{ padding: 6, borderRadius: '50%' }} onClick={() => setSelId(null)} aria-label="Volver"><ArrowLeft size={18} /></button>
+                <h2>{salida.nombre || `#${salida.id}`}</h2>
               </div>
             </div>
 
-            <div className="bq-layout">
-              {/* Columna Izquierda: Área de Trabajo */}
-              <div className="bq-main">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, minHeight: '60vh' }}>
+              {/* Columna Izquierda */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {editable && (
-                  <form onSubmit={(e) => { e.preventDefault(); void agregar() }} className="bq-scan-modern">
-                    <Barcode size={20} strokeWidth={2} style={{ color: 'var(--mlb-text-muted)' }} />
-                    <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea el código de barras o escribe para buscar…" />
-                    <div style={{ width: 1, height: 24, background: 'var(--mlb-border-strong)', margin: '0 8px' }} />
-                    <input className="pos-input" style={{ width: 48, background: 'transparent', border: 'none', textAlign: 'center', fontSize: 16, fontWeight: 600 }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
-                    <button type="button" className="pos-tool__ghost" onClick={() => setAddOpen(true)} style={{ marginLeft: 8 }}><Search size={18} /></button>
+                  <form onSubmit={(e) => { e.preventDefault(); void agregar() }} style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', border: '1px solid var(--mlb-border-strong)', borderRadius: 8, height: 42, background: 'var(--mlb-bg-app)' }}>
+                      <Barcode size={18} style={{ color: 'var(--mlb-text-muted)' }} />
+                      <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanear o buscar…" style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 14 }} />
+                    </div>
+                    <input className="pos-input" style={{ width: 48, height: 42, textAlign: 'center' }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
+                    <button type="button" className="pos-tool__ghost" style={{ height: 42, width: 42, display: 'grid', placeItems: 'center' }} onClick={() => setAddOpen(true)}><Search size={18} /></button>
                     <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
                   </form>
                 )}
 
-                <div className="bq-table-container">
-                  <table className="bq-table">
+                <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '45%' }}>Prenda</th>
-                        <th style={{ width: '20%' }}>Referencia</th>
-                        <th style={{ width: '15%' }}>Estado</th>
-                        <th style={{ width: '20%', textAlign: 'right' }}>Venta</th>
+                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Prenda</th>
+                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Ref</th>
+                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Estado</th>
+                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.length === 0 ? (
                         <tr>
-                          <td colSpan={4}>
-                            <div className="bq-empty" style={{ padding: '32px 16px' }}>
-                              Aún no hay prendas en esta salida.<br />{editable && 'Usa el escáner superior para empezar.'}
-                            </div>
-                          </td>
+                          <td colSpan={4} style={{ padding: 32, textAlign: 'center', color: 'var(--mlb-text-muted)' }}>No hay prendas aún.</td>
                         </tr>
                       ) : items.map((it) => {
                         const e = edits[it.id] || {}
                         const multi = Number(it.cantidad) > 1
                         const vend = Number(it.vendido) === 1
                         return (
-                          <tr key={it.id} className={vend ? 'is-sold' : ''}>
-                            <td>
-                              <div style={{ fontWeight: 700, marginBottom: 2 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
-                              <div style={{ fontSize: 12, color: 'var(--mlb-text-secondary)', fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</div>
+                          <tr key={it.id} style={{ background: vend ? 'color-mix(in srgb, var(--mlb-success) 5%, transparent)' : 'transparent' }}>
+                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>
+                              <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
+                              <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)', fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</div>
                             </td>
-                            <td style={{ color: 'var(--mlb-text-secondary)' }}>{formatPrice(it.precio_snapshot)}</td>
-                            <td>
+                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>{formatPrice(it.precio_snapshot)}</td>
+                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>
                               {cerrada ? (
-                                <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
-                                  {vend ? formatPrice(it.precio_vendido) : 'Desactivada'}
-                                </span>
+                                <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? formatPrice(it.precio_vendido) : 'No vendida'}</span>
                               ) : (
-                                <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 500 }}>
-                                  {vend ? 'Vendida' : 'Pendiente'}
-                                </span>
+                                <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? 'Vendida' : 'Pendiente'}</span>
                               )}
                             </td>
-                            <td style={{ textAlign: 'right' }}>
+                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)', textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 {editable && (
-                                  <button type="button" className="pos-tool__ghost" style={{ padding: 8, borderRadius: 8 }} disabled={busy} onClick={() => void quitar(it.id)} title="Quitar"><Trash2 size={16} /></button>
+                                  <button type="button" className="pos-tool__ghost" style={{ padding: '6px 8px' }} disabled={busy} onClick={() => void quitar(it.id)}><Trash2 size={15} /></button>
                                 )}
                                 {enCurso && (
                                   <>
-                                    {multi && (
-                                      <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 32, borderRadius: 8 }} inputMode="numeric" title="Cantidad" />
-                                    )}
-                                    <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 76, height: 32, textAlign: 'right', borderRadius: 8 }} inputMode="decimal" placeholder="$" />
-                                    <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 32, padding: '0 12px', borderRadius: 8, fontSize: 13 }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
+                                    {multi && <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 30 }} inputMode="numeric" />}
+                                    <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 70, height: 30, textAlign: 'right' }} inputMode="decimal" placeholder="$" />
+                                    <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 30, padding: '0 10px', fontSize: 12 }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
                                   </>
                                 )}
                               </div>
@@ -1357,66 +1344,53 @@ function BanquetaWorkspace() {
                 </div>
               </div>
 
-              {/* Columna Derecha: Sidebar Panel de Control */}
-              <div className="bq-sidebar">
-                <div className="bq-widget">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              {/* Columna Derecha (Sidebar nativo) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, padding: 16, background: 'var(--mlb-bg-app)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', marginBottom: 2 }}>{salida.lugar || 'Sin ubicación'}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{fechaPlan(salida.fecha_planeada)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mlb-text-muted)' }}>{salida.lugar || 'Ubicación'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{fechaPlan(salida.fecha_planeada)}</div>
                     </div>
-                    <span className={`bq-badge bq-badge--${estado}`}>{estadoBadge(estado)}</span>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 600, alignSelf: 'flex-start' }}>{estadoBadge(estado)}</span>
                   </div>
-                  
+
                   {(enCurso || cerrada) && (
-                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 16 }}>
-                      <div className="bq-stat"><span className="bq-stat__label">Total Prendas</span><span className="bq-stat__val">{items.length}</span></div>
-                      <div className="bq-stat"><span className="bq-stat__label">Vendidas</span><span className="bq-stat__val">{vendidos.length}</span></div>
-                      <div className="bq-stat"><span className="bq-stat__label">Pendientes</span><span className="bq-stat__val">{items.length - vendidos.length}</span></div>
-                      <div className="bq-stat" style={{ marginTop: 8 }}><span className="bq-stat__label">Ingresos</span><span className="bq-stat__val is-pos">{formatPrice(ingreso)}</span></div>
+                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Total Prendas</span><strong>{items.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Vendidas</span><strong>{vendidos.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Pendientes</span><strong>{items.length - vendidos.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--mlb-border)' }}><span style={{ color: 'var(--mlb-text-muted)' }}>Ingresos</span><strong style={{ color: 'var(--mlb-success)' }}>{formatPrice(ingreso)}</strong></div>
                     </div>
                   )}
 
                   {editable && (
-                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 16 }}>
-                      <div className="bq-stat"><span className="bq-stat__label">Prendas preparadas</span><span className="bq-stat__val">{items.length}</span></div>
+                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Prendas listas</span><strong>{items.length}</strong></div>
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {editable && (
-                    <button type="button" className="bq-smart-btn bq-smart-btn--active" disabled={busy || items.length === 0} onClick={() => void activar()}>Activar Salida →</button>
-                  )}
-                  {enCurso && (
-                    <button type="button" className="bq-smart-btn bq-smart-btn--draft" disabled={busy} onClick={() => setCierreOpen(true)}>Cerrar Venta →</button>
-                  )}
-                  
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    {(editable || enCurso) && (
-                      <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, borderRadius: 10, fontSize: 13 }} disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={16} /> Imprimir Hoja</button>
-                    )}
-                    {(editable || cerrada) && (
-                      <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, borderRadius: 10, fontSize: 13, color: 'var(--mlb-danger)' }} disabled={busy} onClick={() => void eliminar()}><Trash2 size={16} /> {cerrada ? 'Eliminar Registro' : 'Descartar'}</button>
-                    )}
-                  </div>
+                {editable && <button type="button" className="pos-confirm-btn" style={{ width: '100%', padding: 12, fontSize: 14 }} disabled={busy || items.length === 0} onClick={() => void activar()}>Activar Salida →</button>}
+                {enCurso && <button type="button" className="pos-confirm-btn" style={{ width: '100%', padding: 12, fontSize: 14, background: 'var(--mlb-success)' }} disabled={busy} onClick={() => setCierreOpen(true)}>Cerrar Venta</button>}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(editable || enCurso) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: '8px', fontSize: 12, borderRadius: 6 }} disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={15} /> Imprimir</button>}
+                  {(editable || cerrada) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: '8px', fontSize: 12, borderRadius: 6, color: 'var(--mlb-danger)' }} disabled={busy} onClick={() => void eliminar()}><Trash2 size={15} /> {cerrada ? 'Eliminar' : 'Descartar'}</button>}
                 </div>
               </div>
             </div>
           </>
         )}
       </div>
+
       {nuevaOpen && <BanquetaNuevaModal onClose={() => setNuevaOpen(false)} onCreate={crear} />}
-      {addOpen && salida && (
-        <BanquetaAddModal salidaId={selId} onClose={() => setAddOpen(false)} onAdded={async () => { await cargarDetalle(selId); await cargar() }} />
-      )}
-      {cierreOpen && salida && (
-        <BanquetaCierreModal detail={detail} onClose={() => setCierreOpen(false)} onConfirm={async () => { await cerrar(); setCierreOpen(false) }} />
-      )}
+      {addOpen && salida && <BanquetaAddModal salidaId={selId} onClose={() => setAddOpen(false)} onAdded={async () => { await cargarDetalle(selId); await cargar() }} />}
+      {cierreOpen && salida && <BanquetaCierreModal detail={detail} onClose={() => setCierreOpen(false)} onConfirm={async () => { await cerrar(); setCierreOpen(false) }} />}
     </section>
   )
 }
-/* Modal: crear salida con nombre, lugar y fecha programada. */
+
 function BanquetaNuevaModal({ onClose, onCreate }) {
   const [nombre, setNombre] = useState('')
   const [lugar, setLugar] = useState('')
@@ -1429,29 +1403,29 @@ function BanquetaNuevaModal({ onClose, onCreate }) {
   }
   return (
     <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="bq-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Nueva salida de banqueta" style={{ width: 440, maxWidth: '92%' }}>
-        <div className="bq-modal__head"><h2>Programar salida</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
-        <BanquetaStepper step={1} />
-        <div className="pos-field" style={{ marginBottom: 12 }}>
+      <div className="pos-modal" onClick={(e) => e.stopPropagation()} role="dialog" style={{ maxWidth: 440 }}>
+        <div className="pos-modal__head">
+          <h2>Programar salida</h2>
+          <button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button>
+        </div>
+        <div className="pos-field" style={{ marginBottom: 16 }}>
           <label className="pos-field__label">Nombre</label>
           <input className="pos-input" autoFocus value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Banqueta de temporada" />
         </div>
-        <div className="pos-field" style={{ marginBottom: 12 }}>
-          <label className="pos-field__label">Lugar</label>
-          <input className="pos-input" value={lugar} onChange={(e) => setLugar(e.target.value)} placeholder="Tianguis del centro" />
-        </div>
         <div className="pos-field" style={{ marginBottom: 16 }}>
+          <label className="pos-field__label">Lugar</label>
+          <input className="pos-input" value={lugar} onChange={(e) => setLugar(e.target.value)} placeholder="Ej: Tianguis del centro" />
+        </div>
+        <div className="pos-field" style={{ marginBottom: 24 }}>
           <label className="pos-field__label">Fecha planeada (opcional)</label>
           <input className="pos-input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </div>
-        <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => void crear()}>{busy ? 'Creando…' : 'Crear salida'}</button>
+        <button type="button" className="pos-confirm-btn" disabled={busy || !nombre.trim()} onClick={() => void crear()} style={{ width: '100%' }}>{busy ? 'Creando...' : 'Crear salida'}</button>
       </div>
     </div>
   )
 }
 
-/* Modal: agregar prendas viendo TODO el inventario (buscar) o los candidatos
- * (+6 meses sin vender), con cantidad para artículos repetibles. */
 function BanquetaAddModal({ salidaId, onClose, onAdded }) {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const [tab, setTab] = useState('buscar')
@@ -1494,73 +1468,44 @@ function BanquetaAddModal({ salidaId, onClose, onAdded }) {
     finally { setBusy(false) }
   }
 
-  const renderRow = (p) => {
-    const multi = Number(p.pieza_unica) === 0
-    return (
-      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--mlb-border)', transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--mlb-bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{p.descripcion || p.codigo}</div>
-          <div style={{ fontSize: 11, color: 'var(--mlb-text-secondary)', marginTop: 2 }}>
-            {p.codigo} · {formatPrice(p.precio)}
-            {p.dias_sin_mover != null ? ` · ${p.dias_sin_mover}d sin vender` : (multi ? ` · stock ${p.stock}` : '')}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {multi && (
-            <input className="pos-input" style={{ width: 50, height: 32 }} inputMode="numeric" value={cant[p.id] ?? '1'} onChange={(e) => setCant((m) => ({ ...m, [p.id]: e.target.value }))} title="Cantidad" />
-          )}
-          <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => void agregar(p)} aria-label="Agregar" style={{ height: 32, padding: '0 12px' }}><Plus size={15} /></button>
-        </div>
-      </div>
-    )
-  }
-
-  const grupos = (() => {
-    if (tab !== 'buscar') return []
-    const g = new Map()
-    for (const p of lista.slice(0, 140)) {
-      const k = String(p.categoria || 'Otros')
-      if (!g.has(k)) g.set(k, [])
-      g.get(k).push(p)
-    }
-    return [...g.entries()]
-  })()
-
   return (
     <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="pos-modal" style={{ maxWidth: 560, width: '92%' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Agregar prendas a la salida">
-        <div className="pos-modal__head"><h2>Agregar prendas</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
-        <div className="bq-tabs">
-          <button type="button" className={tab === 'buscar' ? 'pos-confirm-btn' : 'pos-tool__ghost'} onClick={() => setTab('buscar')}>Buscar en inventario</button>
-          <button type="button" className={tab === 'candidatos' ? 'pos-confirm-btn' : 'pos-tool__ghost'} onClick={() => setTab('candidatos')}>Candidatos (+6 meses)</button>
+      <div className="pos-modal" style={{ maxWidth: 560, width: '92%' }} onClick={(e) => e.stopPropagation()} role="dialog">
+        <div className="pos-modal__head">
+          <h2>Agregar prendas</h2>
+          <button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button type="button" className={tab === 'buscar' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTab('buscar')}>Inventario</button>
+          <button type="button" className={tab === 'candidatos' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTab('candidatos')}>Candidatos (+6 meses)</button>
         </div>
         {tab === 'buscar' && (
-          <input className="pos-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, código o categoría…" style={{ marginBottom: 10 }} />
+          <input className="pos-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código..." style={{ marginBottom: 12 }} />
         )}
-        <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, maxHeight: 300, overflowY: 'auto' }}>
           {lista.length === 0 ? (
-            <div className="bq-empty">{tab === 'buscar' ? (q ? 'Sin resultados.' : 'Escribe para buscar en el inventario.') : 'No hay candidatos (+6 meses sin vender).'}</div>
-          ) : tab === 'buscar' ? (
-            grupos.map(([cat, ps]) => (
-              <div key={cat}>
-                <div className="bq-cat-label">{cat}</div>
-                <div className="bq-list">{ps.map(renderRow)}</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--mlb-text-muted)' }}>Sin resultados.</div>
+          ) : lista.map(p => {
+            const multi = Number(p.pieza_unica) === 0
+            return (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{p.descripcion || p.codigo}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>{p.codigo} · {formatPrice(p.precio)} {p.dias_sin_mover != null ? ` · ${p.dias_sin_mover}d sin vender` : ''}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {multi && <input className="pos-input" style={{ width: 44, height: 30 }} inputMode="numeric" value={cant[p.id] ?? '1'} onChange={(e) => setCant((m) => ({ ...m, [p.id]: e.target.value }))} />}
+                  <button type="button" className="pos-confirm-btn" style={{ height: 30, padding: '0 10px' }} disabled={busy} onClick={() => void agregar(p)}><Plus size={14} /></button>
+                </div>
               </div>
-            ))
-          ) : (
-            <div className="bq-list">{lista.slice(0, 100).map(renderRow)}</div>
-          )}
-        </div>
-        <div className="bq-foot">
-          <button type="button" className="pos-confirm-btn" onClick={onClose}>Listo</button>
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-/* Modal: cerrar salida mostrando el resumen/análisis de lo vendido y lo que
- * quedará desactivado, antes de confirmar. */
 function BanquetaCierreModal({ detail, onClose, onConfirm }) {
   const items = detail?.items || []
   const vendidos = items.filter((i) => Number(i.vendido) === 1)
@@ -1569,54 +1514,34 @@ function BanquetaCierreModal({ detail, onClose, onConfirm }) {
   const [busy, setBusy] = useState(false)
   return (
     <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="bq-modal" style={{ maxWidth: 540, width: '92%' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cerrar salida de banqueta">
-        <div className="bq-modal__head"><h2>Cerrar salida · resumen</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
-        <BanquetaStepper step={4} />
-        <div className="metric-box" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-          <div className="bq-metric-box"><div className="bq-metric-box__label">Vendidas</div><div className="bq-metric-box__value">{vendidos.length}</div></div>
-          <div className="bq-metric-box"><div className="bq-metric-box__label">Ingreso</div><div className="bq-metric-box__value is-pos">{formatPrice(ingreso)}</div></div>
-          <div className="bq-metric-box"><div className="bq-metric-box__label">No vendidas</div><div className="bq-metric-box__value">{noVendidos.length}</div></div>
+      <div className="pos-modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()} role="dialog">
+        <div className="pos-modal__head">
+          <h2>Confirmar Cierre</h2>
+          <button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button>
         </div>
-        <div className="bq-note">
-          <Store size={16} strokeWidth={1.9} style={{ marginTop: 1, flexShrink: 0 }} />
-          <span>Las {noVendidos.length} prendas no vendidas quedarán <b>desactivadas</b> (no vuelven al bazar). Puedes reactivarlas escaneando su etiqueta en Inventario.</span>
+        <div style={{ background: 'var(--mlb-bg-app)', border: '1px solid var(--mlb-border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
+            <span style={{ color: 'var(--mlb-text-muted)' }}>Vendidas</span>
+            <strong>{vendidos.length} / {items.length}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16 }}>
+            <span style={{ color: 'var(--mlb-text-muted)' }}>Total Ingresos</span>
+            <strong style={{ color: 'var(--mlb-success)' }}>{formatPrice(ingreso)}</strong>
+          </div>
         </div>
-        <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--mlb-border-strong)', borderRadius: 4, marginBottom: 12 }}>
-          <table className="bq-table">
-            <thead>
-              <tr>
-                <th style={{ width: '60%' }}>Artículo</th>
-                <th style={{ width: '40%', textAlign: 'right' }}>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => {
-                const vend = Number(it.vendido) === 1
-                return (
-                  <tr key={it.id} className={vend ? 'is-sold' : ''}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}</div>
-                      <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>{it.codigo_snapshot}</div>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
-                      {vend ? formatPrice(it.precio_vendido) : 'No vendida'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div style={{ background: 'color-mix(in srgb, #d99a16 12%, transparent)', color: '#8a5a08', padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 20 }}>
+          <Store size={16} style={{ float: 'left', marginRight: 8, marginTop: 2 }} />
+          Las {noVendidos.length} prendas no vendidas quedarán <b>desactivadas</b>. Podrás reactivarlas después escaneándolas.
         </div>
-        <div className="posw-actions">
-          <button type="button" className="pos-tool__ghost" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
-          <button type="button" className="pos-confirm-btn" disabled={busy} onClick={async () => { setBusy(true); try { await onConfirm() } finally { setBusy(false) } }}>
-            <Check size={16} /> Confirmar cierre
-          </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button type="button" className="pos-tool__ghost" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+          <button type="button" className="pos-confirm-btn" style={{ flex: 1 }} disabled={busy} onClick={async () => { setBusy(true); try { await onConfirm() } finally { setBusy(false) } }}>Cerrar Venta</button>
         </div>
       </div>
     </div>
   )
 }
+
 
 function ReportesPosWorkspace() {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
