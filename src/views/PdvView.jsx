@@ -1247,20 +1247,35 @@ function BanquetaWorkspace() {
                 <p>Usa las pestañas superiores para navegar.</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-                {salidasFiltradas.map((s) => (
-                  <div key={s.id} onClick={() => setSelId(s.id)} style={{ padding: 16, border: '1px solid var(--mlb-border)', borderRadius: 8, cursor: 'pointer', background: 'var(--mlb-bg-app)', transition: 'border-color 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--mlb-border-strong)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--mlb-border)'}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <strong style={{ fontSize: 14 }}>{s.nombre || `#${s.id}`}</strong>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: s.estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: s.estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 600 }}>{estadoBadge(s.estado)}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--mlb-text-secondary)', marginBottom: 12 }}>{s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--mlb-border)', paddingTop: 12 }}>
-                      <span style={{ fontSize: 12, color: 'var(--mlb-text-muted)' }}>{s.item_count} prendas</span>
-                      {s.estado !== 'borrador' && <strong style={{ color: 'var(--mlb-text-primary)' }}>{formatPrice(s.sold_total || 0)}</strong>}
-                    </div>
-                  </div>
-                ))}
+              <div style={{ width: '100%', overflowX: 'auto', background: 'var(--mlb-bg-app)', border: '1px solid var(--mlb-border)', borderRadius: 12 }}>
+                <table className="pos-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Salida</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Ubicación</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Fecha</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'center' }}>Prendas</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'right' }}>Ingresos</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'center' }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salidasFiltradas.map((s) => (
+                      <tr key={s.id} onClick={() => setSelId(s.id)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--mlb-border)' }} className="pos-table-row">
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{s.nombre || `#${s.id}`}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--mlb-text-secondary)' }}>{s.lugar || '---'}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--mlb-text-secondary)' }}>{fechaPlan(s.fecha_planeada)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--mlb-text-secondary)' }}>{s.item_count}</td>
+                        <td className="pos-table-total" style={{ padding: '12px 16px', fontFamily: 'var(--mlb-font-mono)', fontWeight: 700, textAlign: 'right', color: 'var(--mlb-text-primary)' }}>
+                          {s.estado !== 'borrador' ? formatPrice(s.sold_total || 0) : '---'}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <span className="pos-ventas__tag" style={{ background: s.estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: s.estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{estadoBadge(s.estado)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </>
