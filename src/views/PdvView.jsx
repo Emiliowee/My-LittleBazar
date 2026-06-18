@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Search, Barcode, Trash2, ShoppingBag, X, Plus, Minus, ArrowRight,
+  Search, Barcode, Trash2, ShoppingBag, X, Plus, Minus, ArrowRight, User,
   Banknote, Smartphone, Handshake, Check, ArrowLeft, RefreshCcw,
   ShoppingCart, Printer, ReceiptText, BarChart3, Store, CalendarDays,
 } from 'lucide-react'
@@ -191,7 +191,7 @@ export function PdvView() {
 
   /* ── Cobro ─────────────────────────────────────────────────────── */
 
-  const cobrar = useCallback(async ({ metodo, pagoCon, cuentaBancaria, clienteId, enganche }) => {
+  const cobrar = useCallback(async ({ pagos, clienteId, cuentaBancaria }) => {
     if (busyRef.current) return
     if (cart.length === 0) { toast.error('El ticket está vacío.'); return }
     if (!Number.isFinite(total) || total <= 0) { toast.error('Total inválido.'); return }
@@ -205,26 +205,51 @@ export function PdvView() {
     try {
       const payload = {
         items: cart.map((l) => ({ productoId: l.pid, cantidad: l.cantidad })),
-        metodo, notas: '',
-        pagoCon: metodo === 'efectivo' && pagoCon != null ? Number(pagoCon) : null,
-        cuentaBancaria: metodo === 'transferencia' ? cuentaBancaria : null,
-        creditoMovimiento: metodo === 'credito'
-          ? { saldosClienteId: Number(clienteId), monto: total, enganche: Number(enganche) || 0, engancheMetodo: 'efectivo', descripcion: `Fiado en caja (${cart.length} artículo${cart.length === 1 ? '' : 's'})` }
-          : null,
+        pagos,
+        clienteId,
+        cuentaBancaria,
+        notas: '',
       }
       const result = await api.addSale(payload)
       if (!result?.ok) throw new Error('La venta no se confirmó.')
-      if (metodo === 'credito') void loadClientes()
+      
+      const p = pagos || {}
+      const montoEfectivo = Number(p.efectivo) || 0
+      const montoTransferencia = Number(p.transferencia) || 0
+      const montoSaldoFavor = Number(p.saldo_favor) || 0
+      const sumaPagos = montoEfectivo + montoTransferencia + montoSaldoFavor
+      const pagadoSinCambio = Math.min(sumaPagos, total)
+      const faltante = total - pagadoSinCambio
+      
+      if (montoSaldoFavor > 0 || faltante > 0.01) void loadClientes()
 
-      const cliente = metodo === 'credito' ? clientes.find((c) => Number(c.id) === Number(clienteId)) : null
-      const cambio = metodo === 'efectivo' && pagoCon != null ? Math.max(0, Number(pagoCon) - total) : 0
+      const cliente = (montoSaldoFavor > 0 || faltante > 0.01) ? clientes.find((c) => Number(c.id) === Number(clienteId)) : null
+      const cambio = (montoEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
+      
+      let conteo = 0
+      if (montoEfectivo > 0) conteo++
+      if (montoTransferencia > 0) conteo++
+      if (montoSaldoFavor > 0 || faltante > 0) conteo++
+
+      let metodo = 'mixto'
+      if (conteo <= 1) {
+        if (montoEfectivo > 0) metodo = 'efectivo'
+        else if (montoTransferencia > 0) metodo = 'transferencia'
+        else metodo = 'credito'
+      }
+
       const ticket = {
         ventaId: result.ventaId, total: result.total ?? total, cambio: result.cambio ?? cambio, metodo,
-        pago_con: metodo === 'efectivo' && pagoCon != null ? Number(pagoCon) : null,
-        cuenta_bancaria: metodo === 'transferencia' ? cuentaBancaria : null,
+        pago_con: sumaPagos, 
+        pagos: {
+           efectivo: montoEfectivo,
+           transferencia: montoTransferencia,
+           credito: faltante + montoSaldoFavor
+        },
+        cuenta_bancaria: montoTransferencia > 0 ? cuentaBancaria : null,
         created_at: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
         items: cart.map((l) => ({ cantidad: l.cantidad, precio_snapshot: l.precio, nombre_snapshot: l.nombre, codigo: l.codigo })),
-        cliente: cliente ? { nombre: cliente.nombre, saldo_pendiente: (Number(cliente.saldo_pendiente) || 0) + total - (Number(enganche) || 0) } : null,
+        cliente: cliente ? { nombre: cliente.nombre, saldo_pendiente: (Number(cliente.saldo_pendiente) || 0) + faltante } : null,
         clienteNombre: cliente?.nombre || null, notas: '',
       }
       setPagoPaso(null)
@@ -232,8 +257,8 @@ export function PdvView() {
       setConfirm(ticket)
 
       if (window.bazar?.printers?.printTicket) {
-        const p = window.bazar.printers.printTicket(ticket).then((r) => { if (!r.ok) throw new Error(r.message); return r.message })
-        toast.promise(p, { loading: 'Imprimiendo ticket…', success: (m) => m, error: (e) => e.message || 'Error al imprimir.' })
+        const pr = window.bazar.printers.printTicket(ticket).then((r) => { if (!r.ok) throw new Error(r.message); return r.message })
+        toast.promise(pr, { loading: 'Imprimiendo ticket…', success: (m) => m, error: (e) => e.message || 'Error al imprimir.' })
       }
     } catch (err) {
       toast.error(ipcErrorMessage(err) || 'No se pudo completar la venta.')
@@ -766,201 +791,238 @@ function VentasWorkspace({ onChanged }) {
 
 /* ── Modal de cobro (métodos → panel → confirmar) ──────────────────── */
 
-function ModalCobro({ paso, setPaso, total, cart, cuentas, clientes, busy, saldosApi, onClientesChanged, onCobrar, onClose }) {
-  useEffect(() => {
-    const h = (e) => { if (e.key === 'Escape') { e.preventDefault(); paso === 'metodos' ? onClose() : setPaso('metodos') } }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [paso, setPaso, onClose])
-
-  if (paso === 'metodos') {
-    return (
-      <div className="pos-modal-overlay" onClick={onClose}>
-        <div className="pos-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cobrar venta">
-          <div className="pos-modal__head">
-            <h2>Cobrar venta</h2>
-            <button type="button" className="pos-modal__close" onClick={onClose} aria-label="Cerrar"><X size={20} strokeWidth={2} /></button>
-          </div>
-          <div className="pos-pay-amount">
-            <span>Total a cobrar</span>
-            <strong>{formatPrice(total)}</strong>
-          </div>
-          <div className="pos-pay-methods">
-            <button type="button" className="pos-pay-btn" onClick={() => setPaso('efectivo')}>
-              <span className="pos-rainbow level-1" />
-              <span className="pos-pay-btn__content"><span className="pos-pay-btn__icon"><Banknote size={20} strokeWidth={1.8} /></span>Efectivo</span>
-            </button>
-            <button type="button" className="pos-pay-btn" onClick={() => setPaso('transferencia')}>
-              <span className="pos-rainbow level-3" />
-              <span className="pos-pay-btn__content"><span className="pos-pay-btn__icon"><Smartphone size={20} strokeWidth={1.8} /></span>Transferencia</span>
-            </button>
-            <button type="button" className="pos-pay-btn" onClick={() => setPaso('credito')}>
-              <span className="pos-rainbow level-2" />
-              <span className="pos-pay-btn__content"><span className="pos-pay-btn__icon"><Handshake size={20} strokeWidth={1.8} /></span>Fiar a cliente</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (paso === 'efectivo') return <PanelEfectivo total={total} cart={cart} busy={busy} onBack={() => setPaso('metodos')} onClose={onClose} onCobrar={onCobrar} />
-  if (paso === 'transferencia') return <PanelTransferencia total={total} cuentas={cuentas} busy={busy} onBack={() => setPaso('metodos')} onClose={onClose} onCobrar={onCobrar} />
-  if (paso === 'credito') return <PanelFiar total={total} clientes={clientes} busy={busy} saldosApi={saldosApi} onClientesChanged={onClientesChanged} onBack={() => setPaso('metodos')} onClose={onClose} onCobrar={onCobrar} />
-  return null
-}
-
 function ModalHead({ icon: Icon, title, onClose, onBack }) {
   return (
     <div className="pos-modal__head">
       <div className="pos-modal__head-left">
         {onBack ? <button type="button" className="pos-modal__close" onClick={onBack} aria-label="Volver"><ArrowLeft size={18} strokeWidth={2} /></button> : null}
         <span className="pos-modal__icon"><Icon size={20} strokeWidth={1.8} /></span>
-        <h2>{title}</h2>
+        <h2 className="pos-modal__title">{title}</h2>
       </div>
-      <button type="button" className="pos-modal__close" onClick={onClose} aria-label="Cerrar"><X size={20} strokeWidth={2} /></button>
+      <button type="button" className="pos-modal__close" onClick={onClose} aria-label="Cerrar"><X size={18} strokeWidth={2} /></button>
     </div>
   )
 }
 
-function PanelEfectivo({ total, cart, busy, onBack, onClose, onCobrar }) {
-  const [recibido, setRecibido] = useState('')
-  const num = Number(recibido)
-  const valido = Number.isFinite(num) && num >= total
-  const cambio = valido ? num - total : 0
-
-  return (
-    <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="pos-modal pos-modal--cash" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Pago en efectivo">
-        <ModalHead icon={Banknote} title="Pago en efectivo" onClose={onClose} onBack={onBack} />
-        <div className="pos-receipt">
-          {cart.map((l) => (
-            <div key={l.pid} className="pos-receipt__line">
-              <span className="pos-receipt__name">{l.nombre} {l.cantidad > 1 ? <span style={{ color: 'var(--mlb-text-muted)' }}>×{l.cantidad}</span> : null}</span>
-              <span className="pos-receipt__price">{formatPrice(l.precio * l.cantidad)}</span>
-            </div>
-          ))}
-        </div>
-        <div className="pos-ticket-divider"><span>TOTAL</span><span>{formatPrice(total)}</span></div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label className="pos-cash-label" htmlFor="pos-recibido">Monto recibido</label>
-          <div className="pos-cash-input">
-            <span className="pos-cash-input__sym">$</span>
-            <input id="pos-recibido" type="number" min={0} step="0.5" inputMode="decimal" value={recibido} onChange={(e) => setRecibido(e.target.value)} placeholder="0.00" autoFocus />
-          </div>
-          <div className="pos-quick">
-            {BILLETES.map((b) => (
-              <button key={b} type="button" className="pos-quick__btn" disabled={total > b} onClick={() => setRecibido(String(b))}>${b}</button>
-            ))}
-            <button type="button" className="pos-quick__btn" onClick={() => setRecibido(String(total))}>Exacto</button>
-          </div>
-        </div>
-
-        <div className="pos-change">
-          <div className="pos-change__row"><span>Recibido</span><span>{recibido !== '' ? formatPrice(num) : '—'}</span></div>
-          <div className="pos-change__row"><span>Total</span><span>{formatPrice(total)}</span></div>
-          <div className="pos-change__row pos-change__result"><span>Cambio</span><span>{valido ? formatPrice(cambio) : '—'}</span></div>
-        </div>
-
-        <button type="button" className="pos-confirm-btn" disabled={busy || (recibido !== '' && !valido)} onClick={() => onCobrar({ metodo: 'efectivo', pagoCon: recibido === '' ? null : num })}>
-          <Check size={18} strokeWidth={2.4} />{busy ? 'Cobrando…' : 'Confirmar venta'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function PanelTransferencia({ total, cuentas, busy, onBack, onClose, onCobrar }) {
+function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
+  const [efectivo, setEfectivo] = useState('')
+  const [transferencia, setTransferencia] = useState('')
+  const [saldoFavor, setSaldoFavor] = useState('')
+  
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
-  return (
-    <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="pos-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Transferencia">
-        <ModalHead icon={Smartphone} title="Transferencia" onClose={onClose} onBack={onBack} />
-        <div className="pos-pay-amount"><span>Total a cobrar</span><strong>{formatPrice(total)}</strong></div>
-        <div className="pos-field">
-          <span className="pos-field__label">¿A qué cuenta llega?</span>
-          <div className="pos-cuentas" role="radiogroup" aria-label="Cuenta receptora">
-            {cuentas.map((c) => (
-              <button key={c.id} type="button" role="radio" aria-checked={cuenta === c.id} className={`pos-cuenta${cuenta === c.id ? ' is-active' : ''}`} onClick={() => setCuenta(c.id)}>
-                <span className="pos-cuenta__dot" style={{ backgroundColor: c.color }} aria-hidden />{c.nombre}
-                {cuenta === c.id ? <Check size={17} strokeWidth={2.4} style={{ marginLeft: 'auto', color: 'var(--mlb-accent-ink)' }} /> : null}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="pos-confirm-btn" disabled={busy || !cuenta} onClick={() => onCobrar({ metodo: 'transferencia', cuentaBancaria: cuenta })}>
-          <Check size={18} strokeWidth={2.4} />{busy ? 'Cobrando…' : `Confirmar ${formatPrice(total)}`}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function PanelFiar({ total, clientes, busy, saldosApi, onClientesChanged, onBack, onClose, onCobrar }) {
-  const [clienteId, setClienteId] = useState(String(clientes[0]?.id || ''))
-  const [enganche, setEnganche] = useState('')
-  const [creando, setCreando] = useState(false)
-  const [nuevoNombre, setNuevoNombre] = useState('')
-  const [nuevoTel, setNuevoTel] = useState('')
-  const [guardando, setGuardando] = useState(false)
-  const cliente = clientes.find((c) => Number(c.id) === Number(clienteId)) || null
-  const engNum = Number(enganche) || 0
-  const invalido = enganche !== '' && (!Number.isFinite(engNum) || engNum < 0 || engNum > total)
-
-  const crearCuenta = async () => {
-    const nombre = nuevoNombre.trim()
-    if (!nombre) { toast.error('Escribí el nombre del cliente.'); return }
-    if (!saldosApi?.crearCliente) { toast.error('Las cuentas se manejan en la app de escritorio.'); return }
-    setGuardando(true)
-    try {
-      const res = await saldosApi.crearCliente({ nombre, telefono: nuevoTel.trim() })
-      const nuevoId = res?.clienteId || res?.id
-      await onClientesChanged?.()
-      if (nuevoId) setClienteId(String(nuevoId))
-      setCreando(false); setNuevoNombre(''); setNuevoTel('')
-      toast.success(`Cuenta de ${nombre} creada.`)
-      window.dispatchEvent(new CustomEvent('bazar:cuentas-changed'))
-    } catch (err) { toast.error(err?.message || 'No se pudo crear la cuenta.') } finally { setGuardando(false) }
+  
+  const [clienteId, setClienteId] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  
+  const [modoFiar, setModoFiar] = useState(false)
+  const [verInfoCliente, setVerInfoCliente] = useState(false)
+  
+  const valEfectivo = Number(efectivo) || 0
+  const valTransferencia = Number(transferencia) || 0
+  const valSaldoFavor = Number(saldoFavor) || 0
+  
+  const sumaPagos = valEfectivo + valTransferencia + valSaldoFavor
+  const pagado = Math.min(sumaPagos, total)
+  const faltante = Math.max(0, total - pagado)
+  const cambio = (valEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
+  
+  const clienteSelec = clientes.find((c) => String(c.id) === String(clienteId)) || null
+  const maxSaldoFavor = clienteSelec ? Math.max(0, Number(clienteSelec.saldo_a_favor) || 0) : 0
+  
+  useEffect(() => {
+    const h = (e) => { 
+      if (e.key === 'Escape') {
+        if (modoFiar) setModoFiar(false)
+        else onClose()
+      }
+      if (e.key === 'F2') {
+        e.preventDefault()
+        const btn = document.getElementById('btn-posc-confirm')
+        if (btn && !btn.disabled) btn.click()
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onClose, modoFiar])
+  
+  const handleConfirm = () => {
+    if (valTransferencia > 0 && !cuenta) { toast.error('Elige cuenta de transferencia.'); return }
+    if (valSaldoFavor > maxSaldoFavor) { toast.error('Saldo a favor excede lo disponible.'); return }
+    
+    if (modoFiar) {
+      if (!clienteSelec) return;
+      onCobrar({
+        pagos: { efectivo: valEfectivo, transferencia: valTransferencia, saldo_favor: valSaldoFavor },
+        clienteId: clienteSelec.id,
+        cuentaBancaria: valTransferencia > 0 ? cuenta : null
+      })
+    } else {
+      if (faltante > 0) { toast.error('Falta dinero para cubrir el total. Usa "Fiar" si el cliente no pagará completo.'); return }
+      onCobrar({
+        pagos: { efectivo: valEfectivo, transferencia: valTransferencia, saldo_favor: valSaldoFavor },
+        clienteId: clienteSelec?.id || null,
+        cuentaBancaria: valTransferencia > 0 ? cuenta : null
+      })
+    }
   }
 
+  const clientesFiltrados = (clientes || []).filter(c => (c.nombre || '').toLowerCase().includes((busqueda || '').toLowerCase()))
+  
   return (
-    <div className="pos-modal-overlay" onClick={onClose}>
-      <div className="pos-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Fiar a cliente">
-        <ModalHead icon={Handshake} title="Fiar a cliente" onClose={onClose} onBack={onBack} />
-        <div className="pos-pay-amount"><span>Se anota a la cuenta</span><strong>{formatPrice(total - engNum)}</strong></div>
+    <div className="posc-overlay" onClick={onClose}>
+      <div className="posc-window" onClick={e => e.stopPropagation()} role="dialog" aria-label="Cobrar Venta">
+        
+        <div className="posc-header">
+          <h2>Cobrar Venta</h2>
+          <button type="button" className="posc-close" onClick={onClose}><X size={20}/></button>
+        </div>
 
-        {creando ? (
-          <div className="pos-field" style={{ display: 'grid', gap: 9 }}>
-            <span className="pos-field__label">Nueva cuenta de fiado</span>
-            <input className="pos-input" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Nombre de la clienta" autoFocus />
-            <input className="pos-input" value={nuevoTel} onChange={(e) => setNuevoTel(e.target.value)} placeholder="Teléfono (opcional)" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-              <button type="button" className="pos-cuenta" style={{ justifyContent: 'center' }} disabled={guardando} onClick={() => { setCreando(false); setNuevoNombre(''); setNuevoTel('') }}>Cancelar</button>
-              <button type="button" className="pos-confirm-btn" style={{ marginTop: 0 }} disabled={guardando || !nuevoNombre.trim()} onClick={() => void crearCuenta()}>{guardando ? 'Guardando…' : 'Crear y elegir'}</button>
+        <div className="posc-topbar">
+          <div className="posc-tot-box">
+            <label>TOTAL</label>
+            <div className="posc-tot-val">{formatPrice(total)}</div>
+          </div>
+          <div className="posc-tot-box posc-tot-box--pagado">
+            <label>SU PAGO</label>
+            <div className="posc-tot-val">{formatPrice(sumaPagos)}</div>
+          </div>
+          <div className={`posc-tot-box posc-tot-box--${faltante > 0 ? 'falta' : 'cambio'}`}>
+            <label>{faltante > 0 ? 'FALTA' : 'CAMBIO'}</label>
+            <div className="posc-tot-val">{formatPrice(faltante > 0 ? faltante : cambio)}</div>
+          </div>
+        </div>
+
+        <div className="posc-body">
+          {/* Panel Izquierdo: Pagos */}
+          <div className="posc-pay-section">
+            {!modoFiar ? (
+              <h3 className="posc-section-title">Métodos de Pago</h3>
+            ) : (
+              <h3 className="posc-section-title" style={{color: '#d97706'}}>Fiar a Saldos - Enganche</h3>
+            )}
+
+            <table className="posc-pay-table">
+              <thead>
+                <tr>
+                  <th>Forma de Pago</th>
+                  <th style={{textAlign: 'right', width: '150px'}}>Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><Banknote size={16} color="#10b981" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Efectivo</td>
+                  <td>
+                    <div className="posc-input-wrapper">
+                      <span>$</span>
+                      <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posc-input-td"/>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><Smartphone size={16} color="#3b82f6" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Tarjeta / Transf.</td>
+                  <td>
+                    <div className="posc-input-wrapper">
+                      <span>$</span>
+                      <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posc-input-td"/>
+                    </div>
+                  </td>
+                </tr>
+                {clienteSelec && maxSaldoFavor > 0 && (
+                  <tr>
+                    <td><Handshake size={16} color="#c2185b" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Saldo a Favor (Disp: {formatPrice(maxSaldoFavor)})</td>
+                    <td>
+                      <div className="posc-input-wrapper" style={{color: '#c2185b'}}>
+                        <span>$</span>
+                        <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posc-input-td" style={{color: '#c2185b'}}/>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {valTransferencia > 0 && (
+              <div className="posc-bank-select">
+                <label>Cuenta Receptora de Tarjeta / Transf.</label>
+                <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posc-select">
+                  <option value="" disabled>Seleccione...</option>
+                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            )}
+
+            {modoFiar && (
+              <div className="posc-fiar-resume">
+                Deuda a registrar tras este enganche: <strong>{formatPrice(faltante)}</strong>
+              </div>
+            )}
+          </div>
+
+          {/* Panel Derecho: Cliente y Acciones */}
+          <div className="posc-side-section">
+            <h3 className="posc-section-title">Cliente Asociado</h3>
+            
+            {clienteSelec ? (
+              <div className="posc-customer-card">
+                 <div className="posc-cust-head">
+                   <strong>{clienteSelec.nombre}</strong>
+                   <button type="button" onClick={() => { setClienteId(''); setSaldoFavor(''); setModoFiar(false); setVerInfoCliente(false); }} className="posc-btn-icon" title="Quitar cliente"><X size={16}/></button>
+                 </div>
+                 
+                 <div className="posc-cust-stats">
+                    <button type="button" className="posc-btn-info" onClick={() => setVerInfoCliente(!verInfoCliente)}>
+                      <Info size={14}/> {verInfoCliente ? 'Ocultar Resumen' : 'Ver Resumen Cuenta'}
+                    </button>
+                    {verInfoCliente && (
+                      <div className="posc-cust-details">
+                        <div>Deuda Vigente: <span style={{color:'#d97706'}}>{formatPrice(clienteSelec.saldo_deudor || 0)}</span></div>
+                        <div>Saldo a Favor: <span style={{color:'#10b981'}}>{formatPrice(clienteSelec.saldo_a_favor || 0)}</span></div>
+                      </div>
+                    )}
+                 </div>
+
+                 {!modoFiar ? (
+                   <button type="button" className="posc-btn-fiar" onClick={() => setModoFiar(true)}>
+                     <BookOpen size={15} strokeWidth={2}/> Fiar / Pasar a Saldos
+                   </button>
+                 ) : (
+                   <button type="button" className="posc-btn-fiar posc-btn-fiar--cancel" onClick={() => setModoFiar(false)}>
+                     Cancelar Fiar (Cobro Normal)
+                   </button>
+                 )}
+              </div>
+            ) : (
+              <div className="posc-customer-search">
+                 <div style={{ position: 'relative' }}>
+                   <Search size={14} style={{ position: 'absolute', left: 8, top: 9, color: '#64748b' }} />
+                   <input type="text" placeholder="Buscar cliente registrado..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} className="posc-search-input"/>
+                 </div>
+                 {busqueda && clientesFiltrados.length > 0 && (
+                   <ul className="posc-search-res">
+                     {clientesFiltrados.slice(0,5).map(c => (
+                       <li key={c.id} onClick={() => { setClienteId(String(c.id)); setBusqueda(''); }}>{c.nombre}</li>
+                     ))}
+                   </ul>
+                 )}
+                 <div className="posc-hint">Venta de mostrador (Sólo pago de contado). Para fiar, busque un cliente.</div>
+              </div>
+            )}
+            
+            <div className="posc-actions">
+               <button 
+                 type="button"
+                 id="btn-posc-confirm" 
+                 className={`posc-btn-confirm ${modoFiar ? 'is-fiar' : ''}`}
+                 disabled={busy || (!modoFiar && faltante > 0) || (modoFiar && !clienteSelec) || valSaldoFavor > maxSaldoFavor}
+                 onClick={handleConfirm}
+               >
+                 <Check size={20} strokeWidth={2.5}/>
+                 {busy ? 'Guardando...' : (modoFiar ? `CONFIRMAR FIADO [F2]` : `COBRAR VENTA [F2]`)}
+               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="pos-field">
-              <label className="pos-field__label" htmlFor="pos-cliente">¿A quién se le fía?</label>
-              <select id="pos-cliente" className="pos-select" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                {clientes.length === 0 ? <option value="">No hay cuentas registradas</option>
-                  : clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}{Number(c.saldo_pendiente) > 0 ? ` — debe ${formatPrice(c.saldo_pendiente)}` : ''}</option>)}
-              </select>
-              <button type="button" className="pos-link-btn" style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--mlb-accent-ink, #c2185b)', font: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }} onClick={() => setCreando(true)}>
-                <Plus size={14} strokeWidth={2.4} style={{ verticalAlign: '-2px' }} /> Nueva cuenta
-              </button>
-            </div>
-            <div className="pos-field">
-              <label className="pos-field__label" htmlFor="pos-enganche">Deja algo a cuenta (opcional)</label>
-              <input id="pos-enganche" type="number" min={0} step="0.5" className="pos-input" value={enganche} onChange={(e) => setEnganche(e.target.value)} placeholder="$0.00" />
-            </div>
-            <button type="button" className="pos-confirm-btn" disabled={busy || !cliente || invalido} onClick={() => onCobrar({ metodo: 'credito', clienteId, enganche: engNum })}>
-              <Check size={18} strokeWidth={2.4} />{busy ? 'Registrando…' : 'Confirmar fiado'}
-            </button>
-          </>
-        )}
+        </div>
+
       </div>
     </div>
   )
