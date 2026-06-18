@@ -394,107 +394,73 @@ const ACCIONES = [
 ]
 
 function HojaScreen({ api, row, workspace, onBack, onChanged }) {
-  const { cuenta, resumen, estado } = row
-  const [panel, setPanel] = useState('movimientos')
-  const [accion, setAccion] = useState(null)
+  const { cuenta, resumen } = row
+  const [accionModal, setAccionModal] = useState(null)
   const [waOpen, setWaOpen] = useState(false)
-
-  const abrirAccion = (t) => { setAccion(t); setPanel('accion') }
 
   const registrar = async (movs) => {
     try {
       await llamar(api.registrarMovimientos({ clienteId: cuenta.id, movimientos: movs }))
       toast.success('Movimiento registrado.')
-      setAccion(null); setPanel('movimientos'); await onChanged()
+      setAccionModal(null); await onChanged()
     } catch (err) { toast.error(String(err?.message || 'No se pudo registrar.')) }
   }
 
   return (
     <div className="sld-shell">
-      <header className="sld-shell__head">
-        <button type="button" className="sld-shell__back" onClick={onBack}><ArrowLeft size={14} strokeWidth={1.9} /> Cuentas</button>
-        <div className="sld-shell__lead">
-          <span className="sld-shell__icon">{initials(cuenta.nombre)}</span>
-          <div>
-            <div className="sld-shell__eyebrow">Saldos · Cuenta</div>
-            <h1 className="sld-shell__title">{cuenta.nombre || 'Sin nombre'}</h1>
-          </div>
-        </div>
+      <header className="sld-shell__head is-transparent">
+        <button type="button" className="sld-shell__back" onClick={onBack}>
+          <ArrowLeft size={14} strokeWidth={1.9} /> Volver a cuentas
+        </button>
+        <button type="button" className="sld-settings-btn" onClick={() => setAccionModal('expediente')}>
+          <Pencil size={14} strokeWidth={1.9} /> Editar Perfil
+        </button>
       </header>
 
-      <main className="sld-shell__main">
-        <div className="sld-detail">
-          <section className="sld-card">
-            <div className="sld-card__top">
-              <div className="sld-card__left">
-                <div className="sld-card__meta">
-                  <StatusBadge estado={estado} />
-                  <span className="sld-card__metatext">{cuenta.telefono || 'Sin teléfono'}</span>
-                  <span className="sld-card__metatext">Nac. {cuenta.nacimiento || '—'}</span>
-                  <BadgeId estado={idEstado(cuenta)} />
-                </div>
-                <div className="sld-card__addr">{cuenta.direccion || 'Sin dirección'}</div>
-                {(cuenta.etiquetas || []).length > 0 ? (
-                  <div className="sld-card__tags">
-                    {cuenta.etiquetas.map((t) => <span key={t} className="sld-tagchip">{t}</span>)}
-                  </div>
-                ) : null}
-              </div>
-              <div className="sld-card__saldo">
-                <div className="sld-card__saldo-label">Debe</div>
-                <div className={cn('sld-card__saldo-value', resumen.saldo <= 0 && 'is-ok')}>{formatPrice(resumen.saldo)}</div>
-              </div>
-            </div>
-            {resumen.saldoAFavor > 0 && (
-              <div style={{ marginTop: -10, marginBottom: 15, padding: '10px 14px', background: 'rgba(255,100,150,0.1)', color: 'var(--mlb-accent)', borderRadius: 8, fontWeight: 700, fontSize: 14 }}>
-                🌟 Saldo a Favor disponible: {formatPrice(resumen.saldoAFavor)}
-              </div>
-            )}
-            <div className="sld-metrics">
-              <Metric label="Último abono" value={resumen.ultimoAbono ? fechaCorta(resumen.ultimoAbono.fecha) : '—'} />
-              <Metric label="Días sin abono" value={resumen.saldo > 0 ? `${resumen.diasSinAbono} días` : '—'} />
-              <Metric label="Atraso sugerido" value={resumen.cargoAtrasoSugerido > 0 ? formatPrice(resumen.cargoAtrasoSugerido) : '—'} warn={resumen.cargoAtrasoSugerido > 0} />
-            </div>
-          </section>
-
-          <div className="sld-actions">
-            {ACCIONES.map((a) => {
-              const Icon = a.icon
-              const dis = a.id === 'cargo_atraso' && resumen.cargoAtrasoSugerido <= 0
-              return (
-                <button key={a.id} type="button" className={cn('sld-actbtn', a.primary && 'sld-actbtn--primary', accion === a.id && 'is-active')} disabled={dis} onClick={() => abrirAccion(a.id)}>
-                  <Icon size={15} strokeWidth={1.9} />{a.label}
-                </button>
-              )
-            })}
-            <button type="button" className="sld-actbtn sld-actbtn--wa" disabled={!cuenta.telefono} title={cuenta.telefono ? 'Mandar WhatsApp' : 'Sin teléfono'} onClick={() => setWaOpen(true)}>
-              <MessageCircle size={15} strokeWidth={1.9} />WhatsApp
-            </button>
+      <main className="sld-shell__main" style={{ padding: 0 }}>
+        
+        {/* PREMIUM HERO SECTION */}
+        <section className="sld-hero">
+          <div className="sld-hero-name">{cuenta.nombre || 'Sin nombre'}</div>
+          
+          <div className={`sld-hero-balance ${resumen.saldo <= 0 ? 'is-ok' : ''}`}>
+            {resumen.saldo > 0 ? formatPrice(resumen.saldo) : (resumen.saldoAFavor > 0 ? formatPrice(resumen.saldoAFavor) : '$0.00')}
+          </div>
+          <div style={{ color: 'var(--mlb-text-secondary)', fontWeight: 600, marginTop: '-20px', marginBottom: '24px' }}>
+            {resumen.saldo > 0 ? 'DEUDA ACTUAL' : (resumen.saldoAFavor > 0 ? 'SALDO A FAVOR' : 'CUENTA SALDADA')}
           </div>
 
-          {panel !== 'accion' ? (
-            <div className="sld-tabswitch">
-              {[['movimientos', 'Movimientos'], ['resumen', 'Renglones'], ['recordatorios', 'Recordatorios'], ['expediente', 'Expediente']].map(([id, label]) => (
-                <button key={id} type="button" className="sld-tab" data-active={panel === id ? 'true' : 'false'} onClick={() => setPanel(id)}>{label}</button>
-              ))}
-            </div>
-          ) : null}
+          <div className="sld-hero-actions">
+            <button type="button" className="sld-hero-btn sld-hero-btn-primary" onClick={() => setAccionModal('abono')}>
+              <Banknote size={20}/> Registrar Abono
+            </button>
+            <button type="button" className="sld-hero-btn sld-hero-btn-secondary" onClick={() => setAccionModal('cargo')}>
+              <ReceiptText size={20}/> Nuevo Cargo
+            </button>
+            <button type="button" className="sld-hero-btn sld-hero-btn-secondary" disabled={!cuenta.telefono} onClick={() => setWaOpen(true)}>
+              <MessageCircle size={20}/> WhatsApp
+            </button>
+          </div>
+        </section>
 
-          <section className="sld-panel">
-            {panel === 'accion' && accion ? (
-              <MovimientoForm tipo={accion} resumen={resumen} onSubmit={registrar} onCancel={() => { setAccion(null); setPanel('movimientos') }} />
-            ) : panel === 'resumen' ? (
-              <ResumenPanel resumen={resumen} />
-            ) : panel === 'recordatorios' ? (
-              <RecordatoriosPanel api={api} cuenta={cuenta} onChanged={onChanged} />
-            ) : panel === 'expediente' ? (
-              <ExpedientePanel api={api} cuenta={cuenta} onBack={onBack} onChanged={onChanged} />
-            ) : (
-              <MovimientosPanel api={api} cuenta={cuenta} resumen={resumen} onChanged={onChanged} />
-            )}
-          </section>
+        <div className="sld-history-container">
+           <h3 className="sld-module-title">Historial de Movimientos</h3>
+           <MovimientosPanel api={api} cuenta={cuenta} resumen={resumen} onChanged={onChanged} />
         </div>
       </main>
+
+      {/* OVERLAY MODALS PARA ACCIONES PREMIUM */}
+      {accionModal && (
+        <div className="sld-modal-overlay" onClick={() => setAccionModal(null)}>
+          <div className="sld-modal-content" onClick={e => e.stopPropagation()}>
+             {accionModal === 'expediente' ? (
+                <ExpedientePanel api={api} cuenta={cuenta} onBack={() => setAccionModal(null)} onChanged={onChanged} />
+             ) : (
+                <MovimientoForm tipo={accionModal} resumen={resumen} onSubmit={registrar} onCancel={() => setAccionModal(null)} />
+             )}
+          </div>
+        </div>
+      )}
 
       {waOpen ? <WhatsAppModal cuenta={cuenta} resumen={resumen} workspace={workspace} onClose={() => setWaOpen(false)} /> : null}
     </div>
