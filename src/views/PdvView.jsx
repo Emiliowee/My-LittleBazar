@@ -1219,7 +1219,7 @@ function BanquetaWorkspace() {
 
   return (
     <section className="pos-tool pos-tool--banqueta" aria-label="Banqueta">
-      <div className="pos-tool__panel" style={{ padding: '24px 32px' }}>
+      <div className="pos-tool__workspace" style={{ padding: '24px 32px' }}>
         {!salida ? (
           /* ───────── Ventana 1 · Inicio ───────── */
           <>
@@ -1479,9 +1479,9 @@ function BanquetaAddModal({ salidaId, onClose, onAdded }) {
           <h2>Agregar prendas</h2>
           <button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button type="button" className={tab === 'buscar' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTab('buscar')}>Inventario</button>
-          <button type="button" className={tab === 'candidatos' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTab('candidatos')}>Candidatos (+6 meses)</button>
+        <div style={{ display: 'flex', gap: 24, marginBottom: 16, borderBottom: '1px solid var(--mlb-border)' }}>
+          <button type="button" style={{ background: 'transparent', border: 'none', padding: '0 4px 12px', fontSize: 14, fontWeight: 600, color: tab === 'buscar' ? 'var(--mlb-accent)' : 'var(--mlb-text-secondary)', borderBottom: tab === 'buscar' ? '3px solid var(--mlb-accent)' : '3px solid transparent', cursor: 'pointer', transition: 'color 0.2s' }} onClick={() => setTab('buscar')}>Inventario</button>
+          <button type="button" style={{ background: 'transparent', border: 'none', padding: '0 4px 12px', fontSize: 14, fontWeight: 600, color: tab === 'candidatos' ? 'var(--mlb-accent)' : 'var(--mlb-text-secondary)', borderBottom: tab === 'candidatos' ? '3px solid var(--mlb-accent)' : '3px solid transparent', cursor: 'pointer', transition: 'color 0.2s' }} onClick={() => setTab('candidatos')}>Candidatos (+6 meses)</button>
         </div>
         {tab === 'buscar' && (
           <input className="pos-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código..." style={{ marginBottom: 12 }} />
