@@ -1897,3 +1897,41 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Fiar Mode Animations and Accents */
+.posw-modal {
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+.posw-modal.is-fiar-mode {
+  border-color: #d97706;
+  box-shadow: 0 0 40px rgba(217, 119, 6, 0.15), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+.posw-modal.is-fiar-mode .posw-header {
+  background: rgba(217, 119, 6, 0.1);
+  border-bottom-color: rgba(217, 119, 6, 0.3);
+}
+.posw-modal.is-fiar-mode .posw-header h2 {
+  color: #d97706;
+}
+
+.posw-btn-amber {
+  background: #d97706;
+  border: 1px solid #b45309;
+  color: #fff;
+}
+.posw-btn-amber:hover:not(:disabled) {
+  background: #b45309;
+}
+.posw-btn-amber:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Smooth content transition */
+.posw-content-wrapper {
+  animation: posw-fade-in 0.3s ease-out;
+}
+@keyframes posw-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

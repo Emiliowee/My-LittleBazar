@@ -89,7 +89,6 @@ declare global {
         getReferenceRows: (payload: Record<string, unknown>) => Promise<Array<[string, string, string]>>
         getReferenceSnapshot: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>
         getSales: (filters?: Record<string, unknown>) => Promise<unknown[]>
-        listClientesConCredito: () => Promise<unknown[]>
         addSale: (sale: Record<string, unknown>) => Promise<unknown>
         suggestByTags: (tags: string[]) => Promise<unknown>
         getWelcomeSnapshot: () => Promise<{

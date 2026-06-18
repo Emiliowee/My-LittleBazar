@@ -872,10 +872,10 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
           <User size={20} strokeWidth={2.5}/>
         </div>
 
-        <div className="posw-modal">
+        <div className={`posw-modal ${modoFiar ? 'is-fiar-mode' : ''}`}>
           {!modoFiar ? (
             /* ================= ESTADO COBRAR ================= */
-            <>
+            <div className="posw-content-wrapper" key="estado-cobrar">
               <div className="posw-header">
                 <h2>Cobrar venta</h2>
                 <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
@@ -942,10 +942,10 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             /* ================= ESTADO FIAR ================= */
-            <>
+            <div className="posw-content-wrapper" key="estado-fiar">
               <div className="posw-header">
                 <h2 style={{cursor: 'pointer'}} onClick={() => setModoFiar(false)}><ArrowLeft size={18}/> Fiar a cliente</h2>
                 <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
@@ -1012,12 +1012,12 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(false)}>
                     <ArrowLeft size={16}/> Volver
                   </button>
-                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || valSaldoFavor > maxSaldoFavor}>
+                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-amber" onClick={handleConfirm} disabled={busy || valSaldoFavor > maxSaldoFavor}>
                     {busy ? 'Cobrando...' : 'Confirmar fiado [F2]'}
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 

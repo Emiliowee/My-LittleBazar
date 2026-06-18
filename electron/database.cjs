@@ -573,23 +573,10 @@ function seedClientesDemoIfEmpty(database) {
       .run()
     return
   }
-  const stmt = database.prepare(
-    `INSERT INTO clientes (nombre, telefono, notas, saldo_pendiente, activo)
-     VALUES (@nombre, @telefono, @notas, @saldo_pendiente, 1)`,
-  )
-  const rows = [
-    { nombre: 'María López', telefono: '', notas: 'Cuota semanal', saldo_pendiente: 480.5 },
-    { nombre: 'Roberto Vega', telefono: '', notas: '', saldo_pendiente: 0 },
-    { nombre: 'Ana Gutiérrez', telefono: '', notas: 'Varios artículos', saldo_pendiente: 1250 },
-    { nombre: 'Cliente mostrador', telefono: '', notas: '', saldo_pendiente: 0 },
-    { nombre: 'Lucía Hernández', telefono: '', notas: '', saldo_pendiente: 89.99 },
-    { nombre: 'Pedro Ramírez', telefono: '', notas: '', saldo_pendiente: 0 },
-    { nombre: 'Comunidad La Merced', telefono: '', notas: 'Pedido grupal', saldo_pendiente: 3420.75 },
-  ]
-  const run = database.transaction((list) => {
-    for (const r of list) stmt.run(r)
-  })
-  run(rows)
+  /* Libreta vieja en desuso: el fiado real vive en el módulo Saldos
+   * (saldos_clientes / saldos_movimientos). Ya NO sembramos clientes ni
+   * deuda de demostración en la tabla vieja `clientes` — solo dejamos la
+   * bandera para no volver a intentarlo. */
   database.prepare("INSERT INTO app_meta (key, value) VALUES ('welcome_demo_clientes_v1', '1')").run()
 }
 
@@ -3051,6 +3038,9 @@ function ensureVentasSchema(database) {
       pago_con REAL,
       cambio REAL,
       metodo TEXT NOT NULL DEFAULT 'efectivo',
+      monto_efectivo REAL DEFAULT 0,
+      monto_transferencia REAL DEFAULT 0,
+      monto_credito REAL DEFAULT 0,
       notas TEXT DEFAULT '',
       cuenta_bancaria TEXT DEFAULT '',
       saldos_cliente_id INTEGER,
@@ -3084,6 +3074,11 @@ function ensureVentasSchema(database) {
     }
     if (!vCols.some((c) => c.name === 'saldos_cliente_id')) {
       database.exec(`ALTER TABLE ventas ADD COLUMN saldos_cliente_id INTEGER`)
+    }
+    if (!vCols.some((c) => c.name === 'monto_efectivo')) {
+      database.exec(`ALTER TABLE ventas ADD COLUMN monto_efectivo REAL DEFAULT 0;
+                     ALTER TABLE ventas ADD COLUMN monto_transferencia REAL DEFAULT 0;
+                     ALTER TABLE ventas ADD COLUMN monto_credito REAL DEFAULT 0;`)
     }
   } catch (e) {
     console.error('[ventas] migración columnas:', e?.message || e)
@@ -3201,11 +3196,13 @@ function addSale(payload) {
   const items = Array.isArray(payload?.items) ? payload.items : []
   if (items.length === 0) throw new Error('El carrito está vacío.')
 
-  const metodo = String(payload?.metodo || 'efectivo').trim().toLowerCase()
-  if (!['efectivo', 'transferencia', 'credito'].includes(metodo)) {
-    throw new Error(`Metodo de venta invalido: ${metodo || '(vacio)'}.`)
-  }
   const notas = String(payload?.notas || '').trim()
+  const pagos = payload?.pagos || { efectivo: 0, transferencia: 0, saldo_favor: 0 }
+  const efectivo = Number(pagos.efectivo) || 0
+  const transferencia = Number(pagos.transferencia) || 0
+  const saldoFavor = Number(pagos.saldo_favor) || 0
+
+  if (efectivo < 0 || transferencia < 0 || saldoFavor < 0) throw new Error('Los pagos no pueden ser negativos.')
 
   const getProd = database.prepare(
     'SELECT id, codigo, descripcion, precio, pieza_unica, stock, estado, vendido_en FROM productos WHERE id = ?',
@@ -3217,7 +3214,7 @@ function addSale(payload) {
     const row = getProd.get(pid)
     if (!row) throw new Error(`Producto no encontrado (id ${pid}).`)
     if (row.vendido_en != null && String(row.vendido_en).trim() !== '') {
-      throw new Error(`No se puede vender «${row.codigo}»: figura como vendido en inventario (reponé stock o marcá disponible desde edición).`)
+      throw new Error(`No se puede vender «${row.codigo}»: figura como vendido en inventario.`)
     }
     const est = String(row.estado || '').trim().toLowerCase()
     if (est && est !== 'disponible') {
@@ -3244,71 +3241,68 @@ function addSale(payload) {
   }
 
   const total = normalized.reduce((s, x) => s + x.precio * x.cantidad, 0)
-  if (!Number.isFinite(total) || total <= 0) throw new Error('Total de venta no válido — verificá que todos los productos tengan precio.')
+  if (!Number.isFinite(total) || total <= 0) throw new Error('Total de venta no válido.')
 
-  let pagoCon = null
-  if (payload?.pagoCon != null && payload.pagoCon !== '') {
-    const pc = Number(payload.pagoCon)
-    if (Number.isFinite(pc) && pc >= 0) pagoCon = pc
-  }
-  /* Si el cajero declaró cuánto efectivo recibió, ese monto debe alcanzar
-   * para el total. Si no lo declara (pagoCon == null) es venta sin vuelto:
-   * permitido (Monserrat a veces no cuenta el efectivo). Crédito no tiene
-   * pagoCon — lo blindamos también. */
-  if (metodo === 'efectivo' && pagoCon != null && pagoCon < total) {
-    throw new Error(`Pago insuficiente: faltan ${(total - pagoCon).toFixed(2)}.`)
+  // Si envían un payload viejo con `metodo` y `pagoCon`, hacer map
+  let montoEfectivo = efectivo
+  let montoTransferencia = transferencia
+  let montoSaldoFavor = saldoFavor
+  
+  if (payload?.metodo) {
+    if (payload.metodo === 'efectivo') montoEfectivo = Number(payload.pagoCon) || total
+    if (payload.metodo === 'transferencia') montoTransferencia = total
   }
   
+  const sumaPagos = montoEfectivo + montoTransferencia + montoSaldoFavor
+  const cambio = (montoEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
+  
+  // Total que realmente contribuye a pagar (limitado al total de la compra)
+  const pagadoSinCambio = Math.min(sumaPagos, total)
+  let faltante = total - pagadoSinCambio
+
+  if (faltante > 0.01 && !payload?.clienteId) {
+    throw new Error(`Pago insuficiente: faltan ${faltante.toFixed(2)}. Selecciona un cliente para fiar el resto.`)
+  }
+
   const cuenta_bancaria = String(payload?.cuentaBancaria || payload?.cuenta_bancaria || '').trim()
-  if (metodo === 'transferencia' && !cuenta_bancaria) {
+  if (montoTransferencia > 0 && !cuenta_bancaria) {
     throw new Error('Selecciona la cuenta bancaria de la transferencia.')
   }
 
-  if (metodo === 'credito' && pagoCon != null && pagoCon > 0) {
-    throw new Error('Las ventas a crédito no aceptan pago en efectivo en el mismo paso.')
-  }
-  if (metodo === 'credito' && payload?.creditoMovimiento == null) {
-    throw new Error('La venta fiada debe estar vinculada a una cuenta de Saldos.')
-  }
-  if (metodo !== 'credito' && payload?.creditoMovimiento != null) {
-    throw new Error('Solo las ventas fiadas pueden traer movimiento de Saldos.')
-  }
-  const cambio = pagoCon != null ? Math.max(0, pagoCon - total) : null
+  let metodo = 'mixto'
+  let conteo = 0
+  if (montoEfectivo > 0) conteo++
+  if (montoTransferencia > 0) conteo++
+  if (montoSaldoFavor > 0 || faltante > 0) conteo++
 
-  /* Crédito atómico, UNIFICADO en el módulo Saldos: el fiado del PDV es una
-   * cuenta de Saldos (saldos_clientes), no la libreta vieja de `clientes`. El
-   * cargo (y el abono del enganche) se registran en `saldos_movimientos` dentro
-   * de la MISMA transacción que la venta — better-sqlite3 anida con savepoints,
-   * así que si algo falla todo se revierte y no quedan ventas sin deuda. */
+  if (conteo === 1) {
+    if (montoEfectivo > 0) metodo = 'efectivo'
+    else if (montoTransferencia > 0) metodo = 'transferencia'
+    else metodo = 'credito'
+  }
+
   let creditoPayload = null
-  if (metodo === 'credito' && payload?.creditoMovimiento != null) {
-    const cm = payload.creditoMovimiento
-    const saldosClienteId = Number(cm.saldosClienteId || cm.saldos_cliente_id)
-    if (!saldosClienteId) throw new Error('Cliente inválido para crédito (falta la cuenta de Saldos).')
+  // Si usó saldo a favor, O si quedó a deber (faltante), generamos un movimiento de crédito
+  // El ledger de saldos automáticamente absorbe el saldo a favor.
+  if (montoSaldoFavor > 0 || faltante > 0.01) {
+    const saldosClienteId = Number(payload.clienteId)
+    if (!saldosClienteId) throw new Error('Cliente inválido para crédito/saldo a favor.')
     const cuenta = database.prepare('SELECT id FROM saldos_clientes WHERE id = ?').get(saldosClienteId)
     if (!cuenta) throw new Error('La cuenta de Saldos no existe.')
-    const monto = Number(cm.monto)
-    if (Math.round(monto * 100) !== Math.round(total * 100)) {
-      throw new Error('El monto fiado no coincide con el total real de la venta.')
-    }
-    if (!Number.isFinite(monto) || monto <= 0) throw new Error('Monto de crédito inválido.')
-
-    /* El enganche es lo que paga AHORA a cuenta de ESTA compra: no puede ser
-     * mayor al total ni negativo. Si quiere abonar más, es un abono aparte. */
-    const enganche = Math.max(0, Math.min(Number(cm.enganche) || 0, monto))
-    const engancheMetodo = String(cm.engancheMetodo || cm.enganche_metodo || 'efectivo').trim().toLowerCase()
-
+    
+    // Registramos la venta COMPLETA como cargo, y lo que haya dado en efec/transf como abono.
+    // Esto simplifica la libreta y usa el motor de saldos existente perfectamente.
     creditoPayload = {
       saldosClienteId,
-      monto,
-      descripcion: String(cm.descripcion || '').trim(),
-      enganche,
-      engancheMetodo,
+      monto: total,
+      enganche: Math.min(montoEfectivo + montoTransferencia, total), // no cuenta el saldo a favor aquí, el saldo es interno
+      engancheMetodo: montoTransferencia > montoEfectivo ? 'transferencia' : 'efectivo',
+      descripcion: `Compra en caja (${normalized.length} artículo${normalized.length === 1 ? '' : 's'})`
     }
   }
 
   const insVenta = database.prepare(
-    `INSERT INTO ventas (total, pago_con, cambio, metodo, notas, cuenta_bancaria, saldos_cliente_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO ventas (total, pago_con, cambio, metodo, monto_efectivo, monto_transferencia, monto_credito, notas, cuenta_bancaria, saldos_cliente_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
   const insItem = database.prepare(
     `INSERT INTO venta_items (venta_id, producto_id, codigo_snapshot, nombre_snapshot, precio_snapshot, cantidad) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -3333,7 +3327,18 @@ function addSale(payload) {
   )
   let ventaId
   const run = database.transaction(() => {
-    const info = insVenta.run(total, pagoCon, cambio, metodo, notas, cuenta_bancaria, creditoPayload ? creditoPayload.saldosClienteId : null)
+    const info = insVenta.run(
+      total, 
+      sumaPagos, 
+      cambio, 
+      metodo, 
+      montoEfectivo, 
+      montoTransferencia, 
+      montoSaldoFavor + faltante, 
+      notas, 
+      cuenta_bancaria, 
+      creditoPayload ? creditoPayload.saldosClienteId : null
+    )
     ventaId = Number(info.lastInsertRowid)
     for (const x of normalized) {
       insItem.run(ventaId, x.pid, x.codigo, x.nombre, x.precio, x.cantidad)
@@ -4471,14 +4476,26 @@ function getWelcomeSnapshot() {
             AND NOT EXISTS (SELECT 1 FROM venta_items vi WHERE vi.producto_id = p.id)) AS productosDisponibles`,
     )
     .get()
+  /* Fiado real: vive en el módulo Saldos (saldos_clientes / saldos_movimientos),
+   * NO en la libreta vieja `clientes`. El saldo por cuenta = cargos − pagos
+   * (clamped ≥ 0), idéntico a saldoSaldosCliente() y al motor saldosLedger.js. */
   const c = database
     .prepare(
       `SELECT
-        COUNT(*) AS clientesTotal,
-        COALESCE(SUM(CASE WHEN saldo_pendiente > 0.005 THEN 1 ELSE 0 END), 0) AS clientesConSaldo,
-        COALESCE(SUM(CASE WHEN saldo_pendiente > 0 THEN saldo_pendiente ELSE 0 END), 0) AS saldoTotalPendiente
-       FROM clientes
-       WHERE activo = 1`,
+        (SELECT COUNT(*) FROM saldos_clientes WHERE COALESCE(archivada, 0) = 0) AS clientesTotal,
+        COALESCE(SUM(CASE WHEN saldo > 0.005 THEN 1 ELSE 0 END), 0) AS clientesConSaldo,
+        COALESCE(SUM(CASE WHEN saldo > 0 THEN saldo ELSE 0 END), 0) AS saldoTotalPendiente
+       FROM (
+         SELECT COALESCE(SUM(CASE
+                  WHEN m.tipo IN ('cargo','cargo_atraso','ajuste') THEN m.monto
+                  WHEN m.tipo IN ('abono','descuento') THEN -m.monto
+                  ELSE 0 END), 0) AS saldo
+           FROM saldos_clientes sc
+           LEFT JOIN saldos_movimientos m
+             ON m.cliente_id = sc.id AND m.anulado = 0
+          WHERE COALESCE(sc.archivada, 0) = 0
+          GROUP BY sc.id
+       )`,
     )
     .get()
   return {

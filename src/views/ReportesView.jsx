@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  ArrowRight,
   Clock3,
   Download,
   FileSpreadsheet,
@@ -505,7 +506,7 @@ function InputBase({ value, onChange, type = 'text', min, placeholder, className
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-8 rounded-md border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-input)] px-2.5 text-[12.5px] text-[var(--mlb-text-primary)] outline-none transition-colors focus:border-[var(--mlb-accent)]/45 focus:bg-[var(--mlb-bg-panel)] focus:shadow-[inset_0_0_0_1px_var(--mlb-accent-ring)] ${className}`}
+      className={`h-9 w-full rounded-md border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-input)] px-3 text-[13px] text-[var(--mlb-text-primary)] shadow-sm outline-none transition-all placeholder:text-[var(--mlb-text-muted)] hover:border-[var(--mlb-border-focus)] focus:border-[var(--mlb-accent)]/45 focus:bg-[var(--mlb-bg-panel)] focus:shadow-[0_0_0_2px_var(--mlb-accent-ring)] sm:w-auto ${className}`}
     />
   )
 }
@@ -533,51 +534,65 @@ function ReportCard({ reporte, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`group grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-[var(--mlb-border)] px-3 py-3 text-left transition-colors hover:bg-[var(--mlb-bg-hover)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:px-4 sm:py-4 ${
-        active ? 'bg-[var(--mlb-bg-active)]' : 'bg-transparent'
+      className={`group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-xl border bg-[var(--mlb-bg-panel)] p-5 text-left transition-all duration-200 hover:border-[var(--mlb-border-focus)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mlb-accent-ring)] ${
+        active
+          ? 'border-[var(--mlb-accent)] shadow-[0_0_0_1px_var(--mlb-accent)]'
+          : 'border-[var(--mlb-border)] shadow-[var(--shadow-xs)]'
       }`}
     >
-      <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--mlb-bg-input)] text-[var(--mlb-text-primary)] shadow-[0_1px_0_0_var(--mlb-border)]">
-        <Icon className="size-4" strokeWidth={1.8} />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[14px] font-semibold tracking-[-0.01em] text-[var(--mlb-text-primary)]">{reporte.nombre}</span>
-        <span className="mt-1 block text-[12.5px] leading-relaxed text-[var(--mlb-text-secondary)]">{reporte.descripcion}</span>
-        <span className="mt-2 hidden flex-wrap gap-1 sm:flex">
-          {reporte.filtros.map((f) => (
-            <span key={f} className="rounded-md bg-[var(--mlb-bg-input)] px-1.5 py-1 text-[10.5px] font-medium text-[var(--mlb-text-muted)]">
-              {f}
-            </span>
-          ))}
+      <div className="flex w-full items-start justify-between">
+        <span className={`inline-flex size-10 items-center justify-center rounded-lg shadow-sm transition-colors ${active ? 'bg-[var(--mlb-accent)] text-white' : 'bg-[var(--mlb-bg-input)] text-[var(--mlb-text-primary)] group-hover:bg-[var(--mlb-accent-soft)] group-hover:text-[var(--mlb-accent-ink)]'}`}>
+          <Icon className="size-4.5" strokeWidth={1.8} />
         </span>
-      </span>
-      <span className="col-span-2 inline-flex items-center gap-2 pl-12 text-[12px] font-medium text-[var(--mlb-text-secondary)] group-hover:text-[var(--mlb-text-primary)] sm:col-span-1 sm:pl-0">
-        Configurar
-        <Table2 className="size-3.5" strokeWidth={1.8} />
-      </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mlb-bg-input)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-[var(--mlb-text-secondary)] opacity-0 transition-opacity group-hover:opacity-100">
+          Configurar
+          <ArrowRight className="size-3" strokeWidth={2} />
+        </span>
+      </div>
+      
+      <div className="mt-1">
+        <h3 className={`text-[15px] font-semibold tracking-[-0.01em] ${active ? 'text-[var(--mlb-accent)]' : 'text-[var(--mlb-text-primary)]'}`}>
+          {reporte.nombre}
+        </h3>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--mlb-text-secondary)]">
+          {reporte.descripcion}
+        </p>
+      </div>
+
+      <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
+        {reporte.filtros.map((f) => (
+          <span key={f} className="rounded-md border border-[var(--mlb-border)] bg-transparent px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--mlb-text-muted)] transition-colors group-hover:border-[var(--mlb-border-strong)]">
+            {f}
+          </span>
+        ))}
+      </div>
     </button>
   )
 }
 
 function FieldGroup({ title, description, children }) {
   return (
-    <section className="border-b border-[var(--mlb-border)] px-5 py-4 last:border-b-0">
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-[13.5px] font-semibold tracking-[-0.006em] text-[var(--mlb-text-primary)]">{title}</h3>
-          {description ? <p className="mt-0.5 text-[12px] leading-relaxed text-[var(--mlb-text-secondary)]">{description}</p> : null}
-        </div>
+    <section className="flex flex-col gap-4 border-b border-[var(--mlb-border)] py-6 last:border-b-0 sm:flex-row sm:items-start sm:gap-8">
+      <div className="sm:w-1/3 sm:shrink-0">
+        <h3 className="text-[14px] font-medium tracking-[-0.006em] text-[var(--mlb-text-primary)]">{title}</h3>
+        {description ? <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--mlb-text-secondary)]">{description}</p> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
+      <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+        {children}
+      </div>
     </section>
   )
 }
 
 function SummaryChip({ label, value }) {
   return (
-    <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-2 text-[11.5px]">
-      <span className="text-[var(--mlb-text-muted)]">{label}</span>
-      <span className="font-medium text-[var(--mlb-text-primary)]">{value}</span>
+    <span className="inline-flex items-center rounded-md border border-[var(--mlb-border)] bg-[var(--mlb-bg-app)] text-[11.5px] transition-colors hover:border-[var(--mlb-border-strong)]">
+      <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-[var(--mlb-text-muted)]">
+        {label}
+      </span>
+      <span className="rounded-r-md border-l border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-2 py-1 font-semibold text-[var(--mlb-text-primary)]">
+        {value}
+      </span>
     </span>
   )
 }
@@ -795,18 +810,18 @@ export function ReportesView() {
 
       {pantalla === 'inicio' ? (
         <DataTableShell className="min-h-0 flex-1 px-4 pb-4 pt-4 sm:px-6 lg:px-10 lg:pb-6">
-          <div className="mb-3 flex items-center justify-between gap-4">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-[14px] font-semibold tracking-[-0.01em]">Reportes disponibles</h2>
-              <p className="mt-0.5 text-[12.5px] text-[var(--mlb-text-secondary)]">Solo se muestran reportes que pueden salir con datos reales actuales.</p>
+              <h2 className="text-[16px] font-semibold tracking-[-0.01em]">Reportes disponibles</h2>
+              <p className="mt-0.5 text-[13px] text-[var(--mlb-text-secondary)]">Solo se muestran reportes que pueden salir con datos reales actuales.</p>
             </div>
-            <span className="rounded-md border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-2 py-1 text-[11.5px] text-[var(--mlb-text-muted)]">
+            <span className="rounded-full border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-3 py-1 text-[11.5px] font-medium text-[var(--mlb-text-muted)] shadow-sm">
               {REPORTES.length} reportes
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] shadow-[var(--mlb-shadow-card)]">
-            <div className="h-full overflow-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
               {REPORTES.map((reporteItem) => (
                 <ReportCard
                   key={reporteItem.id}
@@ -822,18 +837,19 @@ export function ReportesView() {
 
       {pantalla === 'configurar' ? (
         <DataTableShell className="min-h-0 flex-1 px-4 pb-4 pt-4 sm:px-6 lg:px-10 lg:pb-6">
-          <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] shadow-[var(--mlb-shadow-card)]">
-              <div className="border-b border-[var(--mlb-border)] px-5 py-4">
-                <div className="flex items-start gap-3">
-                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--mlb-bg-input)] text-[var(--mlb-text-primary)]">
-                    <meta.icon className="size-4" strokeWidth={1.8} />
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-app)] shadow-[var(--mlb-shadow-card)]">
+              <div className="border-b border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mlb-accent-soft)] text-[var(--mlb-accent-ink)] shadow-inner">
+                    <meta.icon className="size-6" strokeWidth={1.8} />
                   </span>
                   <div>
-                    <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{meta.nombre}</h2>
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--mlb-text-secondary)]">{meta.descripcion}</p>
+                    <h2 className="text-[18px] font-bold tracking-[-0.02em]">{meta.nombre}</h2>
+                    <p className="mt-1 text-[13px] text-[var(--mlb-text-secondary)]">{meta.descripcion}</p>
                   </div>
                 </div>
               </div>
+              <div className="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6">
 
               {tipo === 'ventas' ? (
                 <FieldGroup title="Periodo" description="El reporte se genera con estas fechas.">
@@ -901,15 +917,16 @@ export function ReportesView() {
                   </FieldGroup>
                 </>
               ) : null}
-              <div className="border-t border-[var(--mlb-border)] px-4 py-3 sm:px-5">
-                <div className="mb-3 flex flex-wrap gap-1.5">
+              </div>
+              <div className="border-t border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-6 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                <div className="mb-4 flex flex-wrap gap-2">
                   {filtrosResumen(tipo, filtros).map(([label, value]) => (
                     <SummaryChip key={`${label}-${value}`} label={label} value={value} />
                   ))}
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className={`text-[12.5px] leading-relaxed ${errorFiltros ? 'text-[var(--mlb-danger)]' : 'text-[var(--mlb-text-secondary)]'}`}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className={`text-[12.5px] font-medium leading-relaxed ${errorFiltros ? 'text-[var(--mlb-danger)]' : 'text-[var(--mlb-text-secondary)]'}`}>
                     {errorFiltros || 'Filtros listos. La siguiente pantalla muestra la tabla antes de exportar.'}
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
@@ -951,11 +968,14 @@ export function ReportesView() {
             </div>
           </div>
 
-          <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {reporte.metricas.map((m) => (
-              <div key={m.label} className="rounded-lg border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-3 py-2 shadow-[var(--mlb-shadow-xs)]">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mlb-text-muted)]">{m.label}</div>
-                <div className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums text-[var(--mlb-text-primary)]">{m.value}</div>
+              <div key={m.label} className="group relative overflow-hidden rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-5 py-4 shadow-[var(--mlb-shadow-card)] transition-transform hover:-translate-y-0.5">
+                <div className="absolute -right-6 -top-6 size-24 rounded-full bg-[var(--mlb-bg-hover)] opacity-50 blur-xl transition-all group-hover:bg-[var(--mlb-accent-soft)]"></div>
+                <div className="relative">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mlb-text-muted)]">{m.label}</div>
+                  <div className="mt-1.5 font-mono text-[24px] font-bold tracking-tight tabular-nums text-[var(--mlb-text-primary)]">{m.value}</div>
+                </div>
               </div>
             ))}
           </div>

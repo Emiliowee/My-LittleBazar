@@ -648,7 +648,6 @@ function registerIpc() {
   ipcMain.handle('db:getReferenceSnapshot', (_, payload) => db.getReferenceSnapshot(payload))
   ipcMain.handle('db:getSales', (_, filters) => db.getSales(filters))
   ipcMain.handle('db:getVentaDetalle', (_, ventaId) => db.getVentaDetalle(ventaId))
-  ipcMain.handle('db:listClientesConCredito', () => db.listClientesConCredito())
   ipcMain.handle('db:addSale', (_, sale) => {
     const result = db.addSale(sale)
     if (result?.ok) {

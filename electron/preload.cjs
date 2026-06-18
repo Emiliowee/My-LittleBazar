@@ -37,7 +37,6 @@ contextBridge.exposeInMainWorld('bazar', {
     getReferenceSnapshot: (payload) => ipcRenderer.invoke('db:getReferenceSnapshot', payload),
     getSales: (filters) => ipcRenderer.invoke('db:getSales', filters),
     getVentaDetalle: (ventaId) => ipcRenderer.invoke('db:getVentaDetalle', ventaId),
-    listClientesConCredito: () => ipcRenderer.invoke('db:listClientesConCredito'),
     addSale: (sale) => ipcRenderer.invoke('db:addSale', sale),
     getVentaItemPorCodigoDevolucion: (codigo) => ipcRenderer.invoke('db:getVentaItemPorCodigoDevolucion', codigo),
     registrarDevolucionRapida: (payload) => ipcRenderer.invoke('db:registrarDevolucionRapida', payload),

@@ -1,15 +1,15 @@
 /**
- * Genera el HTML imprimible de Reportes.
+ * Genera el HTML imprimible de Reportes con un diseño Premium.
  * El renderer arma datos tabulares; Electron lo convierte a PDF con
- * webContents.printToPDF. Mantenerlo puro evita que la exportacion dependa del DOM.
+ * webContents.printToPDF.
  */
 
-const INK = '#111827'
-const NAVY = '#1f2937'
-const MUTED = '#4b5563'
-const LINE = '#9ca3af'
-const SOFT = '#f3f4f6'
-const HEADER = '#e5e7eb'
+const INK = '#0f172a'
+const NAVY = '#1e293b'
+const MUTED = '#64748b'
+const LINE = '#e2e8f0'
+const SOFT = '#f8fafc'
+const CARD_BG = '#ffffff'
 const PAPER = '#ffffff'
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -44,9 +44,9 @@ function printableValue(row, col) {
   return row?.[col.key] ?? ''
 }
 
-function renderTable(columns, rows, titulo) {
-  if (!columns.length) return '<p class="empty">Sin columnas para mostrar.</p>'
-  if (!rows.length) return '<p class="empty">No hay registros para los parametros seleccionados.</p>'
+function renderTable(columns, rows) {
+  if (!columns.length) return '<div class="empty">Sin columnas para mostrar.</div>'
+  if (!rows.length) return '<div class="empty">No hay registros para los criterios seleccionados.</div>'
 
   const head = columns
     .map((c) => `<th class="${c.align === 'right' ? 'num' : ''}" scope="col">${esc(c.label)}</th>`)
@@ -56,33 +56,44 @@ function renderTable(columns, rows, titulo) {
       .map((c, index) => `<td class="${c.align === 'right' ? 'num' : ''}">${esc(printableValue(row, { ...c, index }))}</td>`)
       .join('')}</tr>`)
     .join('')
-  return `<table>
-    <caption>${esc(titulo || 'Detalle del reporte')}</caption>
-    <thead><tr>${head}</tr></thead>
-    <tbody>${body}</tbody>
-  </table>`
+
+  return `<div class="table-wrapper">
+    <table class="report-table">
+      <thead><tr>${head}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`
 }
 
 function renderMetrics(metrics) {
   const rows = (Array.isArray(metrics) ? metrics : []).filter((m) => String(m?.label || '').trim())
   if (!rows.length) return ''
-  return `<table class="summary-table">
-    <caption>Resumen del reporte</caption>
-    <tbody>
-      ${rows.map((m) => `<tr><th scope="row">${esc(m.label)}</th><td class="num">${esc(m.value)}</td></tr>`).join('')}
-    </tbody>
-  </table>`
+  
+  return `<div class="metrics-grid">
+    ${rows.map((m) => `
+      <div class="metric-card">
+        <div class="metric-label">${esc(m.label)}</div>
+        <div class="metric-value">${esc(m.value)}</div>
+      </div>
+    `).join('')}
+  </div>`
 }
 
-function renderPairsTable(title, rows) {
+function renderPairsList(title, rows) {
   const pairs = normalizedPairs(rows)
   if (!pairs.length) return ''
-  return `<table class="info-table">
-    <caption>${esc(title)}</caption>
-    <tbody>
-      ${pairs.map((r) => `<tr><th scope="row">${esc(r.label)}</th><td>${esc(r.value)}</td></tr>`).join('')}
-    </tbody>
-  </table>`
+  
+  return `<div class="info-section">
+    <h3 class="section-title">${esc(title)}</h3>
+    <div class="pairs-grid">
+      ${pairs.map((r) => `
+        <div class="pair-item">
+          <span class="pair-label">${esc(r.label)}</span>
+          <span class="pair-value">${esc(r.value)}</span>
+        </div>
+      `).join('')}
+    </div>
+  </div>`
 }
 
 function buildFolio(date = new Date()) {
@@ -110,20 +121,16 @@ export function buildReportePdfHtml({
   const folio = buildFolio(now)
   const cols = normalizedColumns(columnas)
   const rows = normalizedRows(filas)
-  const wide = cols.length > 5
+  
+  // Decide layout automatically
+  const wide = cols.length > 6
   const pageSize = wide ? 'Letter landscape' : 'Letter portrait'
+  
   const criteriosRows = normalizedPairs(criterios)
-  const datosNegocio = [
-    { label: 'Nombre comercial', value: bazarNombre },
-    { label: 'Tipo de documento', value: 'Reporte administrativo' },
-    { label: 'Moneda', value: 'MXN - Pesos mexicanos' },
-    { label: 'Sistema', value: 'My Little Bazar' },
-  ]
   const datosReporte = [
-    { label: 'Folio interno', value: folio },
-    { label: 'Reporte', value: titulo },
+    { label: 'Folio', value: folio },
+    { label: 'Generado', value: generado },
     { label: 'Periodo', value: periodoTexto || '-' },
-    { label: 'Fecha de emision', value: generado },
     { label: 'Registros', value: String(rows.length) },
   ]
 
@@ -132,8 +139,11 @@ export function buildReportePdfHtml({
 <head>
   <meta charset="utf-8">
   <title>${esc(titulo)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    @page { size: ${pageSize}; margin: 13mm 11mm 15mm; }
+    @page { size: ${pageSize}; margin: 15mm 15mm 18mm; }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
@@ -141,7 +151,7 @@ export function buildReportePdfHtml({
       color: ${INK};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
-      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       font-size: ${wide ? '9px' : '10px'};
     }
     body { padding: 0; }
@@ -149,260 +159,275 @@ export function buildReportePdfHtml({
       width: 100%;
       min-height: 100%;
     }
-    .document-label {
-      width: 100%;
-      background: ${NAVY};
-      color: #fff;
-      padding: 6px 8px;
-      margin-bottom: 9px;
+    
+    /* Header & Brand */
+    header {
       display: flex;
       justify-content: space-between;
-      gap: 16px;
-      font-size: 8.2px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid ${SOFT};
+      page-break-inside: avoid;
+    }
+    .header-left {
+      max-width: 60%;
+    }
+    .brand {
+      display: inline-block;
+      font-size: 9px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-    }
-    header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-      border: 1px solid ${LINE};
-      border-top: 0;
-      padding: 10px 10px 9px;
-      margin-bottom: 10px;
-      page-break-inside: avoid;
-    }
-    .brand {
-      font-size: 8px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: ${MUTED};
+      color: ${NAVY};
+      background: ${SOFT};
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
     }
     h1 {
-      margin: 3px 0 4px;
-      font-size: ${wide ? '16px' : '18px'};
+      margin: 0 0 6px 0;
+      font-size: ${wide ? '20px' : '24px'};
+      font-weight: 700;
       line-height: 1.1;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
       color: ${INK};
-      text-transform: uppercase;
     }
     .desc {
-      max-width: ${wide ? '540px' : '390px'};
       margin: 0;
-      line-height: 1.38;
+      font-size: 11px;
+      line-height: 1.5;
       color: ${MUTED};
     }
-    .folio {
-      min-width: ${wide ? '230px' : '170px'};
+    .header-right {
       text-align: right;
     }
-    .folio-label {
-      font-size: 8px;
+    .meta-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .meta-label {
+      font-size: 9px;
       color: ${MUTED};
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.05em;
+      font-weight: 500;
     }
-    .folio-value {
-      margin-top: 4px;
-      font-size: 14px;
-      font-weight: 800;
+    .meta-value {
+      font-size: 10px;
       color: ${INK};
-      font-variant-numeric: tabular-nums;
-    }
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
-      page-break-inside: avoid;
-    }
-    .info-table,
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid ${LINE};
-      table-layout: fixed;
-      page-break-inside: avoid;
-      margin: 0;
-    }
-    .info-table caption,
-    .summary-table caption,
-    table.report-table caption {
-      caption-side: top;
-      background: ${HEADER};
-      border: 1px solid ${LINE};
-      border-bottom: 0;
-      padding: 5px 7px;
-      text-align: left;
-      font-size: 7.7px;
-      font-weight: 800;
-      color: ${INK};
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .info-table th,
-    .summary-table th {
-      width: 38%;
-      border-top: 1px solid ${LINE};
-      background: #fff;
-      color: ${MUTED};
-      text-align: left;
-      font-size: 8.2px;
-      font-weight: 700;
-      padding: 5px 7px;
-      text-transform: uppercase;
-    }
-    .info-table td,
-    .summary-table td {
-      border-top: 1px solid ${LINE};
-      color: ${INK};
-      font-size: 8.8px;
       font-weight: 600;
-      padding: 5px 7px;
-      overflow-wrap: anywhere;
+      min-width: 120px;
+      text-align: left;
     }
-    .summary-table {
-      margin-bottom: 10px;
-    }
-    .summary-table th { width: 55%; }
-    .summary-table td {
-      font-size: ${wide ? '10px' : '11px'};
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
+    
+    /* Document Metadata (Pairs) */
+    .info-section {
+      margin-bottom: 20px;
+      page-break-inside: avoid;
     }
     .section-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 9px 0 6px;
-      font-size: 8px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
+      font-size: 10px;
+      font-weight: 600;
+      color: ${NAVY};
       text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0 0 10px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid ${LINE};
+    }
+    .pairs-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+    }
+    .pair-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .pair-label {
+      font-size: 9px;
       color: ${MUTED};
-      page-break-after: avoid;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
     }
-    .section-title::after {
-      content: "";
-      height: 1px;
+    .pair-value {
+      font-size: 11px;
+      color: ${INK};
+      font-weight: 600;
+    }
+
+    /* Metrics Cards */
+    .metrics-grid {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+    }
+    .metric-card {
       flex: 1;
-      margin-left: 12px;
-      background: ${LINE};
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+      background: ${CARD_BG};
       border: 1px solid ${LINE};
-      table-layout: fixed;
-      page-break-inside: auto;
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .metric-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: ${MUTED};
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: ${wide ? '16px' : '20px'};
+      font-weight: 700;
+      color: ${INK};
       font-variant-numeric: tabular-nums;
     }
-    table.report-table {
-      border-color: #6b7280;
+
+    /* Table */
+    .table-wrapper {
+      border: 1px solid ${LINE};
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      background: ${CARD_BG};
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-variant-numeric: tabular-nums;
+      margin: 0;
     }
     thead {
       display: table-header-group;
+      background: ${SOFT};
     }
     tbody {
       display: table-row-group;
     }
     th {
-      background: ${NAVY};
-      color: #fff;
+      color: ${MUTED};
       text-align: left;
-      font-size: ${wide ? '7.2px' : '7.8px'};
-      font-weight: 800;
-      letter-spacing: 0.08em;
+      font-size: ${wide ? '8.5px' : '9px'};
+      font-weight: 600;
       text-transform: uppercase;
-      border: 1px solid ${NAVY};
-      padding: ${wide ? '5px 5px' : '6px 6px'};
-      overflow-wrap: anywhere;
+      letter-spacing: 0.05em;
+      padding: 10px 12px;
+      border-bottom: 1px solid ${LINE};
+      word-break: break-word;
     }
     td {
-      border: 1px solid #d1d5db;
-      padding: ${wide ? '5px 5px' : '6px 6px'};
-      color: #1f2937;
-      vertical-align: top;
-      overflow-wrap: anywhere;
-      line-height: 1.28;
+      padding: 9px 12px;
+      color: ${INK};
+      font-size: ${wide ? '9.5px' : '10.5px'};
+      border-bottom: 1px solid ${LINE};
+      vertical-align: middle;
+      word-break: break-word;
+      line-height: 1.4;
     }
-    tr {
-      page-break-inside: avoid;
-      break-inside: avoid;
+    tr:last-child td {
+      border-bottom: none;
     }
-    tr:nth-child(even) td { background: #f9fafb; }
+    tr:nth-child(even) td { 
+      background: #fafbfc; 
+    }
     .num {
       text-align: right;
       font-variant-numeric: tabular-nums;
-      white-space: nowrap;
     }
     .empty {
-      border: 1px solid ${LINE};
+      border: 1px dashed ${LINE};
       background: ${SOFT};
-      border-radius: 10px;
-      padding: 16px;
+      border-radius: 8px;
+      padding: 24px;
       color: ${MUTED};
       text-align: center;
+      font-size: 11px;
+      font-weight: 500;
       page-break-inside: avoid;
     }
+
+    /* Notes & Footer */
     .note {
-      margin-top: 12px;
-      border: 1px solid ${LINE};
+      margin-top: 16px;
       background: ${SOFT};
-      padding: 8px 10px;
+      border-left: 3px solid ${NAVY};
+      border-radius: 0 4px 4px 0;
+      padding: 10px 14px;
       color: ${INK};
-      line-height: 1.45;
+      font-size: 10px;
+      line-height: 1.5;
       page-break-inside: avoid;
     }
     footer {
-      margin-top: 12px;
-      padding-top: 8px;
+      margin-top: 32px;
+      padding-top: 16px;
       border-top: 1px solid ${LINE};
       display: flex;
       justify-content: space-between;
-      gap: 16px;
-      font-size: 8.5px;
+      align-items: center;
+      font-size: 9px;
       color: ${MUTED};
       page-break-inside: avoid;
     }
+    .footer-brand {
+      font-weight: 600;
+      color: ${NAVY};
+    }
+    
     @media print {
       a { color: inherit; text-decoration: none; }
+      @page {
+        @bottom-right {
+          content: "Página " counter(page) " de " counter(pages);
+          font-family: 'Inter', sans-serif;
+          font-size: 9px;
+          color: ${MUTED};
+        }
+      }
     }
   </style>
 </head>
 <body>
   <main class="doc">
-    <div class="document-label">
-      <span>Reporte administrativo interno</span>
-      <span>Mexico - MXN</span>
-    </div>
     <header>
-      <div>
+      <div class="header-left">
         <div class="brand">${esc(bazarNombre)}</div>
         <h1>${esc(titulo)}</h1>
         ${descripcion ? `<p class="desc">${esc(descripcion)}</p>` : ''}
       </div>
-      <div class="folio">
-        <div class="folio-label">Folio interno</div>
-        <div class="folio-value">${esc(folio)}</div>
+      <div class="header-right">
+        ${datosReporte.map(r => `
+          <div class="meta-row">
+            <span class="meta-label">${esc(r.label)}</span>
+            <span class="meta-value">${esc(r.value)}</span>
+          </div>
+        `).join('')}
       </div>
     </header>
-    <section class="info-grid">
-      ${renderPairsTable('Datos del negocio', datosNegocio)}
-      ${renderPairsTable('Datos del reporte', datosReporte)}
-    </section>
-    ${criteriosRows.length ? renderPairsTable('Criterios aplicados', criteriosRows) : ''}
+    
+    ${criteriosRows.length ? renderPairsList('Criterios de Búsqueda', criteriosRows) : ''}
+    
     ${renderMetrics(metricas)}
-    ${renderTable(cols, rows, `Detalle - ${titulo}`).replace('<table>', '<table class="report-table">')}
+    
+    ${renderTable(cols, rows)}
+    
     ${nota ? `<div class="note"><strong>Observaciones:</strong> ${esc(nota)}</div>` : ''}
+    
     <footer>
-      <span>Documento generado por My Little Bazar - uso interno administrativo</span>
+      <span>Generado desde <span class="footer-brand">My Little Bazar POS</span></span>
       <span>${esc(folio)}</span>
     </footer>
   </main>
 </body>
 </html>`
 }
+

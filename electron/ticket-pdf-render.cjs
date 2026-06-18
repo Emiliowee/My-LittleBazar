@@ -250,21 +250,33 @@ async function renderTicketPdf(outPath, payload) {
 
   addText(`Método de Pago: ${String(payload.metodo || 'efectivo').toUpperCase()}`, false, 8, 'left', 4)
   
-  if (String(payload.metodo).toLowerCase() === 'efectivo' && payload.pago_con != null) {
+  const pagos = payload.pagos || {}
+  const efec = Number(pagos.efectivo) || 0
+  const trans = Number(pagos.transferencia) || 0
+  const sal = Number(pagos.saldo_favor) || 0
+  const cred = Number(pagos.credito) || 0
+
+  if (efec > 0 || trans > 0 || sal > 0 || cred > 0) {
+    if (efec > 0) addText(`Efectivo: $${efec.toFixed(2)}`, false, 7.5, 'left', 2)
+    if (trans > 0) addText(`Tarjeta/Transf: $${trans.toFixed(2)}`, false, 7.5, 'left', 2)
+    if (sal > 0) addText(`Saldo a favor: $${sal.toFixed(2)}`, false, 7.5, 'left', 2)
+    if (cred > 0) addText(`Fiado / Por cobrar: $${cred.toFixed(2)}`, false, 7.5, 'left', 2)
+  } else if (String(payload.metodo).toLowerCase() === 'efectivo' && payload.pago_con != null) {
     const pagStr = `$${Number(payload.pago_con).toFixed(2)}`
-    const camStr = `$${Number(payload.cambio || 0).toFixed(2)}`
     addText(`Recibido: ${pagStr}`, false, 7.5, 'left', 2)
+  }
+
+  if (Number(payload.cambio) > 0) {
+    const camStr = `$${Number(payload.cambio || 0).toFixed(2)}`
     addText(`Cambio: ${camStr}`, true, 8, 'left', 4)
   }
 
   // Si es Crédito y se incluye información del cliente
-  if (String(payload.metodo).toLowerCase() === 'credito' && payload.cliente) {
+  if ((cred > 0 || sal > 0 || String(payload.metodo).toLowerCase() === 'credito') && payload.cliente) {
     addSeparator(0.5, 4, 6, true)
-    addText('DETALLE DE CRÉDITO', true, 8, 'center', 4)
+    addText('DETALLE DE CUENTA', true, 8, 'center', 4)
     addText(`Cliente: ${payload.cliente.nombre || 'Cliente'}`, false, 8, 'left', 2)
     const saldo = Number(payload.cliente.saldo_pendiente || 0)
-    addText(`Saldo Anterior: $${(saldo - (payload.total || 0)).toFixed(2)}`, false, 7.5, 'left', 1)
-    addText(`Cargo de Hoy: $${Number(payload.total || 0).toFixed(2)}`, false, 7.5, 'left', 1)
     addText(`Saldo Pendiente Total: $${saldo.toFixed(2)}`, true, 8.5, 'left', 6)
     
     if (design.showCreditSignature) {
