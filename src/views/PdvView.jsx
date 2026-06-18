@@ -1247,29 +1247,29 @@ function BanquetaWorkspace() {
                 <p>Usa las pestañas superiores para navegar.</p>
               </div>
             ) : (
-              <div style={{ width: '100%', overflowX: 'auto', background: 'var(--mlb-bg-app)', border: '1px solid var(--mlb-border)', borderRadius: 12 }}>
-                <table className="pos-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <div style={{ width: '100%', overflowX: 'auto' }}>
+                <table className="pos-table pos-table--hover" style={{ width: '100%', minWidth: 500 }}>
                   <thead>
                     <tr>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Salida</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Ubicación</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Fecha</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'center' }}>Prendas</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'right' }}>Ingresos</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'center' }}>Estado</th>
+                      <th>Salida</th>
+                      <th>Ubicación</th>
+                      <th>Fecha</th>
+                      <th style={{ textAlign: 'center' }}>Prendas</th>
+                      <th style={{ textAlign: 'right' }}>Ingresos</th>
+                      <th style={{ textAlign: 'center' }}>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {salidasFiltradas.map((s) => (
-                      <tr key={s.id} onClick={() => setSelId(s.id)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--mlb-border)' }} className="pos-table-row">
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{s.nombre || `#${s.id}`}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--mlb-text-secondary)' }}>{s.lugar || '---'}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--mlb-text-secondary)' }}>{fechaPlan(s.fecha_planeada)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--mlb-text-secondary)' }}>{s.item_count}</td>
-                        <td className="pos-table-total" style={{ padding: '12px 16px', fontFamily: 'var(--mlb-font-mono)', fontWeight: 700, textAlign: 'right', color: 'var(--mlb-text-primary)' }}>
+                      <tr key={s.id} onClick={() => setSelId(s.id)} style={{ cursor: 'pointer' }}>
+                        <td style={{ fontWeight: 600 }}>{s.nombre || `#${s.id}`}</td>
+                        <td style={{ color: 'var(--mlb-text-secondary)' }}>{s.lugar || '---'}</td>
+                        <td style={{ color: 'var(--mlb-text-secondary)' }}>{fechaPlan(s.fecha_planeada)}</td>
+                        <td style={{ textAlign: 'center' }}>{s.item_count}</td>
+                        <td className="pos-table-total" style={{ fontFamily: 'var(--mlb-font-mono)', fontWeight: 700, textAlign: 'right' }}>
                           {s.estado !== 'borrador' ? formatPrice(s.sold_total || 0) : '---'}
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center' }}>
                           <span className="pos-ventas__tag" style={{ background: s.estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: s.estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{estadoBadge(s.estado)}</span>
                         </td>
                       </tr>
