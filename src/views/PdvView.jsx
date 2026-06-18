@@ -11,6 +11,7 @@ import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
 import { corteDelDia, totalFiadoAfuera } from '@/lib/reportes'
+import { banquetaPrecioParaToggleVendido } from '@/lib/banquetaPrint'
 import './pos-monserrat.css'
 
 /**
@@ -100,9 +101,14 @@ export function PdvView() {
     if (!saldosApi?.listCuentas) { setClientes([]); return }
     try {
       const cuentas = await saldosApi.listCuentas({ incluirArchivadas: false })
-      setClientes((Array.isArray(cuentas) ? cuentas : []).map((c) => ({
-        id: c.id, nombre: c.nombre, saldo_pendiente: calcularCuentaSaldos(c).saldo,
-      })))
+      setClientes((Array.isArray(cuentas) ? cuentas : []).map((c) => {
+        const r = calcularCuentaSaldos(c)
+        return {
+          id: c.id, nombre: c.nombre,
+          saldo_pendiente: r.saldo, saldo_deudor: r.saldo,
+          saldo_a_favor: r.saldoAFavor,
+        }
+      }))
     } catch { setClientes([]) }
   }, [saldosApi])
 
@@ -191,7 +197,7 @@ export function PdvView() {
 
   /* ── Cobro ─────────────────────────────────────────────────────── */
 
-  const cobrar = useCallback(async ({ pagos, clienteId, cuentaBancaria }) => {
+  const cobrar = useCallback(async ({ pagos, clienteId, cuentaBancaria, fiar }) => {
     if (busyRef.current) return
     if (cart.length === 0) { toast.error('El ticket está vacío.'); return }
     if (!Number.isFinite(total) || total <= 0) { toast.error('Total inválido.'); return }
@@ -207,44 +213,35 @@ export function PdvView() {
         items: cart.map((l) => ({ productoId: l.pid, cantidad: l.cantidad })),
         pagos,
         clienteId,
+        fiar: !!fiar,
         cuentaBancaria,
         notas: '',
       }
       const result = await api.addSale(payload)
       if (!result?.ok) throw new Error('La venta no se confirmó.')
-      
+
+      /* La verdad la define el backend: tomamos faltante / saldo a favor / cambio
+       * / método de la respuesta, no recalculamos en la UI. */
       const p = pagos || {}
       const montoEfectivo = Number(p.efectivo) || 0
       const montoTransferencia = Number(p.transferencia) || 0
-      const montoSaldoFavor = Number(p.saldo_favor) || 0
-      const sumaPagos = montoEfectivo + montoTransferencia + montoSaldoFavor
-      const pagadoSinCambio = Math.min(sumaPagos, total)
-      const faltante = total - pagadoSinCambio
-      
-      if (montoSaldoFavor > 0 || faltante > 0.01) void loadClientes()
+      const faltante = Number(result.faltante) || 0
+      const favorAplicado = Number(result.favorAplicado) || 0
+      const cambio = Number(result.cambio) || 0
+      const metodo = result.metodo || 'efectivo'
+      const tocaCuenta = faltante > 0.01 || favorAplicado > 0.005
 
-      const cliente = (montoSaldoFavor > 0 || faltante > 0.01) ? clientes.find((c) => Number(c.id) === Number(clienteId)) : null
-      const cambio = (montoEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
-      
-      let conteo = 0
-      if (montoEfectivo > 0) conteo++
-      if (montoTransferencia > 0) conteo++
-      if (montoSaldoFavor > 0 || faltante > 0) conteo++
-
-      let metodo = 'mixto'
-      if (conteo <= 1) {
-        if (montoEfectivo > 0) metodo = 'efectivo'
-        else if (montoTransferencia > 0) metodo = 'transferencia'
-        else metodo = 'credito'
-      }
+      if (tocaCuenta) void loadClientes()
+      const cliente = tocaCuenta ? clientes.find((c) => Number(c.id) === Number(clienteId)) : null
 
       const ticket = {
-        ventaId: result.ventaId, total: result.total ?? total, cambio: result.cambio ?? cambio, metodo,
-        pago_con: sumaPagos, 
+        ventaId: result.ventaId, total: result.total ?? total, cambio, metodo,
+        pago_con: montoEfectivo + montoTransferencia,
         pagos: {
-           efectivo: montoEfectivo,
-           transferencia: montoTransferencia,
-           credito: faltante + montoSaldoFavor
+          efectivo: montoEfectivo,
+          transferencia: montoTransferencia,
+          saldo_favor: favorAplicado,
+          credito: faltante,
         },
         cuenta_bancaria: montoTransferencia > 0 ? cuentaBancaria : null,
         created_at: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
@@ -544,6 +541,11 @@ function VentasWorkspace({ onChanged }) {
     const ticket = {
       ventaId: v.id, total: v.total, cambio: v.cambio, metodo: v.metodo,
       pago_con: v.pago_con, cuenta_bancaria: v.cuenta_bancaria, created_at: v.created_at,
+      pagos: {
+        efectivo: Number(v.monto_efectivo) || 0,
+        transferencia: Number(v.monto_transferencia) || 0,
+        credito: Number(v.monto_credito) || 0,
+      },
       items: detalle.items.map((i) => ({ cantidad: i.cantidad, precio_snapshot: i.precio_snapshot, nombre_snapshot: i.nombre_snapshot, codigo: i.codigo_snapshot })),
       cliente: detalle.clienteNombre ? { nombre: detalle.clienteNombre } : null,
       clienteNombre: detalle.clienteNombre || null, notas: v.notas || '', reimpresion: true,
@@ -558,7 +560,7 @@ function VentasWorkspace({ onChanged }) {
     setBusy(true)
     try {
       const montoRenglon = (Number(item.precio_snapshot) || 0) * (Math.max(1, Math.floor(Number(item.cantidad) || 1)))
-      const res = await api.registrarDevolucionRapida({ codigo: item.codigo_snapshot, montoReembolso: montoRenglon })
+      const res = await api.registrarDevolucionRapida({ ventaItemId: item.id, codigo: item.codigo_snapshot, montoReembolso: montoRenglon })
       if (!res?.ok) throw new Error(res?.message || 'No se pudo devolver.')
       if (res.ventaEsCredito) {
         let msg = `Devuelta. Se canceló ${formatPrice(res.deudaCancelada || 0)} del fiado${res.clienteNombre ? ` de ${res.clienteNombre}` : ''}.`
@@ -807,25 +809,25 @@ function ModalHead({ icon: Icon, title, onClose, onBack }) {
 function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
   const [efectivo, setEfectivo] = useState('')
   const [transferencia, setTransferencia] = useState('')
-  const [saldoFavor, setSaldoFavor] = useState('')
-  
+
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
-  
+
   const [clienteId, setClienteId] = useState('')
-  
+
   const [modoFiar, setModoFiar] = useState(false)
-  
+
   const valEfectivo = Number(efectivo) || 0
   const valTransferencia = Number(transferencia) || 0
-  const valSaldoFavor = Number(saldoFavor) || 0
-  
-  const sumaPagos = valEfectivo + valTransferencia + valSaldoFavor
-  const pagado = Math.min(sumaPagos, total)
-  const faltante = Math.max(0, total - pagado)
-  const cambio = (valEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
-  
+
   const clienteSelec = clientes.find((c) => String(c.id) === String(clienteId)) || null
   const maxSaldoFavor = clienteSelec ? Math.max(0, Number(clienteSelec.saldo_a_favor) || 0) : 0
+
+  /* Saldo a favor: se aplica AUTOMÁTICAMENTE hasta lo que falte por cubrir
+   * (igual que el backend); no es una casilla manual. */
+  const pagadoCaja = valEfectivo + valTransferencia
+  const favorAplicado = Math.min(maxSaldoFavor, Math.max(0, total - pagadoCaja))
+  const faltante = Math.max(0, Math.round((total - pagadoCaja - favorAplicado) * 100) / 100)
+  const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
   
   useEffect(() => {
     const h = (e) => { 
@@ -845,21 +847,22 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
   
   const handleConfirm = () => {
     if (valTransferencia > 0 && !cuenta) { toast.error('Elige cuenta de transferencia.'); return }
-    if (valSaldoFavor > maxSaldoFavor) { toast.error('Saldo a favor excede lo disponible.'); return }
-    
+
     if (modoFiar) {
-      if (!clienteSelec) return;
+      if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return }
       onCobrar({
-        pagos: { efectivo: valEfectivo, transferencia: valTransferencia, saldo_favor: valSaldoFavor },
+        pagos: { efectivo: valEfectivo, transferencia: valTransferencia },
         clienteId: clienteSelec.id,
-        cuentaBancaria: valTransferencia > 0 ? cuenta : null
+        fiar: true,
+        cuentaBancaria: valTransferencia > 0 ? cuenta : null,
       })
     } else {
       if (faltante > 0) { toast.error('Falta dinero para cubrir el total.'); return }
       onCobrar({
-        pagos: { efectivo: valEfectivo, transferencia: valTransferencia, saldo_favor: valSaldoFavor },
+        pagos: { efectivo: valEfectivo, transferencia: valTransferencia },
         clienteId: clienteSelec?.id || null,
-        cuentaBancaria: valTransferencia > 0 ? cuenta : null
+        fiar: false,
+        cuentaBancaria: valTransferencia > 0 ? cuenta : null,
       })
     }
   }
@@ -896,7 +899,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                 <div className="posw-field-row">
                   <div className="posw-field-label">Cliente</div>
                   <div className="posw-input-group">
-                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){setSaldoFavor(''); setModoFiar(false);} }}>
+                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){ setModoFiar(false) } }}>
                       <option value="">Mostrador (sin registrar)</option>
                       {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
@@ -924,20 +927,23 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   </div>
                 </div>
 
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
-                  <div className="posw-input-group">
-                    <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posw-input" disabled={!clienteSelec || maxSaldoFavor === 0} placeholder="0"/>
+                {clienteSelec && maxSaldoFavor > 0 && (
+                  <div className="posw-field-row">
+                    <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
+                    <div className="posw-input-group">
+                      <input type="text" readOnly tabIndex={-1} value={favorAplicado > 0 ? `− ${formatPrice(favorAplicado)}` : '—'} className="posw-input"/>
+                    </div>
                   </div>
-                </div>
-                {!clienteSelec && <div className="posw-hint">Se activa al elegir un cliente registrado</div>}
-                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible: {formatPrice(maxSaldoFavor)}</div>}
-                
+                )}
+                {!clienteSelec && <div className="posw-hint">El saldo a favor se activa al elegir un cliente registrado</div>}
+                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible {formatPrice(maxSaldoFavor)} · se aplica solo lo que haga falta</div>}
+                {clienteSelec && maxSaldoFavor === 0 && <div className="posw-hint">Esta cuenta no tiene saldo a favor</div>}
+
                 <div className="posw-actions">
                   <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(true)} disabled={!clienteSelec}>
                     <ReceiptText size={16}/> Fiar / sacar a saldos
                   </button>
-                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || faltante > 0 || valSaldoFavor > maxSaldoFavor}>
+                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || faltante > 0}>
                     {busy ? 'Cobrando...' : 'Cobrar [F2]'}
                   </button>
                 </div>
@@ -955,7 +961,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                 <div className="posw-field-row">
                   <div className="posw-field-label" style={{width: '60px'}}>Cliente</div>
                   <div className="posw-input-group">
-                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){setSaldoFavor(''); setModoFiar(false);} }}>
+                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){ setModoFiar(false) } }}>
                       <option value="">Mostrador (sin registrar)</option>
                       {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
@@ -971,11 +977,6 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                 <div style={{marginTop: '4px'}}>
                   <div style={{fontSize: '12px', color: 'var(--mlb-text-secondary)', fontWeight: '600'}}>Total de esta compra</div>
                   <div style={{fontSize: '24px', fontWeight: '700', fontFamily: 'var(--mlb-font-mono)'}}>{formatPrice(total)}</div>
-                </div>
-
-                <div className="posw-deuda-box">
-                  <span>Queda debiendo</span>
-                  <strong>{formatPrice(faltante)}</strong>
                 </div>
 
                 <div style={{marginTop: '4px', fontSize: '13px', fontWeight: '600', color: 'var(--mlb-text-secondary)'}}>
@@ -1001,18 +1002,26 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   </div>
                 </div>
 
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
-                  <div className="posw-input-group">
-                    <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posw-input" disabled={!clienteSelec || maxSaldoFavor === 0} placeholder="0"/>
+                {clienteSelec && maxSaldoFavor > 0 && (
+                  <div className="posw-field-row">
+                    <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
+                    <div className="posw-input-group">
+                      <input type="text" readOnly tabIndex={-1} value={favorAplicado > 0 ? `− ${formatPrice(favorAplicado)}` : '—'} className="posw-input"/>
+                    </div>
                   </div>
+                )}
+                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible {formatPrice(maxSaldoFavor)} · baja lo que queda debiendo</div>}
+
+                <div className="posw-deuda-box">
+                  <span>Queda debiendo</span>
+                  <strong>{formatPrice(faltante)}</strong>
                 </div>
 
                 <div className="posw-actions">
                   <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(false)}>
                     <ArrowLeft size={16}/> Volver
                   </button>
-                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-amber" onClick={handleConfirm} disabled={busy || valSaldoFavor > maxSaldoFavor}>
+                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-amber" onClick={handleConfirm} disabled={busy}>
                     {busy ? 'Cobrando...' : 'Confirmar fiado [F2]'}
                   </button>
                 </div>
@@ -1070,129 +1079,531 @@ function ExitoVenta({ info, onNueva }) {
 
 function BanquetaWorkspace() {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
+  const banquetaApi = typeof window !== 'undefined' ? window.bazar?.banqueta : undefined
   const [salidas, setSalidas] = useState([])
-  const [active, setActive] = useState(null)
+  const [selId, setSelId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [codigo, setCodigo] = useState('')
-  const [precio, setPrecio] = useState('')
+  const [cantidad, setCantidad] = useState('1')
+  const [edits, setEdits] = useState({})
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [nuevaOpen, setNuevaOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [cierreOpen, setCierreOpen] = useState(false)
+
+  const cargarDetalle = useCallback(async (id) => {
+    if (!id || !api?.getBanquetaSalidaDetail) { setDetail(null); return null }
+    const d = await api.getBanquetaSalidaDetail(id)
+    setDetail(d || null)
+    return d
+  }, [api])
 
   const cargar = useCallback(async () => {
     if (!api?.listBanquetaSalidas) { setLoading(false); return }
     setLoading(true)
     try {
-      const [rows, act] = await Promise.all([
-        api.listBanquetaSalidas(),
-        api.getActiveBanquetaSalida?.(),
-      ])
-      setSalidas(Array.isArray(rows) ? rows : [])
-      setActive(act || null)
-      if (act?.id && api.getBanquetaSalidaDetail) setDetail(await api.getBanquetaSalidaDetail(act.id))
-      else setDetail(null)
+      const rows = await api.listBanquetaSalidas()
+      const lista = Array.isArray(rows) ? rows : []
+      setSalidas(lista)
+      // El inicio es la LISTA; solo conservamos la selección si sigue existiendo.
+      setSelId((prev) => (prev && lista.some((s) => s.id === prev) ? prev : null))
     } catch {
       setSalidas([])
-      setActive(null)
-      setDetail(null)
     } finally {
       setLoading(false)
     }
   }, [api])
 
   useEffect(() => { void cargar() }, [cargar])
+  useEffect(() => { void cargarDetalle(selId) }, [selId, cargarDetalle])
 
-  const crear = async () => {
-    if (!api?.createBanquetaSalida) { toast.error('Banqueta solo en la app de escritorio.'); return }
-    setBusy(true)
-    try {
-      const hoy = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
-      const res = await api.createBanquetaSalida({ nombre: `Banqueta ${hoy}`, lugar: 'Local' })
-      if (res?.id && api.activateBanquetaSalida) await api.activateBanquetaSalida(res.id)
-      await cargar()
-      toast.success('Salida de banqueta creada y activada.')
-    } catch (err) {
-      toast.error(err?.message || 'No se pudo crear banqueta.')
-    } finally {
-      setBusy(false)
+  useEffect(() => {
+    const map = {}
+    for (const it of detail?.items || []) {
+      map[it.id] = {
+        precio: it.precio_vendido != null && it.precio_vendido !== '' ? String(it.precio_vendido) : '',
+        cant: String(it.cantidad_vendida || it.cantidad || 1),
+      }
     }
-  }
+    setEdits(map)
+  }, [detail])
 
-  const registrarRegreso = async (e) => {
-    e.preventDefault()
-    if (!active?.id) { toast.error('Primero activa una salida de banqueta.'); return }
-    if (!codigo.trim()) { toast.error('Escanea un codigo.'); return }
-    setBusy(true)
-    try {
-      const res = await api.scanBanquetaSalidaResult({ salidaId: active.id, codigo: codigo.trim(), precioVendido: precio })
-      if (res?.detail) setDetail(res.detail)
-      setCodigo('')
-      setPrecio('')
-      toast.success(res?.yaEstaba ? 'Ya estaba marcada como vendida.' : 'Regreso registrado.')
-      await cargar()
-    } catch (err) {
-      toast.error(err?.message || 'No se pudo registrar.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
+  const salida = detail?.salida || null
   const items = detail?.items || []
+  const estado = salida?.estado || ''
+  const editable = estado === 'borrador'
+  const enCurso = estado === 'activa'
+  const cerrada = estado === 'cerrada'
   const vendidos = items.filter((i) => Number(i.vendido) === 1)
-  const total = vendidos.reduce((s, i) => s + (Number(i.precio_vendido) || 0), 0)
+  const ingreso = vendidos.reduce((s, i) => s + (Number(i.precio_vendido) || 0), 0)
+
+  const refrescar = async () => { await cargar(); await cargarDetalle(selId) }
+  const withBusy = async (fn, okMsg) => {
+    setBusy(true)
+    try { const r = await fn(); if (okMsg) toast.success(typeof okMsg === 'function' ? okMsg(r) : okMsg); return r }
+    catch (err) { toast.error(err?.message || 'No se pudo completar.') }
+    finally { setBusy(false) }
+  }
+
+  const crear = (payload) => withBusy(async () => {
+    const res = await api.createBanquetaSalida(payload || {})
+    await cargar()
+    if (res?.id) setSelId(res.id)
+    setNuevaOpen(false)
+    return res
+  }, 'Salida creada. Agregá prendas y luego activala.')
+
+  const agregar = async (cod, cant) => {
+    const codeUse = String(cod ?? codigo).trim()
+    if (!codeUse) { toast.error('Escaneá o escribí un código.'); return }
+    await withBusy(async () => {
+      await api.addProductToBanquetaSalida({ salidaId: selId, codigo: codeUse, cantidad: Math.max(1, Math.floor(Number(cant ?? cantidad) || 1)) })
+      setCodigo(''); setCantidad('1')
+      await cargarDetalle(selId); await cargar()
+    })
+  }
+
+  const quitar = (itemId) => withBusy(async () => {
+    await api.removeBanquetaSalidaItem(itemId)
+    await cargarDetalle(selId); await cargar()
+  })
+
+  const activar = () => withBusy(async () => {
+    await api.activateBanquetaSalida(selId)
+    await refrescar()
+  }, 'Salida activada. Ya podés sacar las prendas y registrar lo vendido.')
+
+  const imprimirHoja = () => withBusy(async () => {
+    if (!banquetaApi?.printSheet) throw new Error('La impresión es solo en la app de escritorio.')
+    const r = await banquetaApi.printSheet(detail)
+    if (r && r.ok === false && !r.cancelled) throw new Error(r.message || 'No se pudo generar la hoja.')
+  })
+
+  const marcarResultado = (it, vendido) => withBusy(async () => {
+    const e = edits[it.id] || {}
+    const precio = vendido ? (e.precio !== '' && e.precio != null ? Number(e.precio) : banquetaPrecioParaToggleVendido(it)) : null
+    const cant = vendido ? Math.max(1, Math.min(Number(e.cant) || Number(it.cantidad) || 1, Number(it.cantidad) || 1)) : 0
+    await api.setBanquetaSalidaItemResult({ itemId: it.id, vendido, precioVendido: precio, cantidadVendida: cant })
+    await cargarDetalle(selId)
+  })
+
+  const cerrar = () => withBusy(async () => {
+    const r = await api.closeBanquetaSalida(selId)
+    await refrescar()
+    return r
+  }, (r) => `Salida cerrada. Ingreso ${formatPrice(r?.ingreso || 0)} · ${r?.sold || 0} vendidas · ${r?.desactivados || 0} desactivadas.`)
+
+  const eliminar = () => withBusy(async () => {
+    await api.deleteBanquetaSalida(selId)
+    setSelId(null)
+    await cargar()
+  }, 'Salida eliminada.')
+
+  const setEdit = (id, key, val) => setEdits((m) => ({ ...m, [id]: { ...(m[id] || {}), [key]: val } }))
+  const estadoBadge = (s) => (s === 'activa' ? 'Activa' : s === 'cerrada' ? 'Cerrada' : 'Borrador')
+  const fechaPlan = (f) => {
+    if (!f) return 'sin fecha'
+    const s = String(f).slice(0, 10)
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (!m) return s
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+  }
+  const STEP = cerrada ? 4 : enCurso ? 3 : 2
 
   return (
     <section className="pos-tool pos-tool--banqueta" aria-label="Banqueta">
       <div className="pos-tool__panel">
-        <div className="pos-tool__head">
-          <div className="pos-tool__title">
-            <span className="pos-tool__icon"><Store size={19} strokeWidth={1.8} /></span>
-            <div>
-              <h2>Banqueta</h2>
-              <p>Control de salida activa y regreso por codigo.</p>
-            </div>
-          </div>
-          <button type="button" className="pos-tool__ghost" disabled={busy} onClick={() => void cargar()}>Actualizar</button>
-        </div>
-
-        {loading ? <div className="pos-ventas__empty">Cargando banqueta...</div>
-          : !active ? (
-            <div className="pos-tool__empty">
-              <Store size={38} strokeWidth={1.5} />
-              <h3>No hay salida activa</h3>
-              <p>Crea una salida para separar prendas de banqueta y luego registrar lo que regresa vendido.</p>
-              <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => void crear()}>Crear salida activa</button>
-              {salidas.length > 0 ? <p className="pos-tool__hint">{salidas.length} salidas guardadas en historial.</p> : null}
-            </div>
-          ) : (
-            <div className="pos-tool__grid2">
-              <div>
-                <div className="pos-tool__summary">
-                  <div><span>Salida activa</span><strong>{active.nombre || `#${active.id}`}</strong></div>
-                  <div><span>Vendidas</span><strong>{vendidos.length}/{items.length}</strong></div>
-                  <div><span>Total regreso</span><strong>{formatPrice(total)}</strong></div>
+        {!salida ? (
+          /* ───────── Ventana 1 · Inicio (lista de salidas) ───────── */
+          <>
+            <div className="pos-tool__head">
+              <div className="pos-tool__title">
+                <span className="pos-tool__icon"><Store size={19} strokeWidth={1.8} /></span>
+                <div>
+                  <h2>Banqueta</h2>
+                  <p>Saca a la calle lo que no se vende y registra lo vendido.</p>
                 </div>
-                <form className="pos-banqueta-form" onSubmit={registrarRegreso}>
-                  <input className="pos-input" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Codigo que regreso" autoFocus />
-                  <input className="pos-input" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio vendido opcional" inputMode="decimal" />
-                  <button type="submit" className="pos-confirm-btn" disabled={busy}>{busy ? 'Registrando...' : 'Marcar vendido'}</button>
-                </form>
               </div>
-              <div className="pos-tool__list">
-                {items.length === 0 ? <div className="pos-ventas__empty">La salida todavia no tiene prendas.</div>
-                  : items.slice(0, 80).map((it) => (
-                    <div key={it.id} className={`pos-ventas__item${Number(it.vendido) === 1 ? ' is-returned' : ''}`}>
-                      <div className="pos-ventas__itemtext">
-                        <span className="pos-ventas__itemname">{it.nombre_snapshot || it.codigo_snapshot}</span>
-                        <span className="pos-line__code">{it.codigo_snapshot} · {formatPrice(it.precio_snapshot)}</span>
+              <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => setNuevaOpen(true)}><Plus size={16} /> Nueva salida</button>
+            </div>
+            {loading ? (
+              <div className="bq-empty">Cargando banqueta…</div>
+            ) : salidas.length === 0 ? (
+              <div className="bq-empty">
+                <Store size={38} strokeWidth={1.4} />
+                <h3>Todavía no hay salidas</h3>
+                <p>Crea una salida para separar las prendas que vas a sacar a banqueta.</p>
+              </div>
+            ) : (
+              <div className="bq-cards">
+                {salidas.map((s) => (
+                  <button key={s.id} type="button" className="bq-card" onClick={() => setSelId(s.id)}>
+                    <div>
+                      <div className="bq-card__name">{s.nombre || `#${s.id}`}</div>
+                      <div className="bq-card__meta">
+                        {s.lugar ? `${s.lugar} · ` : ''}{fechaPlan(s.fecha_planeada)} · {s.item_count} piezas
+                        {s.estado === 'cerrada' ? ` · vendió ${formatPrice(s.sold_total)}` : ''}
                       </div>
-                      <span className="pos-ventas__returned">{Number(it.vendido) === 1 ? formatPrice(it.precio_vendido) : 'Pendiente'}</span>
                     </div>
-                  ))}
+                    <span className={`bq-badge bq-badge--${s.estado}`}>{estadoBadge(s.estado)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ───────── Detalle: armar (borrador) · vender (activa) · cerrada ───────── */
+          <>
+            <div className="pos-tool__head">
+              <div className="pos-tool__title">
+                <button type="button" className="pos-tool__back" onClick={() => setSelId(null)} aria-label="Volver a salidas"><ArrowLeft size={18} /></button>
+                <div>
+                  <h2>{salida.nombre || `#${salida.id}`}</h2>
+                  <p>
+                    {salida.lugar ? `${salida.lugar} · ` : ''}{fechaPlan(salida.fecha_planeada)}{' '}
+                    <span className={`bq-badge bq-badge--${estado}`}>{estadoBadge(estado)}</span>
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(editable || enCurso) && (
+                  <button type="button" className="pos-tool__ghost" disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={15} /> Hoja</button>
+                )}
+                {(editable || cerrada) && (
+                  <button type="button" className="pos-tool__ghost" disabled={busy} onClick={() => void eliminar()}><Trash2 size={15} /> {cerrada ? 'Borrar' : 'Eliminar'}</button>
+                )}
               </div>
             </div>
-          )}
+
+            <BanquetaStepper step={STEP} />
+
+            {(enCurso || cerrada) && (
+              <div className="bq-metrics">
+                <div className="bq-metric-box"><div className="bq-metric-box__label">Vendidas</div><div className="bq-metric-box__value">{vendidos.length}{cerrada ? '' : ` / ${items.length}`}</div></div>
+                <div className="bq-metric-box"><div className="bq-metric-box__label">Ingreso</div><div className="bq-metric-box__value is-pos">{formatPrice(ingreso)}</div></div>
+                <div className="bq-metric-box"><div className="bq-metric-box__label">{cerrada ? 'No vendidas' : 'Pendientes'}</div><div className="bq-metric-box__value">{items.length - vendidos.length}</div></div>
+              </div>
+            )}
+
+            {editable && (
+              <>
+                <form className="bq-add-row" onSubmit={(e) => { e.preventDefault(); void agregar() }}>
+                  <div className="bq-scan">
+                    <Barcode size={18} strokeWidth={1.8} />
+                    <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea una etiqueta…" autoFocus />
+                  </div>
+                  <input className="pos-input bq-qty" value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad (repetibles)" />
+                  <button type="submit" className="pos-confirm-btn" disabled={busy} aria-label="Agregar"><Plus size={16} /></button>
+                  <button type="button" className="pos-tool__ghost" onClick={() => setAddOpen(true)}><Search size={15} /> Inventario</button>
+                </form>
+                <div className="bq-hint">Pasa etiquetas con el lector, o abre el inventario para elegir a mano y por categoría.</div>
+              </>
+            )}
+
+            <div style={{ overflowX: 'auto', border: '1px solid var(--mlb-border-strong)', borderRadius: 4, marginTop: 16 }}>
+              <table className="bq-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '40%' }}>Artículo</th>
+                    <th style={{ width: '20%' }}>Código</th>
+                    <th style={{ width: '20%' }}>Estado</th>
+                    <th style={{ width: '20%', textAlign: 'right' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="bq-empty">La salida no tiene prendas. Agrégalas con el escáner o desde el inventario.</td>
+                    </tr>
+                  ) : items.map((it) => {
+                    const e = edits[it.id] || {}
+                    const multi = Number(it.cantidad) > 1
+                    const vend = Number(it.vendido) === 1
+                    return (
+                      <tr key={it.id} className={vend ? 'is-sold' : ''}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
+                          <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>ref {formatPrice(it.precio_snapshot)}</div>
+                        </td>
+                        <td style={{ fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</td>
+                        <td>
+                          {cerrada ? (
+                            <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
+                              {vend ? formatPrice(it.precio_vendido) : 'No vendida'}
+                            </span>
+                          ) : (
+                            <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
+                              {vend ? 'Vendida' : 'Pendiente'}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            {editable && (
+                              <button type="button" className="pos-tool__ghost" style={{ padding: '4px 8px' }} disabled={busy} onClick={() => void quitar(it.id)} title="Quitar"><Trash2 size={15} /></button>
+                            )}
+                            {enCurso && (
+                              <>
+                                {multi && (
+                                  <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 30 }} inputMode="numeric" title="Cantidad vendida" />
+                                )}
+                                <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 70, height: 30, textAlign: 'right' }} inputMode="decimal" placeholder="$" />
+                                <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 30, padding: '0 8px' }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {editable && (
+              <div className="bq-foot">
+                <button type="button" className="pos-confirm-btn" disabled={busy || items.length === 0} onClick={() => void activar()}><Check size={16} /> Activar salida</button>
+              </div>
+            )}
+            {enCurso && (
+              <div className="bq-foot">
+                <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => setCierreOpen(true)}><Check size={16} /> Cerrar venta</button>
+              </div>
+            )}
+          </>
+        )}
       </div>
+      {nuevaOpen && <BanquetaNuevaModal onClose={() => setNuevaOpen(false)} onCreate={crear} />}
+      {addOpen && salida && (
+        <BanquetaAddModal salidaId={selId} onClose={() => setAddOpen(false)} onAdded={async () => { await cargarDetalle(selId); await cargar() }} />
+      )}
+      {cierreOpen && salida && (
+        <BanquetaCierreModal detail={detail} onClose={() => setCierreOpen(false)} onConfirm={async () => { await cerrar(); setCierreOpen(false) }} />
+      )}
     </section>
+  )
+}
+
+/* Stepper de banqueta: Programar → Armar → Vender → Cerrar. */
+function BanquetaStepper({ step }) {
+  const pasos = ['Programar', 'Armar', 'Vender', 'Cerrar']
+  const pct = Math.max(0, Math.min(100, ((step - 1) / (pasos.length - 1)) * 100))
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div className="bq-progress__labels">
+        {pasos.map((p, i) => {
+          const n = i + 1
+          const cls = n === step ? 'is-active' : n < step ? 'is-done' : ''
+          return <span key={p} className={cls}>{p}</span>
+        })}
+      </div>
+      <div className="bq-progress">
+        <div className="bq-progress__bar" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/* Modal: crear salida con nombre, lugar y fecha programada. */
+function BanquetaNuevaModal({ onClose, onCreate }) {
+  const [nombre, setNombre] = useState('')
+  const [lugar, setLugar] = useState('')
+  const [fecha, setFecha] = useState('')
+  const [busy, setBusy] = useState(false)
+  const crear = async () => {
+    setBusy(true)
+    try { await onCreate({ nombre: nombre.trim(), lugar: lugar.trim(), fechaPlaneada: fecha || null }) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="pos-modal-overlay" onClick={onClose}>
+      <div className="bq-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Nueva salida de banqueta" style={{ width: 440, maxWidth: '92%' }}>
+        <div className="bq-modal__head"><h2>Programar salida</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
+        <BanquetaStepper step={1} />
+        <div className="pos-field" style={{ marginBottom: 12 }}>
+          <label className="pos-field__label">Nombre</label>
+          <input className="pos-input" autoFocus value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Banqueta de temporada" />
+        </div>
+        <div className="pos-field" style={{ marginBottom: 12 }}>
+          <label className="pos-field__label">Lugar</label>
+          <input className="pos-input" value={lugar} onChange={(e) => setLugar(e.target.value)} placeholder="Tianguis del centro" />
+        </div>
+        <div className="pos-field" style={{ marginBottom: 16 }}>
+          <label className="pos-field__label">Fecha planeada (opcional)</label>
+          <input className="pos-input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        </div>
+        <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => void crear()}>{busy ? 'Creando…' : 'Crear salida'}</button>
+      </div>
+    </div>
+  )
+}
+
+/* Modal: agregar prendas viendo TODO el inventario (buscar) o los candidatos
+ * (+6 meses sin vender), con cantidad para artículos repetibles. */
+function BanquetaAddModal({ salidaId, onClose, onAdded }) {
+  const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
+  const [tab, setTab] = useState('buscar')
+  const [q, setQ] = useState('')
+  const [resultados, setResultados] = useState([])
+  const [candidatos, setCandidatos] = useState([])
+  const [cant, setCant] = useState({})
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (tab !== 'buscar' || !api?.searchProducts) return
+    let alive = true
+    const t = setTimeout(async () => {
+      try { const r = await api.searchProducts(q.trim()); if (alive) setResultados(Array.isArray(r) ? r : []) }
+      catch { if (alive) setResultados([]) }
+    }, 180)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, tab, api])
+
+  useEffect(() => {
+    if (tab !== 'candidatos' || !api?.listStaleForBanqueta) return
+    let alive = true
+    ;(async () => {
+      try { const c = await api.listStaleForBanqueta({ meses: 6, limit: 80 }); if (alive) setCandidatos(Array.isArray(c) ? c : []) }
+      catch { if (alive) setCandidatos([]) }
+    })()
+    return () => { alive = false }
+  }, [tab, api])
+
+  const lista = tab === 'buscar' ? resultados : candidatos
+  const agregar = async (p) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const n = Math.max(1, Math.floor(Number(cant[p.id]) || 1))
+      await api.addProductToBanquetaSalida({ salidaId, codigo: p.codigo, cantidad: n })
+      toast.success(`«${p.descripcion || p.codigo}» agregada.`)
+      onAdded?.()
+    } catch (err) { toast.error(err?.message || 'No se pudo agregar.') }
+    finally { setBusy(false) }
+  }
+
+  const renderRow = (p) => {
+    const multi = Number(p.pieza_unica) === 0
+    return (
+      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--mlb-border)', transition: 'background 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--mlb-bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mlb-text-primary)' }}>{p.descripcion || p.codigo}</div>
+          <div style={{ fontSize: 11, color: 'var(--mlb-text-secondary)', marginTop: 2 }}>
+            {p.codigo} · {formatPrice(p.precio)}
+            {p.dias_sin_mover != null ? ` · ${p.dias_sin_mover}d sin vender` : (multi ? ` · stock ${p.stock}` : '')}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {multi && (
+            <input className="pos-input" style={{ width: 50, height: 32 }} inputMode="numeric" value={cant[p.id] ?? '1'} onChange={(e) => setCant((m) => ({ ...m, [p.id]: e.target.value }))} title="Cantidad" />
+          )}
+          <button type="button" className="pos-confirm-btn" disabled={busy} onClick={() => void agregar(p)} aria-label="Agregar" style={{ height: 32, padding: '0 12px' }}><Plus size={15} /></button>
+        </div>
+      </div>
+    )
+  }
+
+  const grupos = (() => {
+    if (tab !== 'buscar') return []
+    const g = new Map()
+    for (const p of lista.slice(0, 140)) {
+      const k = String(p.categoria || 'Otros')
+      if (!g.has(k)) g.set(k, [])
+      g.get(k).push(p)
+    }
+    return [...g.entries()]
+  })()
+
+  return (
+    <div className="pos-modal-overlay" onClick={onClose}>
+      <div className="pos-modal" style={{ maxWidth: 560, width: '92%' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Agregar prendas a la salida">
+        <div className="pos-modal__head"><h2>Agregar prendas</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
+        <div className="bq-tabs">
+          <button type="button" className={tab === 'buscar' ? 'pos-confirm-btn' : 'pos-tool__ghost'} onClick={() => setTab('buscar')}>Buscar en inventario</button>
+          <button type="button" className={tab === 'candidatos' ? 'pos-confirm-btn' : 'pos-tool__ghost'} onClick={() => setTab('candidatos')}>Candidatos (+6 meses)</button>
+        </div>
+        {tab === 'buscar' && (
+          <input className="pos-input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre, código o categoría…" style={{ marginBottom: 10 }} />
+        )}
+        <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+          {lista.length === 0 ? (
+            <div className="bq-empty">{tab === 'buscar' ? (q ? 'Sin resultados.' : 'Escribe para buscar en el inventario.') : 'No hay candidatos (+6 meses sin vender).'}</div>
+          ) : tab === 'buscar' ? (
+            grupos.map(([cat, ps]) => (
+              <div key={cat}>
+                <div className="bq-cat-label">{cat}</div>
+                <div className="bq-list">{ps.map(renderRow)}</div>
+              </div>
+            ))
+          ) : (
+            <div className="bq-list">{lista.slice(0, 100).map(renderRow)}</div>
+          )}
+        </div>
+        <div className="bq-foot">
+          <button type="button" className="pos-confirm-btn" onClick={onClose}>Listo</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Modal: cerrar salida mostrando el resumen/análisis de lo vendido y lo que
+ * quedará desactivado, antes de confirmar. */
+function BanquetaCierreModal({ detail, onClose, onConfirm }) {
+  const items = detail?.items || []
+  const vendidos = items.filter((i) => Number(i.vendido) === 1)
+  const noVendidos = items.filter((i) => Number(i.vendido) !== 1)
+  const ingreso = vendidos.reduce((s, i) => s + (Number(i.precio_vendido) || 0), 0)
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="pos-modal-overlay" onClick={onClose}>
+      <div className="bq-modal" style={{ maxWidth: 540, width: '92%' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cerrar salida de banqueta">
+        <div className="bq-modal__head"><h2>Cerrar salida · resumen</h2><button type="button" className="pos-modal__close" onClick={onClose}><X size={20} /></button></div>
+        <BanquetaStepper step={4} />
+        <div className="metric-box" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+          <div className="bq-metric-box"><div className="bq-metric-box__label">Vendidas</div><div className="bq-metric-box__value">{vendidos.length}</div></div>
+          <div className="bq-metric-box"><div className="bq-metric-box__label">Ingreso</div><div className="bq-metric-box__value is-pos">{formatPrice(ingreso)}</div></div>
+          <div className="bq-metric-box"><div className="bq-metric-box__label">No vendidas</div><div className="bq-metric-box__value">{noVendidos.length}</div></div>
+        </div>
+        <div className="bq-note">
+          <Store size={16} strokeWidth={1.9} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span>Las {noVendidos.length} prendas no vendidas quedarán <b>desactivadas</b> (no vuelven al bazar). Puedes reactivarlas escaneando su etiqueta en Inventario.</span>
+        </div>
+        <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--mlb-border-strong)', borderRadius: 4, marginBottom: 12 }}>
+          <table className="bq-table">
+            <thead>
+              <tr>
+                <th style={{ width: '60%' }}>Artículo</th>
+                <th style={{ width: '40%', textAlign: 'right' }}>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => {
+                const vend = Number(it.vendido) === 1
+                return (
+                  <tr key={it.id} className={vend ? 'is-sold' : ''}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}</div>
+                      <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>{it.codigo_snapshot}</div>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>
+                      {vend ? formatPrice(it.precio_vendido) : 'No vendida'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="posw-actions">
+          <button type="button" className="pos-tool__ghost" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
+          <button type="button" className="pos-confirm-btn" disabled={busy} onClick={async () => { setBusy(true); try { await onConfirm() } finally { setBusy(false) } }}>
+            <Check size={16} /> Confirmar cierre
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
