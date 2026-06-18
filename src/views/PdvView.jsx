@@ -1219,7 +1219,7 @@ function BanquetaWorkspace() {
 
   return (
     <section className="pos-tool pos-tool--banqueta" aria-label="Banqueta">
-      <div className="pos-tool__workspace" style={{ padding: '24px 32px' }}>
+      <div className="pos-tool__workspace" style={{ flex: 1, width: '100%', maxWidth: 1400, padding: '24px 32px', display: 'flex', flexDirection: 'column' }}>
         {!salida ? (
           /* ───────── Ventana 1 · Inicio ───────── */
           <>

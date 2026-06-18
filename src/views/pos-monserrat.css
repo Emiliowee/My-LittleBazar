@@ -791,6 +791,29 @@
 
 /* ── Consultar ventas ────────────────────────────────────────────── */
 .pos-modal--ventas { max-width: 560px; }
+
+.pos-ventas {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+  align-items: flex-start;
+  height: 100%;
+}
+.pos-ventas__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.pos-ventas__side {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .pos-ventas__empty { padding: 48px 12px; text-align: center; color: var(--mlb-text-muted); font-size: 13.5px; }
 
 .pos-ventas__list { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
