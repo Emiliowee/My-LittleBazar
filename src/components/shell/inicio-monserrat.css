@@ -1,0 +1,174 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Inicio Monserrat — dashboard del mock pos-ui aprobado.
+ * Greeting card con gradiente rosa + patrón de ganchos, métricas,
+ * atajos y ingresos recientes. Sobre tokens del sistema.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.ini {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  background: var(--mlb-bg-app);
+  font-family: var(--mlb-font);
+}
+
+/* ── Greeting card ───────────────────────────────────────────────── */
+
+.ini-greet {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 22px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--mlb-bg-panel);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+}
+[data-theme="dark"] .ini-greet {
+  background: var(--mlb-bg-panel);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.ini-greet__pattern {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 300px;
+  height: 300px;
+  opacity: 0.1;
+  transform: rotate(15deg);
+  pointer-events: none;
+}
+
+.ini-greet__content { position: relative; z-index: 1; display: flex; align-items: center; gap: 22px; }
+
+.ini-greet__logo {
+  width: 70px;
+  height: 70px;
+  background: var(--mlb-bg-panel);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  color: var(--mlb-text-primary);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+.ini-greet__text { display: flex; flex-direction: column; gap: 3px; }
+.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--mlb-accent-ink); text-transform: uppercase; }
+.ini-greet__title { font-family: var(--mlb-font-display); font-size: 32px; font-style: normal; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; color: var(--mlb-text-primary); }
+.ini-greet__date { font-size: 13.5px; color: var(--mlb-text-muted); margin-top: 2px; }
+
+.ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 6px; }
+.ini-iconbtn {
+  background: transparent; border: none; color: var(--mlb-text-muted);
+  cursor: pointer; padding: 9px; border-radius: 50%;
+  display: grid; place-items: center;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.ini-iconbtn:hover { background: rgba(255, 255, 255, 0.55); color: var(--mlb-text-primary); }
+[data-theme="dark"] .ini-iconbtn:hover { background: var(--mlb-bg-hover); }
+
+/* ── Métricas ────────────────────────────────────────────────────── */
+
+.ini-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ini-metric {
+  background: var(--mlb-bg-panel);
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-xs);
+}
+.ini-metric__label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--mlb-text-muted); text-transform: uppercase; }
+.ini-metric__value { font-family: var(--mlb-font-display); font-size: 27px; font-weight: 700; letter-spacing: -0.01em; color: var(--mlb-text-primary); }
+.ini-metric--oro { border-color: color-mix(in srgb, var(--mlb-oro) 45%, transparent); background: linear-gradient(135deg, var(--mlb-oro-suave), transparent 55%), var(--mlb-bg-panel); }
+.ini-metric--oro .ini-metric__value { color: var(--mlb-text-primary); }
+.ini-metric--btn { cursor: pointer; text-align: left; font: inherit; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.ini-metric--btn:hover { border-color: var(--mlb-accent); box-shadow: var(--shadow-sm); }
+.ini-metric--btn:active { transform: scale(0.99); }
+
+/* ── Bloques ─────────────────────────────────────────────────────── */
+
+.ini-block { display: flex; flex-direction: column; gap: 11px; }
+.ini-block__head { display: flex; justify-content: space-between; align-items: center; }
+.ini-title { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--mlb-text-muted); text-transform: uppercase; }
+.ini-link { font-size: 13px; color: var(--mlb-text-muted); background: none; border: none; cursor: pointer; }
+.ini-link:hover { color: var(--mlb-text-primary); text-decoration: underline; }
+
+/* ── Atajos ──────────────────────────────────────────────────────── */
+
+.ini-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ini-shortcut {
+  background: var(--mlb-bg-panel);
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  transition: transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+.ini-shortcut:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.04);
+  background: var(--mlb-bg-panel);
+}
+.ini-shortcut:active { transform: scale(0.97) translateY(0); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+
+.ini-shortcut__icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: var(--mlb-bg-input); color: var(--mlb-text-secondary);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.ini-shortcut__icon.is-pink { background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
+
+.ini-shortcut__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ini-shortcut__info h4 { font-size: 14.5px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__info span { font-size: 12px; color: var(--mlb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--mlb-text-muted); }
+.ini-shortcut__meta kbd { font-family: var(--mlb-font-mono); font-size: 10px; background: var(--mlb-bg-input); padding: 2px 6px; border-radius: 4px; }
+
+/* ── Ingresos recientes ──────────────────────────────────────────── */
+
+.ini-recent { display: flex; flex-direction: column; gap: 6px; }
+.ini-recent__item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.02);
+  transition: background-color 160ms ease, transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.ini-recent__item:hover {
+  background: var(--mlb-bg-panel);
+  border-color: var(--mlb-border);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.03);
+  transform: translateY(-1px);
+}
+.ini-recent__emoji {
+  width: 40px; height: 40px; border-radius: 9px;
+  background: var(--mlb-bg-input); display: grid; place-items: center;
+  font-size: 21px; flex-shrink: 0;
+}
+.ini-recent__emoji img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
+.ini-recent__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ini-recent__info h4 { font-size: 14px; font-weight: 600; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-recent__info span { font-size: 12px; color: var(--mlb-text-muted); font-family: var(--mlb-font-mono); }
+.ini-recent__amount { font-family: var(--mlb-font-mono); font-size: 15px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; }
+.ini-recent__empty { padding: 18px 12px; font-size: 13.5px; color: var(--mlb-text-muted); }
+
+@media (max-width: 720px) {
+  .ini-metrics, .ini-shortcuts { grid-template-columns: 1fr; }
+}

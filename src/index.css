@@ -1,0 +1,767 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ── My Little Bazar — shell plano, ventana opaca (o Mica si habilitado).
+ *
+ * El fondo viene de --mlb-bg-desktop. Cuando el usuario activa Mica (Win11),
+ * el CSS inyectado sobreescribe esta variable a `transparent`, permitiendo que
+ * el compositor DWM pinte el material nativo detrás de la ventana.
+ * --------------------------------------------------------------------------*/
+
+html {
+  height: 100%;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--mlb-bg-desktop);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* ── MLB tokens (dark default en :root; light en [data-theme="light"]).
+   * `--mlb-bg-desktop` es el lienzo de ventana; `--mlb-bg-app` es el área de trabajo. */
+  --mlb-bg-desktop: #0e0e0e;
+  --mlb-bg-app: #161616;
+  --mlb-bg-panel: #1f1f1f;
+  --mlb-bg-panel-dark: #111111;
+  --mlb-bg-input: rgba(255, 255, 255, 0.08);
+  --mlb-bg-hover: rgba(255, 255, 255, 0.09);
+  --mlb-bg-active: rgba(255, 255, 255, 0.14);
+
+  --mlb-text-primary: #ececec;
+  --mlb-text-secondary: #9d9d9d;
+  --mlb-text-muted: #6c6c6c;
+
+  /* Rosa boutique Monserrat (mock pos-ui) — en dark sube la luz para
+   * respirar sobre fondo oscuro. El dorado es material precioso: solo
+   * para momentos especiales, nunca decoración masiva. */
+  --mlb-accent: #ff7faa;
+  --mlb-accent-hover: #ff97ba;
+  --mlb-accent-ink: #ff9cbd;
+  --mlb-accent-soft: rgba(255, 127, 170, 0.16);
+  --mlb-accent-ring: rgba(255, 127, 170, 0.35);
+  --mlb-oro: #f4c430;
+  --mlb-oro-suave: rgba(244, 196, 48, 0.16);
+  --mlb-rosa-palido: rgba(255, 127, 170, 0.10);
+  --mlb-success: #32d74b;
+  --mlb-danger: #ff453a;
+
+  --mlb-border: rgba(255, 255, 255, 0.095);
+  --mlb-border-strong: rgba(255, 255, 255, 0.175);
+  --mlb-border-focus: rgba(255, 255, 255, 0.42);
+
+  /* Panel grande (cajita) — sombra layered tipo Raycast */
+  --mlb-shadow-panel:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 32px 80px -20px rgba(0, 0, 0, 0.65),
+    0 12px 24px -10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --mlb-shadow-card:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 28px -10px rgba(0, 0, 0, 0.45);
+  /* Glow coral muy sutil cuando algo está enfocado o activo */
+  --mlb-shadow-accent: 0 0 0 1px var(--mlb-accent-ring), 0 8px 24px -8px rgba(232, 136, 154, 0.26);
+
+  --mlb-backdrop: none;
+
+  /* Radii nombrados — usados en panel principal (lg = cajita) */
+  --mlb-radius-sm: 6px;
+  --mlb-radius-md: 8px;
+  --mlb-radius-lg: 12px;
+  --mlb-radius-xl: 16px;
+
+  /* Familia tipográfica: Inter para UI, Outfit para títulos con energía
+   * (display itálica), Space Grotesk para montos/códigos (mono boutique). */
+  --mlb-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mlb-font-display: 'Outfit', 'Inter', sans-serif;
+  --mlb-font-mono: 'Space Grotesk', 'Geist Mono', ui-monospace, monospace;
+
+  /* Sombras premium — muy sutiles, tipo Linear / Raycast */
+  --shadow-xs: 0 1px 1px 0 oklch(0.22 0.03 285 / 0.03);
+  --shadow-sm: 0 1px 2px 0 oklch(0.22 0.03 285 / 0.04), 0 1px 1px 0 oklch(0.22 0.03 285 / 0.03);
+  --shadow-md: 0 2px 4px -1px oklch(0.22 0.03 285 / 0.05), 0 1px 2px -1px oklch(0.22 0.03 285 / 0.04);
+  --shadow-lg: 0 8px 24px -6px oklch(0.22 0.03 285 / 0.08), 0 2px 6px -2px oklch(0.22 0.03 285 / 0.05);
+  --shadow-pop: 0 12px 32px -8px oklch(0.22 0.03 285 / 0.12), 0 4px 12px -4px oklch(0.22 0.03 285 / 0.06);
+
+  /* Primario neutro (evita coral en fondos claros del shell legacy) */
+  --primary: oklch(0.35 0.01 285);
+  --primary-foreground: oklch(0.99 0.002 0);
+
+  /* Lienzo — papel rosado-lavanda (personalidad sin gritar) */
+  --background: oklch(0.978 0.012 320);
+  --foreground: oklch(0.21 0.02 285);
+  --card: oklch(0.995 0.006 320);
+  --card-foreground: oklch(0.21 0.02 285);
+  --popover: oklch(0.995 0.006 320);
+  --popover-foreground: oklch(0.21 0.02 285);
+
+  --secondary: oklch(0.94 0.028 310);
+  --secondary-foreground: oklch(0.24 0.03 285);
+  --muted: oklch(0.94 0.022 310);
+  --muted-foreground: oklch(0.44 0.03 285);
+  --accent: oklch(0.94 0.04 15);
+  --accent-foreground: oklch(0.24 0.03 285);
+
+  --destructive: oklch(0.54 0.19 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.58 0.14 155);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.76 0.12 78);
+  --warning-foreground: oklch(0.22 0.03 285);
+
+  --border: oklch(0.84 0.01 300);
+  --input: oklch(0.84 0.01 300);
+  --ring: oklch(0.55 0.01 285);
+
+  --chart-1: oklch(0.45 0.02 285);
+  --chart-2: oklch(0.58 0.11 185);
+  --chart-3: oklch(0.64 0.12 75);
+  --chart-4: oklch(0.56 0.12 285);
+  --chart-5: oklch(0.60 0.10 145);
+
+  /* Sidebar — un tono más “vitrina” que el lienzo */
+  --sidebar: oklch(0.972 0.014 315);
+  --sidebar-foreground: oklch(0.24 0.025 285);
+  --sidebar-primary: oklch(0.35 0.01 285);
+  --sidebar-primary-foreground: oklch(0.99 0.002 0);
+  --sidebar-accent: oklch(0.93 0.035 12);
+  --sidebar-accent-foreground: oklch(0.26 0.04 285);
+  --sidebar-border: oklch(0.88 0.025 300);
+  --sidebar-ring: oklch(0.55 0.01 285);
+  --sidebar-muted-foreground: oklch(0.48 0.03 285);
+}
+
+/* ── Tema claro: redefinimos los --mlb-* con la misma escala que shadcn light.
+ * En :root los --mlb-* están en oscuro (default = dark); cuando el usuario
+ * elige light, este bloque los sobreescribe. Los tokens shadcn (--background
+ * etc) ya están bien en :root para light, así que solo tocamos los --mlb-*. */
+[data-theme="light"] {
+  /* Boutique Monserrat (paleta del mock pos-ui aprobado): gris azulado
+   * muy suave de fondo, superficies blancas puras que flotan encima. */
+  --mlb-bg-desktop: #eef1f4;
+  --mlb-bg-app: #f4f6f8;
+  --mlb-bg-panel: #ffffff;
+  --mlb-bg-panel-dark: #fcfcfd;
+  --mlb-bg-input: #f4f4f5;
+  --mlb-bg-hover: #eef1f4;
+  --mlb-bg-active: #e4e7ec;
+
+  --mlb-text-primary: oklch(0.21 0.02 285);
+  --mlb-text-secondary: oklch(0.42 0.025 285);
+  --mlb-text-muted: oklch(0.58 0.025 285);
+
+  /* Rosa boutique Monserrat (mock pos-ui): vibrante para acento de marca.
+   * --mlb-accent-ink es la variante oscura para texto chico (precios,
+   * enlaces) donde el rosa vivo no daría contraste sobre blanco. */
+  --mlb-accent: #ff6b9e;
+  --mlb-accent-hover: #e85b8c;
+  --mlb-accent-ink: #d53f7a;
+  --mlb-accent-soft: #fff0f5;
+  --mlb-accent-ring: rgba(255, 107, 158, 0.25);
+  --mlb-oro: #d69e2e;
+  --mlb-oro-suave: rgba(244, 196, 48, 0.16);
+  --mlb-rosa-palido: rgba(255, 107, 158, 0.08);
+  --mlb-success: oklch(0.55 0.16 155);
+  --mlb-danger: oklch(0.56 0.21 25);
+
+  --mlb-border: oklch(0.915 0.006 25);
+  --mlb-border-strong: oklch(0.86 0.009 25);
+  --mlb-border-focus: oklch(0.62 0.012 285);
+
+  --mlb-shadow-panel:
+    0 0 0 1px oklch(0.22 0.03 285 / 0.06),
+    0 32px 80px -20px oklch(0.22 0.03 285 / 0.18),
+    0 12px 24px -10px oklch(0.22 0.03 285 / 0.10),
+    inset 0 1px 0 oklch(1 0 0 / 0.6);
+  --mlb-shadow-card:
+    0 0 0 1px oklch(0.22 0.03 285 / 0.05),
+    0 10px 28px -10px oklch(0.22 0.03 285 / 0.10);
+  --mlb-shadow-accent: 0 0 0 1px var(--mlb-accent-ring), 0 8px 24px -8px rgba(194, 85, 106, 0.22);
+
+  --mlb-backdrop: blur(6px);
+}
+
+.dark,
+[data-theme="dark"] {
+  --primary: oklch(0.84 0 0);
+  --primary-foreground: oklch(0.12 0 0);
+
+  /* Sombras en dark: combinación raycast-tier (hairline ring + drop suave).  */
+  --shadow-xs: 0 1px 1px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 1px 1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.45), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px -6px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.7), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+
+  /* Fondos: alineados al MLB (negro + glass real). Mantenemos la escala
+   * neutra (sin tinte morado) para encajar con el coral. */
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.94 0.005 0);
+  --card: oklch(0.18 0.005 0);
+  --card-foreground: oklch(0.94 0.005 0);
+  --popover: oklch(0.19 0.005 0);
+  --popover-foreground: oklch(0.94 0.005 0);
+
+  --secondary: oklch(0.24 0.005 0);
+  --secondary-foreground: oklch(0.94 0.005 0);
+  --muted: oklch(0.22 0.005 0);
+  --muted-foreground: oklch(0.62 0.01 0);
+  --accent: oklch(0.26 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+
+  --destructive: oklch(0.65 0.21 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.74 0.18 142);
+  --success-foreground: oklch(0.12 0 0);
+  --warning: oklch(0.78 0.15 78);
+  --warning-foreground: oklch(0.15 0 0);
+
+  --border: oklch(0.28 0.005 0);
+  --input: oklch(0.28 0.005 0);
+  --ring: oklch(0.72 0 0);
+
+  --chart-1: oklch(0.78 0 0);
+  --chart-2: oklch(0.68 0.14 200);
+  --chart-3: oklch(0.74 0.13 80);
+  --chart-4: oklch(0.62 0.16 295);
+  --chart-5: oklch(0.74 0.18 142);
+
+  /* Sidebar: ligeramente más oscuro que el lienzo, con el mismo coral. */
+  --sidebar: oklch(0.10 0 0);
+  --sidebar-foreground: oklch(0.92 0.005 0);
+  --sidebar-primary: oklch(0.84 0 0);
+  --sidebar-primary-foreground: oklch(0.12 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
+  --sidebar-accent-foreground: oklch(0.94 0.005 0);
+  --sidebar-border: oklch(0.22 0.005 0);
+  --sidebar-ring: oklch(0.72 0 0);
+  --sidebar-muted-foreground: oklch(0.58 0.01 0);
+}
+
+/* ── MLB — contenedor del shell (mismo lienzo que el desktop: sin “segundo
+ *   recuadro” que en Win/light se leía como patch blanco). */
+
+.mlb-glass {
+  position: relative;
+  background: var(--mlb-bg-desktop);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--mlb-font);
+  font-feature-settings: 'cv11', 'ss03', 'tnum';
+}
+
+/* Acento de marca — pequeño punto coral (header, badges, etc.) */
+.mlb-brand-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mlb-accent);
+  box-shadow: 0 0 0 2px var(--mlb-accent-soft);
+}
+
+/* Focus visible premium para inputs y botones */
+.mlb-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--mlb-bg-app), 0 0 0 4px var(--mlb-accent-ring);
+}
+
+.mlb-desktop {
+  background: var(--mlb-bg-desktop);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-pop: var(--shadow-pop);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.18s cubic-bezier(0.2, 0, 0, 1);
+  --animate-slide-up: slide-up 0.22s cubic-bezier(0.2, 0, 0, 1);
+  --ease-premium: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: var(--mlb-font);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    overflow: hidden;
+  }
+}
+
+/* Marca tipográfica opcional */
+.bazar-wordmark-coral {
+  color: var(--primary);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-pop: var(--shadow-pop);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.18s cubic-bezier(0.2, 0, 0, 1);
+  --animate-slide-up: slide-up 0.22s cubic-bezier(0.2, 0, 0, 1);
+  --ease-premium: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: var(--mlb-font);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    overflow: hidden;
+  }
+}
+
+/* Marca tipográfica opcional */
+.bazar-wordmark-coral {
+  color: var(--primary);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Global scrollbar — thin, disappearing ────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Sidebar: hide scrollbar until hover */
+[data-sidebar="content"] {
+  scrollbar-width: none;
+}
+[data-sidebar="content"]:hover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-border) transparent;
+}
+[data-sidebar="content"]::-webkit-scrollbar {
+  width: 4px;
+}
+[data-sidebar="content"]::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+}
+[data-sidebar="content"]:hover::-webkit-scrollbar-thumb {
+  background: oklch(0.62 0.06 18 / 0.2);
+}
+
+/* ── Selection ────────────────────────────────────────────────────────── */
+::selection {
+  background: oklch(0.68 0.14 18 / 0.22);
+}
+
+/* Área central (todos los módulos): scrollbars neutros — track y thumb */
+[data-app-workspace]::-webkit-scrollbar,
+[data-app-workspace] *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-app-workspace]::-webkit-scrollbar-track,
+[data-app-workspace] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-app-workspace]::-webkit-scrollbar-thumb,
+[data-app-workspace] *::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-app-workspace]::-webkit-scrollbar-thumb:hover,
+[data-app-workspace] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+@supports (scrollbar-color: auto) {
+  [data-app-workspace] * {
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+.dark [data-app-workspace]::-webkit-scrollbar-track,
+.dark [data-app-workspace] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark [data-app-workspace]::-webkit-scrollbar-thumb,
+.dark [data-app-workspace] *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.dark [data-app-workspace]::-webkit-scrollbar-thumb:hover,
+.dark [data-app-workspace] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+@supports (scrollbar-color: auto) {
+  .dark [data-app-workspace] * {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+}
+
+/* ── App section — consistent padding for all views ──────────────────── */
+.app-section {
+  @apply px-6 py-5;
+}
+
+/* ── Inventario: checkboxes en hover / selección (evita <style> en la vista) ─ */
+.inv-table-select [data-inv-check-wrap] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.inv-table-select[data-has-selection] [data-inv-check-wrap],
+.inv-table-select tbody tr:hover td.inv-select-cell [data-inv-check-wrap],
+.inv-table-select thead tr:hover th.inv-select-cell [data-inv-check-wrap],
+.inv-table-select tbody tr:focus-within td.inv-select-cell [data-inv-check-wrap] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.inv-cards-grid [data-inv-card-check] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.inv-cards-grid[data-has-selection] [data-inv-card-check],
+.inv-cards-grid article:hover [data-inv-card-check] {
+  opacity: 1;
+  pointer-events: auto;
+}
+[data-app-workspace] .col-precio {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "lnum";
+}
+
+/* ── Embed windows (devices, rive, pdv-terminal) ─────────────────────── */
+#root:has(.embed-shell) {
+  height: 100vh;
+}
+
+/* ── Refinamientos tipográficos premium ──────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-feature-settings: "cv11", "ss01", "ss03", "kern";
+  letter-spacing: -0.012em;
+}
+
+/* kbd consistent inside the whole app */
+kbd {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Números tabulares donde importa: montos, IDs, stock, fechas */
+[data-app-workspace] [class*="tabular-nums"],
+[data-app-workspace] .tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "lnum", "ss01";
+}
+
+/* Efecto cristal opcional para popovers sobre contenido — úsalo con .glass */
+.glass {
+  background: color-mix(in oklch, var(--popover) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+}
+
+/* Tap highlight off en Electron */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Divider sutil tipo Linear — clase utilitaria */
+.hairline {
+  border-color: color-mix(in oklch, var(--border) 75%, transparent);
+}
+
+/* ── Interacciones premium (Notion/Linear): SIN movimiento al hover.
+ * Regla firme de la usuaria: el ratón no mueve nada. El hover solo cambia
+ * color/sombra; el "press" táctil sutil vive únicamente en :active (clic). */
+button.mlb-focus-ring,
+a.mlb-focus-ring,
+.mlb-btn-interactive {
+  transition: box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s ease, border-color 0.15s ease, transform 0.06s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Press táctil al clic (no es hover): hundido apenas perceptible, sin scale. */
+button.mlb-focus-ring:active:not(:disabled),
+a.mlb-focus-ring:active:not(:disabled),
+.mlb-btn-interactive:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+/* Estados motion-reducidos limpios: desactiva keyframes de slide/fade globales */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Marca Monserrat: utilidades de identidad ─────────────────────────
+ * Rosa = sistema. Tinta = peso. Oro = material precioso (solo momentos
+ * especiales: venta cobrada, totales del día — nunca decoración masiva). */
+
+.mlb-display {
+  font-family: var(--mlb-font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.mlb-oro-texto {
+  color: var(--mlb-oro);
+}
+
+.mlb-oro-borde {
+  border: 1px solid color-mix(in srgb, var(--mlb-oro) 45%, transparent);
+  background:
+    linear-gradient(135deg, var(--mlb-oro-suave), transparent 55%),
+    var(--mlb-bg-panel);
+}
+
+/* Banda diagonal de celebración (energía Persona, domesticada) */
+.mlb-banda {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.mlb-banda::before {
+  content: '';
+  position: absolute;
+  inset: -40% -10%;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    var(--mlb-rosa-palido) 38.5%,
+    var(--mlb-rosa-palido) 62%,
+    transparent 62.5%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Brillo dorado discreto que cruza una sola vez (venta cobrada) */
+@keyframes mlb-destello {
+  from { transform: translateX(-130%) skewX(-18deg); }
+  to { transform: translateX(230%) skewX(-18deg); }
+}
+.mlb-destello {
+  position: relative;
+  overflow: hidden;
+}
+.mlb-destello::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--mlb-oro) 22%, transparent) 50%,
+    transparent
+  );
+  animation: mlb-destello 1100ms cubic-bezier(0.23, 1, 0.32, 1) 180ms 1 both;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mlb-destello::after { display: none; }
+}
+
+/* El gancho se dibuja solo (celebraciones y primer saludo) */
+@keyframes mlb-trazo {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.mlb-trazo-dibujar {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mlb-trazo 700ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
+}
+.mlb-trazo-dibujar:nth-of-type(2) { animation-delay: 360ms; }
+@media (prefers-reduced-motion: reduce) {
+  .mlb-trazo-dibujar { animation-duration: 0.001ms; animation-delay: 0ms; }
+}
+
+/* Entrada en cascada para grids del Inicio (decorativa, nunca bloquea) */
+@keyframes mlb-sube {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mlb-stagger > * {
+  animation: mlb-sube 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.mlb-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.mlb-stagger > *:nth-child(2) { animation-delay: 45ms; }
+.mlb-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.mlb-stagger > *:nth-child(4) { animation-delay: 135ms; }
+.mlb-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.mlb-stagger > *:nth-child(6) { animation-delay: 225ms; }
+.mlb-stagger > *:nth-child(n + 7) { animation-delay: 260ms; }
+@media (prefers-reduced-motion: reduce) {
+  .mlb-stagger > * { animation: none; }
+}

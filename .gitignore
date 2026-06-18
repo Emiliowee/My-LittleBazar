@@ -1,0 +1,71 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+release
+*.local
+.env
+.env.local
+
+# Claude Code — permisos locales por máquina
+.claude/settings.local.json
+.claude/worktrees/
+
+# Carpetas que no son parte de este proyecto
+Zen-Nebula-main/
+.agents/
+.claude/skills/
+.cursor/skills/
+
+# Documentos personales de prácticas profesionales
+# (van en el trámite académico, no en el repo del producto)
+CartaPresentacion_*.pdf
+F2_*.pdf
+F4_*.pdf
+FormatoEvaluacion*.pdf
+5 formato REPORTE*.doc
+5 formato REPORTE*.docx
+5_formato_reporte_*.txt
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+
+# Documentos académicos / personales / análisis ajeno al producto
+docs/innovacion-academica.md
+docs/personaje-nair-veyra.md
+docs/programa-maestro.md
+INNOVATION.md
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Material de analisis ajeno al producto (juegos Ren'Py, Codex, etc.)
+.analysis/
+*.rpyc
+*.rpy
+*.tsv
+*.jsonl
+
+# Material de analisis temporal ajeno al producto
+.tmp_*/
+tmp/
+.codex-upload-paths.txt
+refs/codex/
