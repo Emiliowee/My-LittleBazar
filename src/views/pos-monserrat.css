@@ -502,44 +502,47 @@
   overflow: hidden;
   z-index: 1;
 }
+
 .pos-checkout > span, .pos-checkout > svg {
   position: relative;
-  z-index: 2; /* encima de la animación */
+  z-index: 2;
 }
+
 .pos-checkout::after {
   content: '';
   position: absolute;
   top: 0; left: -100%;
   width: 100%; height: 100%;
-  background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.2) 10px, rgba(255, 255, 255, 0.2) 20px);
-  z-index: 1; /* Para que quede encima del fondo pero debajo del texto */
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.2) 10px, rgba(255,255,255,0.2) 20px);
+  z-index: 1;
   transition: left 0.3s ease;
   pointer-events: none;
 }
-/* Hover estilo Persona del mock: el botón se "hunde" (scale) mientras la sombra dura se desplaza en diagonal y el estallido de rayas entra. Solo en Cobrar. */
+
 .pos-checkout:hover:not(:disabled) {
   transform: scale(0.98);
+  box-shadow: 6px 6px 0px var(--mlb-text-primary);
   background-color: var(--mlb-accent-hover);
   border-color: var(--mlb-text-primary);
-  box-shadow: 6px 6px 0px var(--mlb-text-primary);
   border-radius: 8px;
+  color: #fff;
 }
+
 .pos-checkout:hover:not(:disabled)::after {
   left: 0;
 }
+
 .pos-checkout:active:not(:disabled) {
   transform: scale(0.96);
   box-shadow: 0px 0px 0px var(--mlb-text-primary);
 }
+
 .pos-checkout:disabled {
   background-color: #e2e8f0;
   color: #a0aec0;
   box-shadow: none;
   cursor: not-allowed;
   border-color: transparent;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pos-checkout::after { display: none; }
 }
 
 /* ── Modales ─────────────────────────────────────────────────────── */
