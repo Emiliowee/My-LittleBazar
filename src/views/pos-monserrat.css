@@ -105,10 +105,6 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border-top: 1px solid #e4e7ec;
 }
 
 .pos-workspace {
@@ -117,10 +113,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--mlb-bg-app);
-  border-radius: 8px;
-  border: 1px solid #e4e7ec;
-  overflow: hidden;
 }
 
 .pos-main--tool {
@@ -359,9 +351,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--mlb-bg-app);
-  border-radius: 8px;
-  border: 1px solid #e4e7ec;
+  background: var(--mlb-bg-panel);
+  border-left: 1px solid var(--mlb-border);
   position: relative;
   z-index: 10;
   box-shadow: -4px 0 18px rgba(0, 0, 0, 0.03);
@@ -1084,10 +1075,9 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--mlb-bg-panel);
-  border-radius: 16px;
-  border: 1px solid var(--mlb-border);
-  box-shadow: var(--shadow-sm);
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e4e7ec;
   overflow: hidden;
 }
 
@@ -1096,9 +1086,9 @@
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: var(--mlb-bg-app);
-  border-bottom: 2px solid var(--mlb-border-strong);
+  padding: 14px 16px;
+  background: transparent;
+  border-bottom: 1px solid #e4e7ec;
   gap: 16px;
   z-index: 10;
 }
@@ -1168,18 +1158,16 @@
   flex: 1;
   min-height: 0;
   gap: 12px;
-  background: #f8fafc;
-  padding: 12px;
-  border-top: 1px solid #e4e7ec;
+  padding: 16px;
 }
 
 .pos-sr__master {
-  width: 36%;
-  min-width: 340px;
+  width: 32%;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   overflow: auto;
-  background: var(--mlb-bg-panel);
+  background: var(--mlb-bg-app);
   border: 1px solid #e4e7ec;
   border-radius: 8px;
 }
@@ -1222,7 +1210,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--mlb-bg-panel);
+  background: var(--mlb-bg-app);
   border: 1px solid #e4e7ec;
   border-radius: 8px;
   overflow: hidden;
