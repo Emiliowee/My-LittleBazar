@@ -1232,10 +1232,10 @@ function BanquetaWorkspace() {
               </button>
             </div>
             
-            <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--mlb-border)', paddingBottom: 12 }}>
-              <button type="button" className={tabIndex === 'activas' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('activas')}>En Curso</button>
-              <button type="button" className={tabIndex === 'borradores' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('borradores')}>Borradores</button>
-              <button type="button" className={tabIndex === 'cerradas' ? 'pos-confirm-btn' : 'pos-tool__ghost'} style={{ height: 32, padding: '0 12px', borderRadius: 6 }} onClick={() => setTabIndex('cerradas')}>Cerradas</button>
+            <div style={{ display: 'flex', gap: 24, marginBottom: 24, borderBottom: '1px solid var(--mlb-border)' }}>
+              <button type="button" style={{ background: 'transparent', border: 'none', padding: '0 4px 12px', fontSize: 14, fontWeight: 600, color: tabIndex === 'activas' ? 'var(--mlb-accent)' : 'var(--mlb-text-secondary)', borderBottom: tabIndex === 'activas' ? '3px solid var(--mlb-accent)' : '3px solid transparent', cursor: 'pointer', transition: 'color 0.2s' }} onClick={() => setTabIndex('activas')}>En Curso</button>
+              <button type="button" style={{ background: 'transparent', border: 'none', padding: '0 4px 12px', fontSize: 14, fontWeight: 600, color: tabIndex === 'borradores' ? 'var(--mlb-accent)' : 'var(--mlb-text-secondary)', borderBottom: tabIndex === 'borradores' ? '3px solid var(--mlb-accent)' : '3px solid transparent', cursor: 'pointer', transition: 'color 0.2s' }} onClick={() => setTabIndex('borradores')}>Borradores</button>
+              <button type="button" style={{ background: 'transparent', border: 'none', padding: '0 4px 12px', fontSize: 14, fontWeight: 600, color: tabIndex === 'cerradas' ? 'var(--mlb-accent)' : 'var(--mlb-text-secondary)', borderBottom: tabIndex === 'cerradas' ? '3px solid var(--mlb-accent)' : '3px solid transparent', cursor: 'pointer', transition: 'color 0.2s' }} onClick={() => setTabIndex('cerradas')}>Cerradas</button>
             </div>
 
             {loading ? (
@@ -1278,15 +1278,19 @@ function BanquetaWorkspace() {
               {/* Columna Izquierda */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {editable && (
-                  <form onSubmit={(e) => { e.preventDefault(); void agregar() }} style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', border: '1px solid var(--mlb-border-strong)', borderRadius: 8, height: 42, background: 'var(--mlb-bg-app)' }}>
-                      <Barcode size={18} style={{ color: 'var(--mlb-text-muted)' }} />
-                      <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanear o buscar…" style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 14 }} />
-                    </div>
-                    <input className="pos-input" style={{ width: 48, height: 42, textAlign: 'center' }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
-                    <button type="button" className="pos-tool__ghost" style={{ height: 42, width: 42, display: 'grid', placeItems: 'center' }} onClick={() => setAddOpen(true)}><Search size={18} /></button>
-                    <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
-                  </form>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <form onSubmit={(e) => { e.preventDefault(); void agregar() }} style={{ flex: 1, display: 'flex', gap: 8 }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', border: '1px solid var(--mlb-border-strong)', borderRadius: 8, height: 42, background: 'var(--mlb-bg-app)' }}>
+                        <Barcode size={18} style={{ color: 'var(--mlb-text-muted)' }} />
+                        <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea la etiqueta aquí..." style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 14 }} />
+                      </div>
+                      <input className="pos-input" style={{ width: 48, height: 42, textAlign: 'center' }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
+                      <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
+                    </form>
+                    <button type="button" onClick={() => setAddOpen(true)} style={{ height: 42, padding: '0 16px', borderRadius: 8, border: '1px solid var(--mlb-border-strong)', background: 'var(--mlb-bg-panel)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>
+                      <Search size={16} /> Buscar manual
+                    </button>
+                  </div>
                 )}
 
                 <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, overflow: 'hidden' }}>

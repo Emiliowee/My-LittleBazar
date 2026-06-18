@@ -45,6 +45,28 @@ assert(corte.devolucionesEfectivo === 40, `devoluciones en efectivo = 40, vino $
 assert(corte.fiadoAnotado === 500, `fiado anotado hoy = 500, vino ${corte.fiadoAnotado}`)
 assert(corte.abonosRecibidos === 230, `abonos recibidos = 150 + 80 = 230, vino ${corte.abonosRecibidos}`)
 
+// ── Corte con ventas NUEVAS: desglose mixto + venta fiada con cuenta ────
+console.log('\n[corteDelDia · ventas nuevas]')
+const ventas2 = [
+  // Mixta pagada (efectivo + transferencia), sin cuenta de Saldos → usa el desglose.
+  { total: 480, metodo: 'mixto', cambio: 0, monto_efectivo: 300, monto_transferencia: 180, created_at: ahora },
+  // Efectivo con cambio (estilo viejo, sin desglose) → cuenta el total, no el tendido.
+  { total: 200, metodo: 'efectivo', cambio: 20, created_at: ahora },
+  // Fiada con enganche: toca Saldos (saldos_cliente_id) → su efectivo entra por el abono, NO acá.
+  { total: 500, metodo: 'mixto', cambio: 0, monto_efectivo: 100, monto_transferencia: 0, monto_credito: 400, saldos_cliente_id: 7, created_at: ahora },
+]
+const cuentas2 = [
+  { id: 7, nombre: 'Fiada', movimientos: [
+    { tipo: 'cargo', fecha: hoy, monto: 500 },
+    { tipo: 'abono', fecha: hoy, monto: 100, medio: 'efectivo' },
+  ] },
+]
+const corteN = corteDelDia(ventas2, cuentas2, { hoy })
+assert(corteN.efectivo === 600, `efectivo = 300 (mixta) + 200 (efvo) + 100 (abono fiada) = 600, vino ${corteN.efectivo}`)
+assert(corteN.transferencia === 180, `transferencia = 180 (mixta) = 180, vino ${corteN.transferencia}`)
+assert(corteN.fiadoAnotado === 500, `fiado anotado = 500 (cargo de hoy), vino ${corteN.fiadoAnotado}`)
+assert(corteN.cambioEntregado === 20, `cambio entregado = 20, vino ${corteN.cambioEntregado}`)
+
 // ── Prendas estancadas ─────────────────────────────────────────────
 console.log('\n[prendasEstancadas]')
 const productos = [

@@ -22,6 +22,8 @@
     "test:alta": "node scripts/test-alta-detect.mjs && node scripts/test-alta-parse.mjs && node scripts/test-alta-suggest.mjs && node scripts/test-price-hint.mjs",
     "test:label-rotation": "node scripts/test-label-rotation.cjs",
     "test:devoluciones": "electron scripts/test-devoluciones.cjs",
+    "test:cobro": "electron scripts/test-cobro-mixto.cjs",
+    "test:banqueta": "electron scripts/test-banqueta.cjs",
     "test:fiado-saldos": "electron scripts/test-fiado-saldos.cjs",
     "test:reportes": "node scripts/test-reportes.mjs",
     "test:reporte-pdf": "node scripts/test-reporte-pdf.mjs",

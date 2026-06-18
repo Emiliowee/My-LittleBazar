@@ -425,6 +425,20 @@ export function InventoryView() {
     }
   }, [scanPrompt, addQty, refresh])
 
+  const scanPromptReactivar = useCallback(async () => {
+    const p = scanPrompt
+    setScanPrompt(null)
+    if (!p?.id) return
+    const db = window.bazar?.db
+    try {
+      await db.reactivarProductoBanqueta({ productoId: p.id })
+      toast.success(`«${p.descripcion || 'artículo'}» reactivado y disponible.`)
+      void refresh()
+    } catch (err) {
+      toast.error(ipcErrorMessage(err) || 'No se pudo reactivar.')
+    }
+  }, [scanPrompt, refresh])
+
   // Al abrir el aviso, la cantidad a sumar arranca en 1.
   useEffect(() => { if (scanPrompt) setAddQty('1') }, [scanPrompt])
 
@@ -934,6 +948,20 @@ export function InventoryView() {
               </div>
             </div>
             <div className="mt-4 space-y-3">
+              {String(scanPrompt.estado || '').toLowerCase() === 'desactivado' && (
+                <>
+                  <div className="rounded-lg border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-active)] px-3 py-2 text-[12.5px] text-[var(--mlb-text-secondary)]">
+                    Está <b className="text-[var(--mlb-text-primary)]">desactivado</b> (salió a banqueta y no se vendió). Reactívalo para volver a venderlo.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void scanPromptReactivar()}
+                    className="mlb-focus-ring inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[var(--mlb-accent)] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--mlb-accent-hover)]"
+                  >
+                    <RefreshCw className="size-4" strokeWidth={2.2} /> Reactivar y poner disponible
+                  </button>
+                </>
+              )}
               {/* Elegir cuánto sumar: − N + (o escribir) */}
               <div className="flex items-center justify-center gap-2.5">
                 <span className="text-[12.5px] text-[var(--mlb-text-secondary)]">Sumar al stock:</span>

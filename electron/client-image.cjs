@@ -1,6 +1,6 @@
 'use strict'
 
-const { dialog } = require('electron')
+const { dialog, shell, app } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
@@ -48,4 +48,35 @@ function pickClientImage(browserWindow, dataRoot) {
   }
 }
 
-module.exports = { pickClientImage }
+/**
+ * Guarda (descarga) una copia de la imagen de identificación ya almacenada a la
+ * ubicación que elija la dueña, y muestra el archivo en la carpeta.
+ * @param {import('electron').BrowserWindow | null} browserWindow
+ * @param {string} srcPath ruta absoluta de la imagen guardada
+ */
+function saveClientImage(browserWindow, srcPath) {
+  try {
+    const src = String(srcPath || '').trim()
+    if (!src || !fs.existsSync(src)) {
+      return { ok: false, message: 'No hay imagen de identificación para descargar.' }
+    }
+    const ext = path.extname(src) || '.jpg'
+    let downloads
+    try { downloads = app.getPath('downloads') } catch { downloads = '' }
+    const defaultPath = downloads ? path.join(downloads, `identificacion${ext}`) : `identificacion${ext}`
+    const dest = dialog.showSaveDialogSync(browserWindow || undefined, {
+      title: 'Descargar identificación',
+      defaultPath,
+      filters: [{ name: 'Imágenes', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }],
+    })
+    if (!dest) return { ok: false, cancelled: true }
+    fs.copyFileSync(src, dest)
+    try { shell.showItemInFolder(dest) } catch { /* noop */ }
+    return { ok: true, path: dest }
+  } catch (err) {
+    console.error('[client-image] Error al descargar identificación:', err)
+    return { ok: false, error: err?.message || String(err) }
+  }
+}
+
+module.exports = { pickClientImage, saveClientImage }

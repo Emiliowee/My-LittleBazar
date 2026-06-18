@@ -69,6 +69,17 @@ function run() {
   assert(estadoDe(p1.id) === 'disponible', 'la prenda vuelve a "disponible"')
   assert(r1.ventaEsCredito === false, 'marca la venta como NO crédito')
 
+  // ── Caso 1b: devolver el RENGLÓN EXACTO (mismo código en 2 tickets) ──
+  console.log('\n[Caso 1b] Devuelve el renglón exacto por ventaItemId, no el último')
+  const pm = alta(80, { pieza_unica: false, stock: 10 })
+  const vA = db.addSale({ metodo: 'efectivo', pagoCon: 80, items: [{ productoId: pm.id, cantidad: 1 }] })
+  const vB = db.addSale({ metodo: 'efectivo', pagoCon: 80, items: [{ productoId: pm.id, cantidad: 1 }] })
+  const itemA = db.getVentaDetalle(vA.ventaId).items[0]
+  const rExacto = db.registrarDevolucionRapida({ ventaItemId: itemA.id, metodoReembolso: 'efectivo', montoReembolso: 80 })
+  assert(rExacto.ok && rExacto.ventaId === vA.ventaId, `devolvió el renglón del ticket A #${vA.ventaId} (vino #${rExacto.ventaId})`)
+  assert(db.getVentaDetalle(vA.ventaId).items[0].devuelto_en != null, 'el renglón del ticket A quedó devuelto')
+  assert(db.getVentaDetalle(vB.ventaId).items[0].devuelto_en == null, 'el renglón del ticket B NO se tocó')
+
   // ── Caso 2: no se puede devolver dos veces ───────────────────────────
   console.log('\n[Caso 2] No devolver dos veces / no devolver lo no vendido')
   assertThrows(() => db.registrarDevolucionRapida({ codigo: codeOf(p1.id), metodoReembolso: 'efectivo' }), 'no figura', 'segunda devolución rechazada')

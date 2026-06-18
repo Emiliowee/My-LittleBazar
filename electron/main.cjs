@@ -7,7 +7,7 @@ const os = require('os')
 const db = require('./database.cjs')
 const { pickProductImage } = require('./product-image.cjs')
 const { pickTagIconImage } = require('./tag-icon-image.cjs')
-const { pickClientImage } = require('./client-image.cjs')
+const { pickClientImage, saveClientImage } = require('./client-image.cjs')
 const { resolveDataRootDir } = require('./monserrat-path.cjs')
 const printers = require('./printers.cjs')
 const printTest = require('./print-test.cjs')
@@ -510,6 +510,10 @@ function registerIpc() {
     const win = BrowserWindow.fromWebContents(event.sender)
     return pickClientImage(win, resolveDataRootDir())
   })
+  ipcMain.handle('clientImage:save', (event, srcPath) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return saveClientImage(win, srcPath)
+  })
 
   const safeReportFilename = (raw, fallback, ext) => {
     let name = String(raw || fallback || `reporte.${ext}`)
@@ -698,6 +702,64 @@ function registerIpc() {
     return out
   })
   ipcMain.handle('db:listStaleForBanqueta', (_, opts) => db.listStaleForBanqueta(opts ?? {}))
+  ipcMain.handle('db:addProductToBanquetaSalida', (_, p) => {
+    const out = db.addProductToBanquetaSalida(p?.salidaId, p?.codigo, p?.cantidad ?? 1)
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:updateBanquetaSalida', (_, p) => db.updateBanquetaSalida(p ?? {}))
+  ipcMain.handle('db:removeBanquetaSalidaItem', (_, itemId) => {
+    const out = db.removeBanquetaSalidaItem(itemId)
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:removeBanquetaSalidaItemsBulk', (_, itemIds) => {
+    const out = db.removeBanquetaSalidaItemsBulk(itemIds)
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:reorderBanquetaSalidaItems', (_, p) => db.reorderBanquetaSalidaItems(p?.salidaId, p?.orderedItemIds))
+  ipcMain.handle('db:setBanquetaSalidaItemResult', (_, p) => {
+    const out = db.setBanquetaSalidaItemResult(p ?? {})
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:closeBanquetaSalida', (_, id) => {
+    const out = db.closeBanquetaSalida(id)
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:deleteBanquetaSalida', (_, id) => {
+    const out = db.deleteBanquetaSalida(id)
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('db:reactivarProductoBanqueta', (_, p) => {
+    const out = db.reactivarProductoBanqueta(p ?? {})
+    broadcastCuentasDataChanged()
+    return out
+  })
+  ipcMain.handle('banqueta:printSheet', async (event, payload) => {
+    const detail = payload?.detail
+    if (!detail?.salida) return { ok: false, message: 'Sin salida para imprimir.' }
+    const { writeBanquetaSheetPdf } = require('./banqueta-sheet-pdf.cjs')
+    const name = `banqueta_${detail.salida.id || 'salida'}.pdf`
+    const parent = BrowserWindow.fromWebContents(event.sender)
+    const res = await dialog.showSaveDialog(parent ?? undefined, {
+      title: 'Guardar hoja de banqueta',
+      defaultPath: path.join(app.getPath('downloads'), name),
+      buttonLabel: 'Guardar PDF',
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (res.canceled || !res.filePath) return { ok: false, cancelled: true }
+    try {
+      await writeBanquetaSheetPdf(res.filePath, detail)
+      void shell.openPath(res.filePath)
+      return { ok: true, path: res.filePath }
+    } catch (e) {
+      return { ok: false, message: String(e?.message || e) }
+    }
+  })
   ipcMain.handle('db:previewPriceAdjust', (_, payload) => db.previewPriceAdjust(payload))
   ipcMain.handle('db:applyPriceAdjust', (_, payload) => db.applyPriceAdjust(payload))
   ipcMain.handle('db:getReferencePatternStats', (_, payload) => db.getReferencePatternStats(payload))

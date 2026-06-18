@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('bazar', {
     deleteBanquetaSalida: (id) => ipcRenderer.invoke('db:deleteBanquetaSalida', id),
     reorderBanquetaSalidaItems: (payload) => ipcRenderer.invoke('db:reorderBanquetaSalidaItems', payload),
     removeBanquetaSalidaItemsBulk: (itemIds) => ipcRenderer.invoke('db:removeBanquetaSalidaItemsBulk', itemIds),
+    reactivarProductoBanqueta: (payload) => ipcRenderer.invoke('db:reactivarProductoBanqueta', payload),
     previewPriceAdjust: (payload) => ipcRenderer.invoke('db:previewPriceAdjust', payload),
     applyPriceAdjust: (payload) => ipcRenderer.invoke('db:applyPriceAdjust', payload),
     getReferencePatternStats: (payload) => ipcRenderer.invoke('db:getReferencePatternStats', payload),
@@ -157,6 +158,7 @@ contextBridge.exposeInMainWorld('bazar', {
   },
   clientImage: {
     pick: () => ipcRenderer.invoke('clientImage:pick'),
+    save: (path) => ipcRenderer.invoke('clientImage:save', path),
   },
   devices: {
     open: () => ipcRenderer.invoke('devices:open'),

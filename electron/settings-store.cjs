@@ -61,6 +61,13 @@ const DEFAULTS = {
    *  comprada y cambiarla por otra (mismo precio o pagando diferencia). */
   intercambioDiasMaximos: 30,
   /**
+   * Interés por atraso en Saldos: si una clienta no abona nada en `diasAtraso`
+   * días, el sistema SUGIERE cobrar `porcentajeAtraso`% sobre lo que aún debe
+   * (la dueña decide si lo aplica; nunca es automático). `porcentajeAtraso` es
+   * número entero (20 = 20%); el motor saldosLedger lo usa como fracción.
+   */
+  saldosConfig: { diasAtraso: 30, porcentajeAtraso: 20 },
+  /**
    * ── Onboarding (My Little Bazar v1) ────────────────────────────────
    * Bandera que decide si mostramos el flujo de bienvenida (nombre del
    * bazar + logo + plan) en vez del shell normal. El usuario lo termina

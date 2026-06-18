@@ -55,9 +55,19 @@ export function corteDelDia(ventas = [], cuentas = [], { hoy = hoyLocal() } = {}
     const total = money(v.total)
     const { base, sub } = metodoBase(v.metodo)
     const m = base === 'intercambio' ? sub : base
-    if (m === 'efectivo') { efectivoVentas += total; cambioEntregado += money(v.cambio) }
-    else if (m === 'transferencia') { transferVentas += total }
-    // 'credito' (fiado) no es plata en caja: entra por sus enganches/abonos.
+    /* Si la venta toca Saldos (fiado o saldo a favor), su efectivo/transferencia
+     * de hoy entra por los abonos de la cuenta (abajo). No se cuenta acá para no
+     * doblar. Las ventas pagadas (sin cuenta) sí se cuentan acá. */
+    const tocaSaldos = v.saldos_cliente_id != null
+    if (!tocaSaldos) {
+      if (m === 'mixto') {
+        efectivoVentas += Math.max(0, money(v.monto_efectivo) - money(v.cambio))
+        transferVentas += money(v.monto_transferencia)
+        cambioEntregado += money(v.cambio)
+      } else if (m === 'efectivo') { efectivoVentas += total; cambioEntregado += money(v.cambio) }
+      else if (m === 'transferencia') { transferVentas += total }
+      // 'credito' (fiado) no es plata en caja: entra por sus enganches/abonos.
+    }
     devolucionesEfectivo += money(v.returned_efectivo) + money(v.returned_excedente_efectivo)
     devolucionesTransferencia += money(v.returned_transferencia) + money(v.returned_excedente_transferencia)
     devolucionesSaldos += money(v.returned_saldos)

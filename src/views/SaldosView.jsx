@@ -4,6 +4,7 @@ import {
   CircleDollarSign, CalendarDays, ArrowLeft, ArrowRight, Users, ListTodo,
   MessageCircle, IdCard, Tag, Bell, Camera, X, Check, Archive, ArchiveRestore,
   Trash2, Pencil, FileText, Banknote, Smartphone, ReceiptText, Handshake,
+  Settings, Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SALDOS_CONFIG_DEFAULT, calcularCuentaSaldos, daysAgoIso, todayIso } from '@/lib/saldosLedger'
@@ -157,6 +158,7 @@ export function SaldosView() {
   const [modo, setModo] = useState('cuentas') // cuentas | nuevo | hoja
   const [selectedId, setSelectedId] = useState(null)
   const [filtroInicial, setFiltroInicial] = useState('todas')
+  const [configOpen, setConfigOpen] = useState(false)
 
   const recargar = useCallback(async () => {
     try { setCuentas(await llamar(api.listCuentas({}))) }
@@ -187,6 +189,14 @@ export function SaldosView() {
   const seleccionada = rows.find((r) => r.cuenta.id === selectedId) || null
   const abrirHoja = (id) => { setSelectedId(id); setModo('hoja') }
   const irFiltro = (f) => { setFiltroInicial(f); setModo('cuentas') }
+  const guardarConfig = async ({ diasAtraso, porcentajeAtraso }) => {
+    try {
+      await window.bazar?.settings?.set?.({ saldosConfig: { diasAtraso, porcentajeAtraso } })
+      setConfig({ diasAtraso, porcentajeAtraso: porcentajeAtraso / 100 })
+      setConfigOpen(false)
+      toast.success('Listo. El interés por atraso se actualizó.')
+    } catch { toast.error('No se pudieron guardar los ajustes.') }
+  }
 
   useEffect(() => {
     const handler = (e) => {
@@ -209,12 +219,17 @@ export function SaldosView() {
   if (modo === 'hoja' && seleccionada) {
     return <HojaScreen api={api} row={seleccionada} workspace={workspace} onBack={() => { setModo('cuentas'); void recargar() }} onChanged={recargar} />
   }
-  return <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} />
+  return (
+    <>
+      <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} onAjustes={() => setConfigOpen(true)} />
+      {configOpen && <SaldosConfigModal config={config} onClose={() => setConfigOpen(false)} onSave={guardarConfig} />}
+    </>
+  )
 }
 
 /* ── HUB ───────────────────────────────────────────────────────────── */
 
-function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro }) {
+function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro, onAjustes }) {
   const [query, setQuery] = useState('')
   const [filtro, setFiltro] = useState(filtroInicial || 'todas')
 
@@ -228,7 +243,7 @@ function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, 
           localStorage.removeItem('navigate_to')
         }
       }
-    } catch (err) {}
+    } catch { /* navigate_to corrupto: ignorar */ }
   }, [])
 
   const activas = rows.filter((r) => !r.cuenta.archivada)
@@ -275,6 +290,7 @@ function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, 
               <Search size={15} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, teléfono…" />
             </div>
+            <button className="sld-head__icon" aria-label="Ajustes de interés por atraso" title="Interés por atraso" onClick={onAjustes}><Settings size={18} strokeWidth={1.8} /></button>
             <button className="sld-head__icon" aria-label="Nuevo cliente" onClick={onNew}><UserPlus size={18} strokeWidth={1.8} /></button>
           </div>
         </header>
@@ -636,9 +652,23 @@ function IdImagen({ ruta }) {
     if (api) { api(r).then((res) => { if (alive && res?.ok) setSrc(res.dataUrl) }).catch(() => {}) }
     return () => { alive = false }
   }, [ruta])
+  const descargar = async () => {
+    const api = typeof window !== 'undefined' ? window.bazar?.clientImage?.save : null
+    if (!api) { toast.error('La descarga es solo en la app de escritorio.'); return }
+    try {
+      const r = await api(ruta)
+      if (r?.ok) toast.success('Identificación descargada.')
+      else if (!r?.cancelled) toast.error(r?.message || r?.error || 'No se pudo descargar.')
+    } catch { toast.error('No se pudo descargar.') }
+  }
   if (!ruta) return <div className="sld-idfoto sld-idfoto--vacia"><IdCard size={26} strokeWidth={1.5} /><span>Sin foto de ID</span></div>
   if (!src) return <div className="sld-idfoto sld-idfoto--vacia"><IdCard size={26} strokeWidth={1.5} /><span>Cargando…</span></div>
-  return <div className="sld-idfoto"><img src={src} alt="Identificación" /></div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+      <div className="sld-idfoto"><img src={src} alt="Identificación" /></div>
+      <button type="button" className="sld-actbtn sld-actbtn--sm" onClick={() => void descargar()}><Download size={14} strokeWidth={1.9} /> Descargar</button>
+    </div>
+  )
 }
 
 /* ── Formularios ───────────────────────────────────────────────────── */
@@ -870,6 +900,47 @@ function Field({ label, children, full }) {
 
 /* ── WhatsApp manual ───────────────────────────────────────────────── */
 
+function SaldosConfigModal({ config, onClose, onSave }) {
+  const [dias, setDias] = useState(String(config?.diasAtraso ?? 30))
+  const [pct, setPct] = useState(String(Math.round((config?.porcentajeAtraso ?? 0.2) * 100)))
+  const [busy, setBusy] = useState(false)
+  const submit = async (e) => {
+    e.preventDefault()
+    const d = Math.floor(Number(dias))
+    const p = Number(pct)
+    if (!Number.isFinite(d) || d <= 0) { toast.error('Los días deben ser mayores a 0.'); return }
+    if (!Number.isFinite(p) || p < 0 || p > 100) { toast.error('El interés debe estar entre 0 y 100%.'); return }
+    setBusy(true)
+    try { await onSave({ diasAtraso: d, porcentajeAtraso: p }) } finally { setBusy(false) }
+  }
+  return (
+    <div className="sld-modal-overlay" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="sld-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Interés por atraso" style={{ margin: 'auto' }}>
+        <div className="sld-modal__head">
+          <h2><Settings size={18} strokeWidth={2} /> Interés por atraso</h2>
+          <button type="button" className="sld-head__icon" onClick={onClose}><X size={18} /></button>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Si una clienta no abona nada en los días que fijes, el sistema te <b>sugiere</b> cobrar este % sobre lo que aún debe. Tú decides si lo aplicas — nunca se cobra solo.
+        </p>
+        <form onSubmit={submit}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Field label="Días sin abonar"><input className="sld-input" type="number" min="1" step="1" value={dias} onChange={(e) => setDias(e.target.value)} autoFocus /></Field>
+            <Field label="Interés sugerido (%)"><input className="sld-input" type="number" min="0" max="100" step="1" value={pct} onChange={(e) => setPct(e.target.value)} /></Field>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--mlb-text-muted)', margin: '8px 2px 18px' }}>
+            Hoy: {Number(pct) || 0}% después de {Number(dias) || 0} días sin abono.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="sld-form__cancel" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="sld-actbtn" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function WhatsAppModal({ cuenta, resumen, workspace, onClose }) {
   const [plantilla, setPlantilla] = useState('recordatorio')
   const tpl = WA_PLANTILLAS.find((p) => p.id === plantilla) || WA_PLANTILLAS[0]
@@ -893,8 +964,8 @@ function WhatsAppModal({ cuenta, resumen, workspace, onClose }) {
   }
 
   return (
-    <div className="sld-modal-overlay" onClick={onClose}>
-      <div className="sld-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="WhatsApp">
+    <div className="sld-modal-overlay" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="sld-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="WhatsApp" style={{ margin: 'auto' }}>
         <div className="sld-modal__head"><h2><MessageCircle size={18} strokeWidth={2} /> WhatsApp a {cuenta.nombre}</h2><button type="button" className="sld-head__icon" onClick={onClose}><X size={18} /></button></div>
         <div className="sld-wa-tpls">
           {WA_PLANTILLAS.map((p) => <button key={p.id} type="button" className={cn('sld-wa-tpl', plantilla === p.id && 'is-on')} onClick={() => setPlantilla(p.id)}>{p.label}</button>)}

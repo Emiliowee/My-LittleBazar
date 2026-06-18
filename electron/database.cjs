@@ -526,6 +526,8 @@ function ensureBanquetaSalidasSchema(database) {
       codigo_snapshot TEXT,
       nombre_snapshot TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      cantidad INTEGER NOT NULL DEFAULT 1,
+      cantidad_vendida INTEGER NOT NULL DEFAULT 0,
       vendido INTEGER NOT NULL DEFAULT 0,
       precio_vendido REAL,
       vendido_at TEXT,
@@ -555,6 +557,8 @@ function ensureBanquetaSalidaSchemaMigrations(database) {
     if (!cols.length) return
     const names = new Set(cols.map((c) => c.name))
     if (!names.has('sort_order')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
+    if (!names.has('cantidad')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN cantidad INTEGER NOT NULL DEFAULT 1')
+    if (!names.has('cantidad_vendida')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN cantidad_vendida INTEGER NOT NULL DEFAULT 0')
     if (!names.has('vendido')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN vendido INTEGER NOT NULL DEFAULT 0')
     if (!names.has('precio_vendido')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN precio_vendido REAL')
     if (!names.has('vendido_at')) database.exec('ALTER TABLE banqueta_salida_items ADD COLUMN vendido_at TEXT')
@@ -3197,12 +3201,9 @@ function addSale(payload) {
   if (items.length === 0) throw new Error('El carrito está vacío.')
 
   const notas = String(payload?.notas || '').trim()
-  const pagos = payload?.pagos || { efectivo: 0, transferencia: 0, saldo_favor: 0 }
+  const pagos = payload?.pagos || {}
   const efectivo = Number(pagos.efectivo) || 0
   const transferencia = Number(pagos.transferencia) || 0
-  const saldoFavor = Number(pagos.saldo_favor) || 0
-
-  if (efectivo < 0 || transferencia < 0 || saldoFavor < 0) throw new Error('Los pagos no pueden ser negativos.')
 
   const getProd = database.prepare(
     'SELECT id, codigo, descripcion, precio, pieza_unica, stock, estado, vendido_en FROM productos WHERE id = ?',
@@ -3243,63 +3244,86 @@ function addSale(payload) {
   const total = normalized.reduce((s, x) => s + x.precio * x.cantidad, 0)
   if (!Number.isFinite(total) || total <= 0) throw new Error('Total de venta no válido.')
 
-  // Si envían un payload viejo con `metodo` y `pagoCon`, hacer map
+  /* ── Pagos. Soporta el contrato nuevo (pagos:{efectivo,transferencia} +
+   *    clienteId + fiar) y el viejo (metodo + pagoCon + creditoMovimiento),
+   *    normalizando todo a montoEfectivo / montoTransferencia / clienteId. ── */
   let montoEfectivo = efectivo
   let montoTransferencia = transferencia
-  let montoSaldoFavor = saldoFavor
-  
-  if (payload?.metodo) {
-    if (payload.metodo === 'efectivo') montoEfectivo = Number(payload.pagoCon) || total
-    if (payload.metodo === 'transferencia') montoTransferencia = total
-  }
-  
-  const sumaPagos = montoEfectivo + montoTransferencia + montoSaldoFavor
-  const cambio = (montoEfectivo > 0 && sumaPagos > total) ? Math.max(0, sumaPagos - total) : 0
-  
-  // Total que realmente contribuye a pagar (limitado al total de la compra)
-  const pagadoSinCambio = Math.min(sumaPagos, total)
-  let faltante = total - pagadoSinCambio
+  let clienteId = Number(payload?.clienteId) || null
+  let fiar = !!payload?.fiar
 
-  if (faltante > 0.01 && !payload?.clienteId) {
-    throw new Error(`Pago insuficiente: faltan ${faltante.toFixed(2)}. Selecciona un cliente para fiar el resto.`)
+  if (payload?.metodo === 'efectivo' && payload?.pagoCon != null) montoEfectivo = Number(payload.pagoCon) || total
+  if (payload?.metodo === 'transferencia') montoTransferencia = total
+  if (payload?.metodo === 'credito' && payload?.creditoMovimiento) {
+    const cm = payload.creditoMovimiento
+    clienteId = Number(cm.saldosClienteId || cm.saldos_cliente_id) || clienteId
+    const eng = Math.max(0, Number(cm.enganche) || 0)
+    if (String(cm.engancheMetodo || cm.enganche_metodo || 'efectivo').toLowerCase() === 'transferencia') montoTransferencia += eng
+    else montoEfectivo += eng
+    fiar = true
   }
+
+  if (montoEfectivo < 0 || montoTransferencia < 0) throw new Error('Los pagos no pueden ser negativos.')
 
   const cuenta_bancaria = String(payload?.cuentaBancaria || payload?.cuenta_bancaria || '').trim()
   if (montoTransferencia > 0 && !cuenta_bancaria) {
     throw new Error('Selecciona la cuenta bancaria de la transferencia.')
   }
 
-  let metodo = 'mixto'
-  let conteo = 0
-  if (montoEfectivo > 0) conteo++
-  if (montoTransferencia > 0) conteo++
-  if (montoSaldoFavor > 0 || faltante > 0) conteo++
-
-  if (conteo === 1) {
-    if (montoEfectivo > 0) metodo = 'efectivo'
-    else if (montoTransferencia > 0) metodo = 'transferencia'
-    else metodo = 'credito'
-  }
-
-  let creditoPayload = null
-  // Si usó saldo a favor, O si quedó a deber (faltante), generamos un movimiento de crédito
-  // El ledger de saldos automáticamente absorbe el saldo a favor.
-  if (montoSaldoFavor > 0 || faltante > 0.01) {
-    const saldosClienteId = Number(payload.clienteId)
-    if (!saldosClienteId) throw new Error('Cliente inválido para crédito/saldo a favor.')
-    const cuenta = database.prepare('SELECT id FROM saldos_clientes WHERE id = ?').get(saldosClienteId)
+  if (clienteId) {
+    const cuenta = database.prepare('SELECT id FROM saldos_clientes WHERE id = ?').get(clienteId)
     if (!cuenta) throw new Error('La cuenta de Saldos no existe.')
-    
-    // Registramos la venta COMPLETA como cargo, y lo que haya dado en efec/transf como abono.
-    // Esto simplifica la libreta y usa el motor de saldos existente perfectamente.
-    creditoPayload = {
-      saldosClienteId,
-      monto: total,
-      enganche: Math.min(montoEfectivo + montoTransferencia, total), // no cuenta el saldo a favor aquí, el saldo es interno
-      engancheMetodo: montoTransferencia > montoEfectivo ? 'transferencia' : 'efectivo',
-      descripcion: `Compra en caja (${normalized.length} artículo${normalized.length === 1 ? '' : 's'})`
-    }
   }
+
+  /* Saldo a favor: se aplica AUTOMÁTICAMENTE a esta compra (hasta lo que se
+   * deba), igual que el motor saldosLedger. No es una casilla manual: si la
+   * clienta tiene saldo a favor, baja lo que paga hoy. */
+  const pagadoCaja = Math.round((montoEfectivo + montoTransferencia) * 100) / 100
+  const porCubrir = Math.max(0, Math.round((total - pagadoCaja) * 100) / 100)
+  const favorDisponible = clienteId ? favorSaldosCliente(database, clienteId) : 0
+  const favorAplicado = Math.round(Math.min(favorDisponible, porCubrir) * 100) / 100
+  const faltante = Math.round((porCubrir - favorAplicado) * 100) / 100
+  // El cambio sale SOLO del efectivo entregado de más (tarjeta/saldo nunca dan cambio).
+  const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
+  const sumaPagos = Math.round((pagadoCaja + favorAplicado) * 100) / 100
+
+  if (faltante > 0.01) {
+    if (!clienteId) throw new Error(`Pago insuficiente: faltan ${faltante.toFixed(2)}. Selecciona un cliente para fiar el resto.`)
+    if (!fiar) throw new Error(`Pago insuficiente: faltan ${faltante.toFixed(2)}. Usa «Fiar» para dejar el resto a cuenta.`)
+  }
+
+  // La venta toca Saldos si hay cliente y, o queda debiendo, o usó saldo a favor.
+  const tocaSaldos = !!clienteId && (faltante > 0.01 || favorAplicado > 0.005)
+
+  // Lo que paga HOY en caja entra como abono a la cuenta, partido por medio.
+  const abonoTotal = tocaSaldos ? Math.min(pagadoCaja, total) : 0
+  const abonoEfectivo = Math.round(Math.min(montoEfectivo, abonoTotal) * 100) / 100
+  const abonoTransferencia = Math.round((abonoTotal - abonoEfectivo) * 100) / 100
+
+  let metodo
+  {
+    let conteo = 0
+    if (montoEfectivo > 0) conteo++
+    if (montoTransferencia > 0) conteo++
+    if (faltante > 0.01 || favorAplicado > 0.005) conteo++
+    if (conteo > 1) metodo = 'mixto'
+    else if (montoTransferencia > 0) metodo = 'transferencia'
+    else if (faltante > 0.01 || favorAplicado > 0.005) metodo = 'credito'
+    else metodo = 'efectivo'
+  }
+
+  // monto_credito = lo que NO se pagó en caja (fiado + saldo a favor aplicado).
+  const montoACuenta = Math.round((favorAplicado + faltante) * 100) / 100
+
+  const creditoPayload = tocaSaldos
+    ? {
+        saldosClienteId: clienteId,
+        monto: total,
+        abonoEfectivo,
+        abonoTransferencia,
+        descripcion: `Compra en caja (${normalized.length} artículo${normalized.length === 1 ? '' : 's'})`,
+      }
+    : null
 
   const insVenta = database.prepare(
     `INSERT INTO ventas (total, pago_con, cambio, metodo, monto_efectivo, monto_transferencia, monto_credito, notas, cuenta_bancaria, saldos_cliente_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -3332,10 +3356,10 @@ function addSale(payload) {
       sumaPagos, 
       cambio, 
       metodo, 
-      montoEfectivo, 
-      montoTransferencia, 
-      montoSaldoFavor + faltante, 
-      notas, 
+      montoEfectivo,
+      montoTransferencia,
+      montoACuenta,
+      notas,
       cuenta_bancaria, 
       creditoPayload ? creditoPayload.saldosClienteId : null
     )
@@ -3360,11 +3384,19 @@ function addSale(payload) {
       const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const desc = creditoPayload.descripcion || `Fiado en caja · venta #${ventaId} · ${normalized.length} ${normalized.length === 1 ? 'artículo' : 'artículos'}`
       const movs = [{ tipo: 'cargo', fecha: hoy, monto: creditoPayload.monto, concepto: desc, referenciaIds: [ventaId] }]
-      if (creditoPayload.enganche > 0) {
+      /* Lo que paga en caja hoy entra como abono(s), partido por medio para que
+       * el corte del día cuente bien el efectivo vs la transferencia. El saldo a
+       * favor previo lo absorbe el motor automáticamente (no se registra acá). */
+      if (creditoPayload.abonoEfectivo > 0) {
         movs.push({
-          tipo: 'abono', fecha: hoy, monto: creditoPayload.enganche,
-          concepto: `Enganche venta #${ventaId}`, medio: creditoPayload.engancheMetodo || 'efectivo',
-          referenciaIds: [ventaId],
+          tipo: 'abono', fecha: hoy, monto: creditoPayload.abonoEfectivo,
+          concepto: `Enganche venta #${ventaId}`, medio: 'efectivo', referenciaIds: [ventaId],
+        })
+      }
+      if (creditoPayload.abonoTransferencia > 0) {
+        movs.push({
+          tipo: 'abono', fecha: hoy, monto: creditoPayload.abonoTransferencia,
+          concepto: `Enganche venta #${ventaId}`, medio: 'transferencia', referenciaIds: [ventaId],
         })
       }
       saldosStore.registrarMovimientos(database, creditoPayload.saldosClienteId, movs)
@@ -3392,7 +3424,7 @@ function addSale(payload) {
         piezaUnica: x.pieza,
       })),
       credito: creditoPayload
-        ? { saldosClienteId: creditoPayload.saldosClienteId, monto: creditoPayload.monto, enganche: creditoPayload.enganche }
+        ? { saldosClienteId: creditoPayload.saldosClienteId, monto: creditoPayload.monto, abonado: creditoPayload.abonoEfectivo + creditoPayload.abonoTransferencia, favorAplicado, faltante }
         : null,
     },
   })
@@ -3407,12 +3439,16 @@ function addSale(payload) {
         saldosClienteId: creditoPayload.saldosClienteId,
         tipo: 'cargo',
         monto: creditoPayload.monto,
-        enganche: creditoPayload.enganche,
+        abonado: creditoPayload.abonoEfectivo + creditoPayload.abonoTransferencia,
         ventaId,
       },
     })
   }
-  return { ok: true, ventaId, total, cambio, saldosClienteId: creditoPayload ? creditoPayload.saldosClienteId : null }
+  return {
+    ok: true, ventaId, total, cambio, metodo,
+    faltante, favorAplicado,
+    saldosClienteId: creditoPayload ? creditoPayload.saldosClienteId : null,
+  }
 }
 
 /** Tabla temporal fija para RENAME durante migración agresiva. */
@@ -4237,6 +4273,20 @@ function saldoSaldosCliente(database, clienteId) {
   return Math.max(0, Math.round(saldo * 100) / 100)
 }
 
+/* Saldo A FAVOR de una cuenta (lo que el bazar le debe a la clienta) = pagos −
+ * cargos, clamped en 0. Es el espejo de saldoSaldosCliente: una cuenta nunca
+ * tiene deuda y saldo a favor a la vez. */
+function favorSaldosCliente(database, clienteId) {
+  const r = database.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo IN ('cargo','cargo_atraso','ajuste') THEN monto ELSE 0 END), 0) AS cargos,
+      COALESCE(SUM(CASE WHEN tipo IN ('abono','descuento') THEN monto ELSE 0 END), 0) AS pagos
+    FROM saldos_movimientos WHERE cliente_id = ? AND anulado = 0
+  `).get(Number(clienteId))
+  const favor = (Number(r?.pagos) || 0) - (Number(r?.cargos) || 0)
+  return Math.max(0, Math.round(favor * 100) / 100)
+}
+
 function getVentaItemPorCodigoDevolucion(codigo) {
   const database = getDb()
   const clean = String(codigo || '').trim()
@@ -4282,6 +4332,7 @@ function registrarDevolucionRapida(payload = {}) {
   const database = getDb()
   ensureIntercambiosSchema(database)
   const codigo = String(payload?.codigo || '').trim()
+  const ventaItemId = Number(payload?.ventaItemId || payload?.venta_item_id) || null
   const metodoReembolso = String(payload?.metodoReembolso || payload?.metodo_reembolso || 'efectivo').trim().toLowerCase()
   const cuentaBancaria = String(payload?.cuentaBancaria || payload?.cuenta_bancaria || '').trim()
   /* En una venta fiada, todo el reembolso (incluyendo el excedente de lo que ya
@@ -4291,27 +4342,38 @@ function registrarDevolucionRapida(payload = {}) {
   if (!['efectivo', 'transferencia'].includes(excedenteMetodo)) excedenteMetodo = 'efectivo'
   const montoReembolso = payload?.montoReembolso != null ? Number(payload.montoReembolso) : null
 
-  if (!codigo) throw new Error('El código de prenda es obligatorio.')
   if (!['efectivo', 'transferencia'].includes(metodoReembolso)) {
     throw new Error('Método de reembolso inválido.')
   }
+  if (!ventaItemId && !codigo) throw new Error('Falta indicar el renglón o el código a devolver.')
 
-  const prod = getProductByCodigo(codigo)
-  if (!prod) {
-    throw new Error(`La prenda con código «${codigo}» no existe en el inventario.`)
+  /* Apuntar al RENGLÓN EXACTO: la UI manda el id del venta_item, así se devuelve
+   * la línea que la dueña eligió y NO la última venta del mismo código (clave si
+   * el producto se vendió en varios tickets). Si solo llega el código (atajo por
+   * escaneo), se toma la venta activa más reciente de ese producto. */
+  let item
+  if (ventaItemId) {
+    item = database.prepare(
+      `SELECT vi.*, v.metodo AS venta_metodo, v.created_at AS venta_fecha, v.id AS venta_id, v.saldos_cliente_id AS saldos_cliente_id
+         FROM venta_items vi JOIN ventas v ON v.id = vi.venta_id
+        WHERE vi.id = ? AND vi.devuelto_en IS NULL`,
+    ).get(ventaItemId)
+    if (!item) throw new Error('Ese renglón ya fue devuelto o no existe.')
+  } else {
+    const prodByCode = getProductByCodigo(codigo)
+    if (!prodByCode) throw new Error(`La prenda con código «${codigo}» no existe en el inventario.`)
+    item = database.prepare(
+      `SELECT vi.*, v.metodo AS venta_metodo, v.created_at AS venta_fecha, v.id AS venta_id, v.saldos_cliente_id AS saldos_cliente_id
+         FROM venta_items vi JOIN ventas v ON v.id = vi.venta_id
+        WHERE vi.producto_id = ? AND vi.devuelto_en IS NULL
+        ORDER BY vi.id DESC LIMIT 1`,
+    ).get(prodByCode.id)
+    if (!item) throw new Error(`La prenda «${codigo}» no figura como vendida en ninguna transacción activa (o ya fue devuelta).`)
   }
 
-  const item = database.prepare(
-    `SELECT vi.*, v.metodo AS venta_metodo, v.created_at AS venta_fecha, v.id AS venta_id, v.saldos_cliente_id AS saldos_cliente_id
-     FROM venta_items vi
-     JOIN ventas v ON v.id = vi.venta_id
-     WHERE vi.producto_id = ? AND vi.devuelto_en IS NULL
-     ORDER BY vi.id DESC LIMIT 1`
-  ).get(prod.id)
-
-  if (!item) {
-    throw new Error(`La prenda «${codigo}» no figura como vendida en ninguna transacción activa (o ya fue devuelta).`)
-  }
+  const prod = database.prepare('SELECT id, codigo, descripcion, pieza_unica, stock FROM productos WHERE id = ?').get(item.producto_id)
+  if (!prod) throw new Error('El producto de ese renglón ya no existe en el inventario.')
+  const codigoRef = codigo || String(prod.codigo || item.codigo_snapshot || '').trim()
 
   /* BLINDAJE: si la venta fue FIADA (vinculada a una cuenta de Saldos), la
    * devolución cancela el fiado en Saldos — nunca devuelve efectivo a ciegas por
@@ -4370,7 +4432,7 @@ function registrarDevolucionRapida(payload = {}) {
         const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         saldosStore.registrarMovimientos(database, saldosClienteId, [{
           tipo: 'descuento', fecha: hoy, monto: reembolso,
-          concepto: `Devolución de «${codigo}» (venta #${item.venta_id})`,
+          concepto: `Devolución de «${codigoRef}» (venta #${item.venta_id})`,
           referenciaIds: [item.venta_id],
         }])
       }
@@ -4395,7 +4457,7 @@ function registrarDevolucionRapida(payload = {}) {
     entityRef: item.venta_id,
     source: 'pdv',
     payload: {
-      codigo, ventaId: item.venta_id, productoId: prod.id, reembolso, metodoReembolso,
+      codigo: codigoRef, ventaId: item.venta_id, productoId: prod.id, reembolso, metodoReembolso,
       cantidad: cantidadDevuelta, totalRenglon,
       saldosClienteId, ventaEsCredito, deudaCancelada,
       excedente: excedenteOut, excedenteMetodo: excedenteOut > 0 ? excedenteMetodo : null,
@@ -4404,7 +4466,7 @@ function registrarDevolucionRapida(payload = {}) {
   })
 
   return {
-    ok: true, reembolso, totalRenglon, cantidad: cantidadDevuelta, ventaId: item.venta_id, productoId: prod.id, codigo,
+    ok: true, reembolso, totalRenglon, cantidad: cantidadDevuelta, ventaId: item.venta_id, productoId: prod.id, codigo: codigoRef,
     ventaEsCredito, saldosClienteId: ventaEsCredito ? saldosClienteId : null, clienteNombre,
     deudaCancelada, excedente: excedenteOut, excedenteMetodo: excedenteOut > 0 ? excedenteMetodo : null,
   }
@@ -4617,8 +4679,9 @@ function getBanquetaSalidaDetail(id) {
     .prepare(
       `SELECT i.id, i.producto_id, i.precio_snapshot, i.codigo_snapshot, i.nombre_snapshot,
               i.added_at, i.vendido, i.precio_vendido, i.vendido_at, COALESCE(i.sort_order, 0) AS sort_order,
+              COALESCE(i.cantidad, 1) AS cantidad, COALESCE(i.cantidad_vendida, 0) AS cantidad_vendida,
               p.codigo AS codigo_actual, p.descripcion AS descripcion_actual, p.precio AS precio_actual,
-              p.estado AS estado_producto
+              p.estado AS estado_producto, p.pieza_unica AS pieza_unica, p.stock AS stock_actual
        FROM banqueta_salida_items i
        JOIN productos p ON p.id = i.producto_id
        WHERE i.salida_id = ?
@@ -4628,7 +4691,7 @@ function getBanquetaSalidaDetail(id) {
   return { salida: s, items: items || [] }
 }
 
-function addProductToBanquetaSalida(salidaId, codigo) {
+function addProductToBanquetaSalida(salidaId, codigo, cantidad = 1) {
   const database = getDb()
   const sid = Number(salidaId)
   const s = database.prepare('SELECT id, estado FROM banqueta_salidas WHERE id = ?').get(sid)
@@ -4661,6 +4724,22 @@ function addProductToBanquetaSalida(salidaId, codigo) {
   const precio = Number(p.precio) || 0
   const codigoStr = String(p.codigo || '').trim()
   const nombre = String(p.descripcion || codigoStr).slice(0, 500)
+
+  /* Stock parcial: para artículos repetibles (no pieza única) la dueña elige
+   * cuántas unidades saca. Esas unidades se descuentan del stock al salir (ya no
+   * están en la tienda). Si saca todo, el producto pasa a «en_banqueta»; si deja
+   * stock, sigue «disponible» para la tienda. La pieza única siempre es 1 y se
+   * mueve por estado, sin tocar el stock. */
+  const esPieza = Number(p.pieza_unica) === 1
+  const stockDisp = Math.max(0, Math.floor(Number(p.stock) || 0))
+  let qty = Math.max(1, Math.floor(Number(cantidad) || 1))
+  if (esPieza) {
+    qty = 1
+  } else {
+    if (stockDisp < 1) throw new Error(`«${codigoStr}» no tiene stock disponible para banqueta.`)
+    if (qty > stockDisp) throw new Error(`Solo hay ${stockDisp} en stock de «${codigoStr}» (pediste ${qty}).`)
+  }
+
   const mx = database
     .prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM banqueta_salida_items WHERE salida_id = ?')
     .get(sid)
@@ -4669,10 +4748,10 @@ function addProductToBanquetaSalida(salidaId, codigo) {
     try {
       database
         .prepare(
-          `INSERT INTO banqueta_salida_items (salida_id, producto_id, precio_snapshot, codigo_snapshot, nombre_snapshot, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO banqueta_salida_items (salida_id, producto_id, precio_snapshot, codigo_snapshot, nombre_snapshot, sort_order, cantidad)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(sid, p.id, precio, codigoStr, nombre, nextOrder)
+        .run(sid, p.id, precio, codigoStr, nombre, nextOrder, qty)
     } catch (e) {
       const msg = String(e?.message || e || '')
       if (/UNIQUE constraint failed/i.test(msg)) {
@@ -4680,9 +4759,18 @@ function addProductToBanquetaSalida(salidaId, codigo) {
       }
       throw friendlySqliteError(e)
     }
-    // Auto-mover a «en_banqueta» para que desaparezca del inventario disponible.
-    if (estActual !== 'en_banqueta') {
-      database.prepare("UPDATE productos SET estado = 'en_banqueta' WHERE id = ?").run(p.id)
+    if (esPieza) {
+      if (estActual !== 'en_banqueta') {
+        database.prepare("UPDATE productos SET estado = 'en_banqueta', updated_at = datetime('now') WHERE id = ?").run(p.id)
+      }
+    } else {
+      database.prepare(
+        `UPDATE productos
+            SET stock = MAX(0, stock - @q),
+                estado = CASE WHEN (stock - @q) <= 0 THEN 'en_banqueta' ELSE estado END,
+                updated_at = datetime('now')
+          WHERE id = @id AND stock >= @q`,
+      ).run({ q: qty, id: p.id })
     }
   })
   run()
@@ -4797,7 +4885,7 @@ function scanBanquetaSalidaResult(payload = {}) {
   })()
   database.prepare(
     `UPDATE banqueta_salida_items
-        SET vendido = 1, precio_vendido = ?, vendido_at = COALESCE(vendido_at, datetime('now'))
+        SET vendido = 1, cantidad_vendida = COALESCE(cantidad, 1), precio_vendido = ?, vendido_at = COALESCE(vendido_at, datetime('now'))
       WHERE id = ?`,
   ).run(precioVendido, item.id)
   return {
@@ -4821,24 +4909,29 @@ function setBanquetaSalidaItemResult(payload = {}) {
       : null
   const row = database
     .prepare(
-      `SELECT i.id, s.estado, s.id AS salida_id FROM banqueta_salida_items i
+      `SELECT i.id, COALESCE(i.cantidad, 1) AS cantidad, s.estado, s.id AS salida_id FROM banqueta_salida_items i
        JOIN banqueta_salidas s ON s.id = i.salida_id WHERE i.id = ?`,
     )
     .get(iid)
   if (!row) throw new Error('Ítem no encontrado')
   if (row.estado === 'cerrada') throw new Error('La salida ya está cerrada')
   if (vendido === 1) {
+    // cantidad vendida: por defecto todo lo que salió; multi-stock puede vender menos.
+    const reqCant = Number(payload.cantidadVendida ?? payload.cantidad_vendida)
+    const cantVend = Number.isFinite(reqCant) && reqCant > 0
+      ? Math.min(Math.floor(reqCant), Number(row.cantidad) || 1)
+      : (Number(row.cantidad) || 1)
     database
       .prepare(
         `UPDATE banqueta_salida_items
-         SET vendido = 1, precio_vendido = ?, vendido_at = COALESCE(vendido_at, datetime('now'))
+         SET vendido = 1, cantidad_vendida = ?, precio_vendido = ?, vendido_at = COALESCE(vendido_at, datetime('now'))
          WHERE id = ?`,
       )
-      .run(precioVendido, iid)
+      .run(cantVend, precioVendido, iid)
   } else {
     database
       .prepare(
-        `UPDATE banqueta_salida_items SET vendido = 0, precio_vendido = NULL, vendido_at = NULL WHERE id = ?`,
+        `UPDATE banqueta_salida_items SET vendido = 0, cantidad_vendida = 0, precio_vendido = NULL, vendido_at = NULL WHERE id = ?`,
       )
       .run(iid)
   }
@@ -4919,33 +5012,68 @@ function closeBanquetaSalida(salidaId) {
   if (s.estado !== 'activa') throw new Error('Solo se puede cerrar una salida activa.')
   const items = database
     .prepare(
-      `SELECT id, producto_id, vendido FROM banqueta_salida_items WHERE salida_id = ?`,
+      `SELECT i.id, i.producto_id, i.vendido, COALESCE(i.precio_vendido, 0) AS precio_vendido,
+              p.pieza_unica AS pieza_unica, p.estado AS estado_producto
+         FROM banqueta_salida_items i JOIN productos p ON p.id = i.producto_id
+        WHERE i.salida_id = ?`,
     )
     .all(sid)
   let sold = 0
-  let returned = 0
+  let desactivados = 0
+  let ingreso = 0
   const run = database.transaction(() => {
     database
       .prepare(`UPDATE banqueta_salidas SET estado = 'cerrada', closed_at = datetime('now') WHERE id = ?`)
       .run(sid)
     const setVendido = database.prepare(
-      "UPDATE productos SET estado = 'vendido', vendido_en = COALESCE(vendido_en, datetime('now')) WHERE id = ?",
+      "UPDATE productos SET estado = 'vendido', vendido_en = COALESCE(vendido_en, datetime('now')), updated_at = datetime('now') WHERE id = ?",
     )
-    const setDisponible = database.prepare(
-      "UPDATE productos SET estado = 'disponible' WHERE id = ? AND LOWER(COALESCE(estado,'')) = 'en_banqueta'",
+    /* No vendidas NO vuelven al bazar: quedan «desactivado» (siguen en inventario,
+     * NO se venden, se pueden reactivar escaneando la etiqueta o eliminar). Las
+     * unidades repetibles que se sacaron ya se descontaron del stock al salir, así
+     * que las no vendidas simplemente no regresan. */
+    const setDesactivado = database.prepare(
+      "UPDATE productos SET estado = 'desactivado', updated_at = datetime('now') WHERE id = ? AND vendido_en IS NULL",
     )
     for (const it of items) {
+      const esPieza = Number(it.pieza_unica) === 1
+      const enBanqueta = String(it.estado_producto || '').toLowerCase() === 'en_banqueta'
       if (Number(it.vendido) === 1) {
-        setVendido.run(it.producto_id)
         sold += 1
-      } else {
-        setDisponible.run(it.producto_id)
-        returned += 1
+        ingreso += Number(it.precio_vendido) || 0
+        if (esPieza) setVendido.run(it.producto_id)
+        else if (enBanqueta) { setDesactivado.run(it.producto_id); desactivados += 1 }
+        // repetible con stock restante: sigue 'disponible' en la tienda.
+      } else if (esPieza || enBanqueta) {
+        setDesactivado.run(it.producto_id)
+        desactivados += 1
       }
+      // repetible no vendido con stock restante: las unidades sacadas no vuelven.
     }
   })
   run()
-  return { ok: true, sold, returned }
+  return { ok: true, sold, desactivados, ingreso: Math.round(ingreso * 100) / 100 }
+}
+
+/* Reactivar un producto «desactivado» (volvió de banqueta sin venderse y la dueña
+ * decide traerlo de vuelta a la tienda). Lo regresa a «disponible». Para piezas
+ * repetibles que quedaron en 0, conviene además ajustar el stock al reactivar. */
+function reactivarProductoBanqueta(payload = {}) {
+  const database = getDb()
+  const id = Number(payload?.productoId || payload?.id || payload)
+  if (!Number.isFinite(id) || id <= 0) throw new Error('Producto inválido.')
+  const p = database.prepare('SELECT id, estado, pieza_unica, stock FROM productos WHERE id = ?').get(id)
+  if (!p) throw new Error('Producto no encontrado.')
+  if (String(p.estado || '').toLowerCase() !== 'desactivado') {
+    throw new Error('Solo se pueden reactivar productos desactivados.')
+  }
+  const nuevoStock = payload?.stock != null && Number.isFinite(Number(payload.stock))
+    ? Math.max(0, Math.floor(Number(payload.stock)))
+    : (Number(p.pieza_unica) === 1 ? 1 : Math.max(1, Math.floor(Number(p.stock) || 0) || 1))
+  database.prepare(
+    "UPDATE productos SET estado = 'disponible', stock = ?, vendido_en = NULL, updated_at = datetime('now') WHERE id = ?",
+  ).run(nuevoStock, id)
+  return { ok: true, id, stock: nuevoStock }
 }
 
 function deleteBanquetaSalida(salidaId) {
@@ -5071,6 +5199,7 @@ module.exports = {
   deleteBanquetaSalida,
   reorderBanquetaSalidaItems,
   removeBanquetaSalidaItemsBulk,
+  reactivarProductoBanqueta,
   getMonserratDbPath,
   nombreEtiquetaDesdeTagsPayload,
   getCuadernoTagGroups,
