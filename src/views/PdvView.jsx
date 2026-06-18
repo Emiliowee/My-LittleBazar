@@ -973,6 +973,11 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   <div style={{fontSize: '24px', fontWeight: '700', fontFamily: 'var(--mlb-font-mono)'}}>{formatPrice(total)}</div>
                 </div>
 
+                <div className="posw-deuda-box">
+                  <span>Queda debiendo</span>
+                  <strong>{formatPrice(faltante)}</strong>
+                </div>
+
                 <div style={{marginTop: '4px', fontSize: '13px', fontWeight: '600', color: 'var(--mlb-text-secondary)'}}>
                   Enganche (lo que deja hoy a cuenta) — opcional
                 </div>
@@ -1001,11 +1006,6 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
                   <div className="posw-input-group">
                     <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posw-input" disabled={!clienteSelec || maxSaldoFavor === 0} placeholder="0"/>
                   </div>
-                </div>
-
-                <div className="posw-deuda-box">
-                  <span>Queda debiendo</span>
-                  <strong>{formatPrice(faltante)}</strong>
                 </div>
 
                 <div className="posw-actions">
