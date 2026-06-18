@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowLeft, Building2, Paintbrush, Printer, Database, Info,
   ImageIcon, RotateCcw, AlertTriangle, Settings2, Tags, ChevronDown,
-  Smile, Search, ReceiptText, Ruler, Users, Scale, ShieldAlert,
+  Smile, Search, ReceiptText, Ruler,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
@@ -25,9 +25,8 @@ const DEFAULT_LOGO = '/branding/logo.jpg'
 const SECTIONS = [
   { id: 'workspace',  label: 'Mi bazar',     icon: Building2 },
   { id: 'categorias', label: 'Categorías',   icon: Tags },
+  { id: 'appearance', label: 'Apariencia',   icon: Paintbrush },
   { id: 'printing',   label: 'Impresión',    icon: Printer },
-  { id: 'politicas',  label: 'Políticas',    icon: Scale },
-  { id: 'usuarios',   label: 'Usuarios',     icon: Users },
   { id: 'data',       label: 'Base de datos',icon: Database },
   { id: 'about',      label: 'Sistema',      icon: Info },
 ]
@@ -147,8 +146,6 @@ export function LauncherSettingsView({ onBack, onOpenLabelEditor }) {
                         />
                       )
                       : null}
-                    {active === 'politicas'  ? <PoliticasSection /> : null}
-                    {active === 'usuarios'   ? <UsuariosSection /> : null}
                     {active === 'data'       ? <DataSection /> : null}
                     {active === 'about'      ? <AboutSection /> : null}
                   </div>
@@ -302,8 +299,6 @@ const TICKET_DESIGN_DEFAULT = {
   footerText: 'Gracias por tu compra',
   showItemCodes: true,
   showCreditSignature: true,
-  showLogo: true,
-  showCashierName: true,
 }
 
 function normalizeTicketDesign(raw) {
@@ -317,8 +312,6 @@ function normalizeTicketDesign(raw) {
     footerText: String(src.footerText ?? TICKET_DESIGN_DEFAULT.footerText),
     showItemCodes: src.showItemCodes !== false,
     showCreditSignature: src.showCreditSignature !== false,
-    showLogo: src.showLogo !== false,
-    showCashierName: src.showCashierName !== false,
   }
 }
 
@@ -476,16 +469,6 @@ function PrintingSection({ settings, onPatch, onOpenLabelEditor }) {
 
               <div className="grid gap-2 rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-hover)] p-3">
                 <TicketToggle
-                  label="Imprimir Logo del negocio"
-                  checked={ticketDesign.showLogo}
-                  onChange={(checked) => patchTicket({ showLogo: checked })}
-                />
-                <TicketToggle
-                  label="Nombre del Cajero (Ej. Atendió: Monserrat)"
-                  checked={ticketDesign.showCashierName}
-                  onChange={(checked) => patchTicket({ showCashierName: checked })}
-                />
-                <TicketToggle
                   label="Mostrar códigos de producto"
                   checked={ticketDesign.showItemCodes}
                   onChange={(checked) => patchTicket({ showItemCodes: checked })}
@@ -553,11 +536,6 @@ function TicketPreview({ settings, design }) {
         <span className="rounded-full bg-[var(--mlb-bg-active)] px-2 py-0.5 text-[11px] font-semibold text-[var(--mlb-text-muted)]">{design.paperWidthMm} mm</span>
       </div>
       <div className="mx-auto max-w-[190px] rounded-sm bg-white px-3 py-4 font-mono text-[#111827] shadow-[0_18px_45px_rgba(15,23,42,0.14)]">
-        {design.showLogo && settings.workspaceLogoPath ? (
-          <div className="flex justify-center mb-2">
-            <img src={localPathToFileUrl(settings.workspaceLogoPath)} alt="Logo" className="size-10 object-contain grayscale" />
-          </div>
-        ) : null}
         <div className="text-center text-[12px] font-bold uppercase leading-tight">{name}</div>
         {design.subtitle ? <div className="mt-1 text-center text-[8px] uppercase tracking-wide text-[#6b7280]">{design.subtitle}</div> : null}
         <div className="my-3 border-t border-dashed border-[#9ca3af]" />
@@ -569,7 +547,6 @@ function TicketPreview({ settings, design }) {
         </div>
         <div className="my-3 border-t border-[#111827]" />
         <div className="flex justify-between text-[11px] font-bold"><span>TOTAL</span><span>$430.00</span></div>
-        {design.showCashierName ? <div className="mt-2 text-[8px] text-[#6b7280]">Atendió: Cajero Principal</div> : null}
         {design.showCreditSignature ? <div className="mt-6 border-t border-[#111827] pt-1 text-center text-[7px] text-[#6b7280]">Firma si es fiado</div> : null}
         {design.footerText ? <div className="mt-4 text-center text-[8px] font-semibold">{design.footerText}</div> : null}
       </div>
@@ -698,7 +675,7 @@ function EmojiPickerPopover({ value, onPick, onClear }) {
           {value ? 'Cambiar emoji' : 'Elegir emoji…'}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={8} className="z-[220] w-[420px] p-0 rounded-xl shadow-xl">
+      <PopoverContent align="start" sideOffset={8} className="z-[220] w-[320px] p-0">
         <div className="border-b border-[var(--mlb-border)] p-2">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--mlb-text-muted)]" />
@@ -712,12 +689,12 @@ function EmojiPickerPopover({ value, onPick, onClear }) {
           </div>
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-3">
+        <div className="max-h-64 overflow-y-auto p-2">
           {results ? (
             results.length > 0 ? (
               <div className="grid grid-cols-8 gap-0.5">
                 {results.map((it) => (
-                  <button key={it.e} type="button" title={it.k} onClick={() => choose(it.e)} className="grid size-11 place-items-center rounded-lg text-[24px] leading-none transition-colors hover:bg-[var(--mlb-bg-hover)]">
+                  <button key={it.e} type="button" title={it.k} onClick={() => choose(it.e)} className="grid size-9 place-items-center rounded-md text-[20px] leading-none transition-colors hover:bg-[var(--mlb-bg-hover)]">
                     {it.e}
                   </button>
                 ))}
@@ -731,7 +708,7 @@ function EmojiPickerPopover({ value, onPick, onClear }) {
                 <p className="px-1 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wide text-[var(--mlb-text-muted)]">{g.label}</p>
                 <div className="grid grid-cols-8 gap-0.5">
                   {g.items.map((it) => (
-                    <button key={g.label + it.e} type="button" title={it.k} onClick={() => choose(it.e)} className="grid size-11 place-items-center rounded-lg text-[24px] leading-none transition-colors hover:bg-[var(--mlb-bg-hover)]">
+                    <button key={g.label + it.e} type="button" title={it.k} onClick={() => choose(it.e)} className="grid size-9 place-items-center rounded-md text-[20px] leading-none transition-colors hover:bg-[var(--mlb-bg-hover)]">
                       {it.e}
                     </button>
                   ))}
@@ -944,28 +921,3 @@ function CategoriasSection({ settings, onPatch }) {
   )
 }
 
-function PoliticasSection() {
-  return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <SectionHeader title="Pol�ticas y Reglas" description="Configura el comportamiento autom�tico de Saldos y ventas de Banqueta." />
-      <PremiumCard className="p-8 flex flex-col items-center text-center gap-4">
-        <Scale size={48} className="text-[var(--mlb-accent)] opacity-80" />
-        <h3 className="text-[18px] font-bold text-[var(--mlb-text-primary)]">En construcci�n</h3>
-        <p className="text-[14px] text-[var(--mlb-text-muted)] max-w-sm">Aqu� podr�s configurar los intereses moratorios (Ej. 20% mensual) y el tiempo l�mite para pasar productos a Banqueta.</p>
-      </PremiumCard>
-    </div>
-  )
-}
-
-function UsuariosSection() {
-  return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <SectionHeader title="Usuarios y Permisos" description="Controla qui�n tiene acceso a qu� partes del sistema." />
-      <PremiumCard className="p-8 flex flex-col items-center text-center gap-4">
-        <Users size={48} className="text-[var(--mlb-accent)] opacity-80" />
-        <h3 className="text-[18px] font-bold text-[var(--mlb-text-primary)]">En construcci�n</h3>
-        <p className="text-[14px] text-[var(--mlb-text-muted)] max-w-sm">Pr�ximamente podr�s agregar a otros empleados y configurarles un PIN para que no vean tus ganancias totales.</p>
-      </PremiumCard>
-    </div>
-  )
-}
