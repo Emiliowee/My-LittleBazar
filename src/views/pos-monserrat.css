@@ -497,7 +497,7 @@
   align-items: center;
   gap: 12px;
   box-shadow: 0 10px 20px rgba(255, 107, 158, 0.3);
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   z-index: 1;
@@ -521,7 +521,7 @@
 
 .pos-checkout:hover:not(:disabled) {
   transform: scale(0.98);
-  box-shadow: 6px 6px 0px var(--mlb-text-primary);
+  box-shadow: 4px 4px 0px var(--mlb-text-primary);
   background-color: var(--mlb-accent-hover);
   border-color: var(--mlb-text-primary);
   border-radius: 8px;
@@ -1078,7 +1078,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: var(--mlb-bg-app);
   border-radius: 12px;
   border: 1px solid #e4e7ec;
   overflow: hidden;
@@ -1160,19 +1160,18 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: 12px;
-  padding: 16px;
+  gap: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .pos-sr__master {
-  width: 32%;
-  min-width: 300px;
+  width: 42%;
+  min-width: 360px;
   display: flex;
   flex-direction: column;
   overflow: auto;
-  background: var(--mlb-bg-app);
-  border: 1px solid #e4e7ec;
-  border-radius: 8px;
+  background: transparent;
 }
 
 /* ── Inbox List Styles ── */
@@ -1213,9 +1212,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--mlb-bg-app);
-  border: 1px solid #e4e7ec;
-  border-radius: 8px;
+  background: transparent;
+  border-radius: 0;
+  border-left: 12px solid #f1f5f9;
   overflow: hidden;
 }
 
