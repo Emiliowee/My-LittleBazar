@@ -1265,126 +1265,117 @@ function BanquetaWorkspace() {
             )}
           </>
         ) : (
-          /* ───────── Detalle: Layout de 2 columnas nativo ───────── */
-          <>
-            <div className="pos-tool__head" style={{ paddingBottom: 16, marginBottom: 16 }}>
+                    /* ───────── Detalle: Layout nativo POS (pos-ventas) ───────── */
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className="pos-tool__head" style={{ paddingBottom: 16, marginBottom: 20 }}>
               <div className="pos-tool__head-left" style={{ gap: 12 }}>
                 <button type="button" className="pos-tool__ghost" style={{ padding: 6, borderRadius: '50%' }} onClick={() => setSelId(null)} aria-label="Volver"><ArrowLeft size={18} /></button>
                 <h2>{salida.nombre || `#${salida.id}`}</h2>
+                <span className="pos-ventas__tag" style={{ marginLeft: 8, background: estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{estadoBadge(estado)}</span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, minHeight: '60vh' }}>
-              {/* Columna Izquierda */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="pos-ventas">
+              {/* Main Area (Izquierda) */}
+              <div className="pos-ventas__main">
                 {editable && (
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <form onSubmit={(e) => { e.preventDefault(); void agregar() }} style={{ flex: 1, display: 'flex', gap: 8 }}>
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', border: '1px solid var(--mlb-border-strong)', borderRadius: 8, height: 42, background: 'var(--mlb-bg-app)' }}>
-                        <Barcode size={18} style={{ color: 'var(--mlb-text-muted)' }} />
-                        <input autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea la etiqueta aquí..." style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 14 }} />
-                      </div>
-                      <input className="pos-input" style={{ width: 48, height: 42, textAlign: 'center' }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
-                      <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
-                    </form>
-                    <button type="button" onClick={() => setAddOpen(true)} style={{ height: 42, padding: '0 16px', borderRadius: 8, border: '1px solid var(--mlb-border-strong)', background: 'var(--mlb-bg-panel)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>
-                      <Search size={16} /> Buscar manual
+                  <form className="pos-ventas__head" onSubmit={(e) => { e.preventDefault(); void agregar() }}>
+                    <div className="pos-ventas__scan">
+                      <Barcode size={22} />
+                      <input className="pos-input" autoFocus value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Escanea la etiqueta aquí..." />
+                    </div>
+                    <input className="pos-input" style={{ width: 64, textAlign: 'center' }} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" title="Cantidad" />
+                    <button type="button" className="pos-tool__ghost" style={{ padding: '0 16px', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => setAddOpen(true)}>
+                      <Search size={18} /> Buscar manual
                     </button>
+                    <button type="submit" style={{ display: 'none' }} disabled={busy}>Agregar</button>
+                  </form>
+                )}
+
+                <div className="pos-ventas__list" style={{ marginTop: editable ? 0 : 12, paddingRight: 4 }}>
+                  {items.length === 0 ? (
+                    <div className="pos-ventas__empty">
+                      <Store size={48} strokeWidth={1} style={{ marginBottom: 12, opacity: 0.5 }} />
+                      <h3>No hay prendas aún</h3>
+                      <p>{editable ? 'Escanea o busca productos para empezar a armar la salida.' : 'Esta salida no tiene prendas.'}</p>
+                    </div>
+                  ) : items.map((it) => {
+                    const e = edits[it.id] || {}
+                    const multi = Number(it.cantidad) > 1
+                    const vend = Number(it.vendido) === 1
+                    return (
+                      <div key={it.id} className={`pos-ventas__row ${vend ? 'is-returned' : ''}`} style={{ cursor: 'default' }}>
+                        <div className="pos-ventas__rowmain" style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <div className="pos-ventas__id">{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
+                            <div className="pos-ventas__meta">{it.codigo_snapshot} · {formatPrice(it.precio_snapshot)}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <div style={{ textAlign: 'right' }}>
+                            {cerrada ? (
+                              <span style={{ fontWeight: 600, fontSize: 13, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? formatPrice(it.precio_vendido) : 'No vendida'}</span>
+                            ) : (
+                              <span style={{ fontSize: 12, fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? 'Vendida' : 'Pendiente'}</span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, minWidth: 100 }}>
+                            {editable && (
+                              <button type="button" className="pos-tool__ghost" style={{ padding: '6px 8px' }} disabled={busy} onClick={() => void quitar(it.id)}><Trash2 size={16} /></button>
+                            )}
+                            {enCurso && (
+                              <>
+                                {multi && <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 32 }} inputMode="numeric" />}
+                                <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 76, height: 32, textAlign: 'right' }} inputMode="decimal" placeholder="$" />
+                                <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 32, padding: '0 12px', fontSize: 13 }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Sidebar Area (Derecha) */}
+              <div className="pos-ventas__side">
+                {(enCurso || cerrada) && (
+                  <div className="pos-ventas__cuenta" style={{ background: 'var(--mlb-bg-app)', border: '1px solid var(--mlb-border)' }}>
+                    <div className="pos-ventas__cuenta-head">Total Ingresos</div>
+                    <div className="pos-ventas__cuenta-amount" style={{ color: 'var(--mlb-success)' }}>{formatPrice(ingreso)}</div>
                   </div>
                 )}
 
-                <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Prenda</th>
-                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Ref</th>
-                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>Estado</th>
-                        <th style={{ padding: '10px 12px', background: 'var(--mlb-bg-app)', borderBottom: '1px solid var(--mlb-border)', color: 'var(--mlb-text-secondary)', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} style={{ padding: 32, textAlign: 'center', color: 'var(--mlb-text-muted)' }}>No hay prendas aún.</td>
-                        </tr>
-                      ) : items.map((it) => {
-                        const e = edits[it.id] || {}
-                        const multi = Number(it.cantidad) > 1
-                        const vend = Number(it.vendido) === 1
-                        return (
-                          <tr key={it.id} style={{ background: vend ? 'color-mix(in srgb, var(--mlb-success) 5%, transparent)' : 'transparent' }}>
-                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>
-                              <div style={{ fontWeight: 600 }}>{it.nombre_snapshot || it.codigo_snapshot}{multi ? ` ×${it.cantidad}` : ''}</div>
-                              <div style={{ fontSize: 11, color: 'var(--mlb-text-muted)', fontFamily: 'var(--mlb-font-mono)' }}>{it.codigo_snapshot}</div>
-                            </td>
-                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>{formatPrice(it.precio_snapshot)}</td>
-                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)' }}>
-                              {cerrada ? (
-                                <span style={{ fontWeight: 600, color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? formatPrice(it.precio_vendido) : 'No vendida'}</span>
-                              ) : (
-                                <span style={{ color: vend ? 'var(--mlb-success)' : 'var(--mlb-text-muted)' }}>{vend ? 'Vendida' : 'Pendiente'}</span>
-                              )}
-                            </td>
-                            <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--mlb-border)', textAlign: 'right' }}>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                                {editable && (
-                                  <button type="button" className="pos-tool__ghost" style={{ padding: '6px 8px' }} disabled={busy} onClick={() => void quitar(it.id)}><Trash2 size={15} /></button>
-                                )}
-                                {enCurso && (
-                                  <>
-                                    {multi && <input className="pos-input" value={e.cant ?? ''} onChange={(ev) => setEdit(it.id, 'cant', ev.target.value)} style={{ width: 44, height: 30 }} inputMode="numeric" />}
-                                    <input className="pos-input" value={e.precio ?? ''} onChange={(ev) => setEdit(it.id, 'precio', ev.target.value)} style={{ width: 70, height: 30, textAlign: 'right' }} inputMode="decimal" placeholder="$" />
-                                    <button type="button" className={vend ? 'pos-tool__ghost' : 'pos-confirm-btn'} style={{ height: 30, padding: '0 10px', fontSize: 12 }} disabled={busy} onClick={() => void marcarResultado(it, !vend)}>{vend ? '✓' : 'Vender'}</button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Columna Derecha (Sidebar nativo) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ border: '1px solid var(--mlb-border)', borderRadius: 8, padding: 16, background: 'var(--mlb-bg-app)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 12, color: 'var(--mlb-text-muted)' }}>{salida.lugar || 'Ubicación'}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{fechaPlan(salida.fecha_planeada)}</div>
-                    </div>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: estado === 'activa' ? 'color-mix(in srgb, var(--mlb-success) 15%, transparent)' : 'var(--mlb-bg-panel)', color: estado === 'activa' ? 'var(--mlb-success)' : 'var(--mlb-text-muted)', fontWeight: 600, alignSelf: 'flex-start' }}>{estadoBadge(estado)}</span>
+                <div className="pos-ventas__detail" style={{ background: 'var(--mlb-bg-app)', borderRadius: 12, padding: 16, border: '1px solid var(--mlb-border)' }}>
+                  <div style={{ borderBottom: '1px solid var(--mlb-border)', paddingBottom: 12, marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', marginBottom: 2 }}>{salida.lugar || 'Ubicación'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--mlb-text-primary)' }}>{fechaPlan(salida.fecha_planeada)}</div>
                   </div>
 
-                  {(enCurso || cerrada) && (
-                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Total Prendas</span><strong>{items.length}</strong></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Vendidas</span><strong>{vendidos.length}</strong></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Pendientes</span><strong>{items.length - vendidos.length}</strong></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--mlb-border)' }}><span style={{ color: 'var(--mlb-text-muted)' }}>Ingresos</span><strong style={{ color: 'var(--mlb-success)' }}>{formatPrice(ingreso)}</strong></div>
+                  {(enCurso || cerrada) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Prendas totales</span><strong style={{ fontFamily: 'var(--mlb-font-mono)' }}>{items.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Vendidas</span><strong style={{ fontFamily: 'var(--mlb-font-mono)' }}>{vendidos.length}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Pendientes</span><strong style={{ fontFamily: 'var(--mlb-font-mono)' }}>{items.length - vendidos.length}</strong></div>
                     </div>
-                  )}
-
-                  {editable && (
-                    <div style={{ borderTop: '1px solid var(--mlb-border)', paddingTop: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Prendas listas</span><strong>{items.length}</strong></div>
-                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: 'var(--mlb-text-muted)' }}>Prendas listas</span><strong style={{ fontFamily: 'var(--mlb-font-mono)' }}>{items.length}</strong></div>
                   )}
                 </div>
 
-                {editable && <button type="button" className="pos-confirm-btn" style={{ width: '100%', padding: 12, fontSize: 14 }} disabled={busy || items.length === 0} onClick={() => void activar()}>Activar Salida →</button>}
-                {enCurso && <button type="button" className="pos-confirm-btn" style={{ width: '100%', padding: 12, fontSize: 14, background: 'var(--mlb-success)' }} disabled={busy} onClick={() => setCierreOpen(true)}>Cerrar Venta</button>}
+                {editable && <button type="button" className="pos-confirm-btn" style={{ width: '100%', height: 48, fontSize: 15 }} disabled={busy || items.length === 0} onClick={() => void activar()}>Activar Salida →</button>}
+                {enCurso && <button type="button" className="pos-confirm-btn" style={{ width: '100%', height: 48, fontSize: 15, background: 'var(--mlb-success)' }} disabled={busy} onClick={() => setCierreOpen(true)}>Cerrar Venta</button>}
 
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(editable || enCurso) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: '8px', fontSize: 12, borderRadius: 6 }} disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={15} /> Imprimir</button>}
-                  {(editable || cerrada) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: '8px', fontSize: 12, borderRadius: 6, color: 'var(--mlb-danger)' }} disabled={busy} onClick={() => void eliminar()}><Trash2 size={15} /> {cerrada ? 'Eliminar' : 'Descartar'}</button>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  {(editable || enCurso) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, fontSize: 13, borderRadius: 10 }} disabled={busy || items.length === 0} onClick={() => void imprimirHoja()}><Printer size={16} /> Imprimir</button>}
+                  {(editable || cerrada) && <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 10, fontSize: 13, borderRadius: 10, color: 'var(--mlb-danger)' }} disabled={busy} onClick={() => void eliminar()}><Trash2 size={16} /> {cerrada ? 'Eliminar' : 'Descartar'}</button>}
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
