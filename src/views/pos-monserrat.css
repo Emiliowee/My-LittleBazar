@@ -1658,3 +1658,242 @@
 .posc-btn-confirm:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
 .posc-btn-confirm.is-fiar { background: #d97706; }
 .posc-btn-confirm.is-fiar:hover:not(:disabled) { background: #b45309; }
+/* -- Premium Wireframe Checkout Modal -- */
+.posw-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.posw-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.posw-side-tab {
+  position: absolute;
+  left: -48px;
+  top: 60px;
+  width: 48px;
+  height: 48px;
+  background: var(--mlb-bg-panel);
+  border: 1px solid var(--mlb-border-strong);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mlb-text-muted);
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+.posw-side-tab.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: -4px 0 15px rgba(37, 99, 235, 0.3);
+}
+
+.posw-modal {
+  width: 480px;
+  max-width: 95vw;
+  background: var(--mlb-bg-panel);
+  border: 1px solid var(--mlb-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  color: var(--mlb-text-primary);
+  position: relative;
+  z-index: 11;
+  overflow: hidden;
+}
+
+.posw-header {
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.posw-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.posw-close {
+  background: transparent;
+  border: none;
+  color: var(--mlb-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.posw-close:hover {
+  background: var(--mlb-bg-hover);
+  color: var(--mlb-text-primary);
+}
+
+.posw-totals {
+  margin: 0 24px 20px 24px;
+  background: var(--mlb-bg-app);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border: 1px solid var(--mlb-border);
+}
+.posw-tcol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.posw-tcol.right { text-align: right; }
+.posw-tlabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mlb-text-secondary);
+}
+.posw-tval {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mlb-font-mono);
+  line-height: 1;
+}
+.posw-tval.cambio { color: #4ade80; }
+.posw-tval.falta { color: #f59e0b; }
+
+.posw-body {
+  padding: 0 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.posw-field-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.posw-field-label {
+  width: 100px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mlb-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.posw-field-label svg { color: var(--mlb-text-muted); }
+
+.posw-input-group {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+.posw-input, .posw-select {
+  width: 100%;
+  background: var(--mlb-bg-app);
+  border: 1px solid var(--mlb-border-strong);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mlb-text-primary);
+  font-family: var(--mlb-font-mono);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.posw-input:focus, .posw-select:focus {
+  border-color: var(--mlb-text-secondary);
+  background: var(--mlb-bg-panel);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+}
+.posw-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.posw-select { font-family: var(--mlb-font-sans); cursor: pointer; }
+
+.posw-fiar-info {
+  background: var(--mlb-bg-app);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--mlb-text-secondary);
+  border: 1px solid var(--mlb-border);
+  line-height: 1.5;
+}
+.posw-fiar-info strong { color: var(--mlb-text-primary); }
+
+.posw-deuda-box {
+  margin-top: 4px;
+  background: rgba(217, 119, 6, 0.15);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.posw-deuda-box span { font-weight: 600; color: #d97706; }
+.posw-deuda-box strong { font-size: 18px; font-weight: 700; color: #d97706; font-family: var(--mlb-font-mono); }
+
+.posw-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--mlb-text-muted);
+  margin-top: -8px;
+}
+
+.posw-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.posw-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.posw-btn-outline {
+  background: transparent;
+  border: 1px solid var(--mlb-border-strong);
+  color: var(--mlb-text-primary);
+}
+.posw-btn-outline:hover {
+  background: var(--mlb-bg-hover);
+}
+.posw-btn-primary {
+  background: var(--mlb-bg-active);
+  border: 1px solid var(--mlb-border-strong);
+  color: var(--mlb-text-primary);
+}
+.posw-btn-primary:hover:not(:disabled) {
+  background: var(--mlb-text-primary);
+  color: var(--mlb-bg-panel);
+}
+.posw-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

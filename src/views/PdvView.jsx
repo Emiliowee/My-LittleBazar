@@ -812,10 +812,8 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
   
   const [clienteId, setClienteId] = useState('')
-  const [busqueda, setBusqueda] = useState('')
   
   const [modoFiar, setModoFiar] = useState(false)
-  const [verInfoCliente, setVerInfoCliente] = useState(false)
   
   const valEfectivo = Number(efectivo) || 0
   const valTransferencia = Number(transferencia) || 0
@@ -857,7 +855,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
         cuentaBancaria: valTransferencia > 0 ? cuenta : null
       })
     } else {
-      if (faltante > 0) { toast.error('Falta dinero para cubrir el total. Usa "Fiar" si el cliente no pagará completo.'); return }
+      if (faltante > 0) { toast.error('Falta dinero para cubrir el total.'); return }
       onCobrar({
         pagos: { efectivo: valEfectivo, transferencia: valTransferencia, saldo_favor: valSaldoFavor },
         clienteId: clienteSelec?.id || null,
@@ -866,161 +864,161 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
     }
   }
 
-  const clientesFiltrados = (clientes || []).filter(c => (c.nombre || '').toLowerCase().includes((busqueda || '').toLowerCase()))
-  
   return (
-    <div className="posc-overlay" onClick={onClose}>
-      <div className="posc-window" onClick={e => e.stopPropagation()} role="dialog" aria-label="Cobrar Venta">
+    <div className="posw-overlay" onClick={onClose}>
+      <div className="posw-wrapper" onClick={e => e.stopPropagation()} role="dialog" aria-label="Cobrar Venta">
         
-        <div className="posc-header">
-          <h2>Cobrar Venta</h2>
-          <button type="button" className="posc-close" onClick={onClose}><X size={20}/></button>
+        <div className={`posw-side-tab ${clienteSelec ? 'is-active' : ''}`}>
+          <User size={20} strokeWidth={2.5}/>
         </div>
 
-        <div className="posc-topbar">
-          <div className="posc-tot-box">
-            <label>TOTAL</label>
-            <div className="posc-tot-val">{formatPrice(total)}</div>
-          </div>
-          <div className="posc-tot-box posc-tot-box--pagado">
-            <label>SU PAGO</label>
-            <div className="posc-tot-val">{formatPrice(sumaPagos)}</div>
-          </div>
-          <div className={`posc-tot-box posc-tot-box--${faltante > 0 ? 'falta' : 'cambio'}`}>
-            <label>{faltante > 0 ? 'FALTA' : 'CAMBIO'}</label>
-            <div className="posc-tot-val">{formatPrice(faltante > 0 ? faltante : cambio)}</div>
-          </div>
-        </div>
-
-        <div className="posc-body">
-          {/* Panel Izquierdo: Pagos */}
-          <div className="posc-pay-section">
-            {!modoFiar ? (
-              <h3 className="posc-section-title">Métodos de Pago</h3>
-            ) : (
-              <h3 className="posc-section-title" style={{color: '#d97706'}}>Fiar a Saldos - Enganche</h3>
-            )}
-
-            <table className="posc-pay-table">
-              <thead>
-                <tr>
-                  <th>Forma de Pago</th>
-                  <th style={{textAlign: 'right', width: '150px'}}>Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><Banknote size={16} color="#10b981" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Efectivo</td>
-                  <td>
-                    <div className="posc-input-wrapper">
-                      <span>$</span>
-                      <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posc-input-td"/>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td><Smartphone size={16} color="#3b82f6" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Tarjeta / Transf.</td>
-                  <td>
-                    <div className="posc-input-wrapper">
-                      <span>$</span>
-                      <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posc-input-td"/>
-                    </div>
-                  </td>
-                </tr>
-                {clienteSelec && maxSaldoFavor > 0 && (
-                  <tr>
-                    <td><Handshake size={16} color="#c2185b" style={{verticalAlign: 'text-bottom', marginRight: 6}}/>Saldo a Favor (Disp: {formatPrice(maxSaldoFavor)})</td>
-                    <td>
-                      <div className="posc-input-wrapper" style={{color: '#c2185b'}}>
-                        <span>$</span>
-                        <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posc-input-td" style={{color: '#c2185b'}}/>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-
-            {valTransferencia > 0 && (
-              <div className="posc-bank-select">
-                <label>Cuenta Receptora de Tarjeta / Transf.</label>
-                <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posc-select">
-                  <option value="" disabled>Seleccione...</option>
-                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+        <div className="posw-modal">
+          {!modoFiar ? (
+            /* ================= ESTADO COBRAR ================= */
+            <>
+              <div className="posw-header">
+                <h2>Cobrar venta</h2>
+                <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
               </div>
-            )}
 
-            {modoFiar && (
-              <div className="posc-fiar-resume">
-                Deuda a registrar tras este enganche: <strong>{formatPrice(faltante)}</strong>
+              <div className="posw-totals">
+                <div className="posw-tcol">
+                  <span className="posw-tlabel">Total a pagar</span>
+                  <span className="posw-tval">{formatPrice(total)}</span>
+                </div>
+                <div className="posw-tcol right">
+                  <span className="posw-tlabel">Cambio</span>
+                  <span className="posw-tval cambio">{formatPrice(cambio)}</span>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Panel Derecho: Cliente y Acciones */}
-          <div className="posc-side-section">
-            <h3 className="posc-section-title">Cliente Asociado</h3>
-            
-            {clienteSelec ? (
-              <div className="posc-customer-card">
-                 <div className="posc-cust-head">
-                   <strong>{clienteSelec.nombre}</strong>
-                   <button type="button" onClick={() => { setClienteId(''); setSaldoFavor(''); setModoFiar(false); setVerInfoCliente(false); }} className="posc-btn-icon" title="Quitar cliente"><X size={16}/></button>
-                 </div>
-                 
-                 <div className="posc-cust-stats">
-                    <button type="button" className="posc-btn-info" onClick={() => setVerInfoCliente(!verInfoCliente)}>
-                      <Info size={14}/> {verInfoCliente ? 'Ocultar Resumen' : 'Ver Resumen Cuenta'}
-                    </button>
-                    {verInfoCliente && (
-                      <div className="posc-cust-details">
-                        <div>Deuda Vigente: <span style={{color:'#d97706'}}>{formatPrice(clienteSelec.saldo_deudor || 0)}</span></div>
-                        <div>Saldo a Favor: <span style={{color:'#10b981'}}>{formatPrice(clienteSelec.saldo_a_favor || 0)}</span></div>
-                      </div>
+              <div className="posw-body">
+                <div className="posw-field-row">
+                  <div className="posw-field-label">Cliente</div>
+                  <div className="posw-input-group">
+                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){setSaldoFavor(''); setModoFiar(false);} }}>
+                      <option value="">Mostrador (sin registrar)</option>
+                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{marginTop: '8px', marginBottom: '-10px', fontSize: '14px', fontWeight: '600'}}>Cómo paga</div>
+
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Banknote size={16}/> Efectivo</div>
+                  <div className="posw-input-group">
+                    <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posw-input" placeholder="0"/>
+                  </div>
+                </div>
+
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Smartphone size={16}/> Tarjeta</div>
+                  <div className="posw-input-group">
+                    {cuentas.length > 0 && (
+                      <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posw-select" style={{flex: 1}}>
+                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
                     )}
-                 </div>
+                    <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posw-input" style={{flex: 1}} placeholder="0"/>
+                  </div>
+                </div>
 
-                 {!modoFiar ? (
-                   <button type="button" className="posc-btn-fiar" onClick={() => setModoFiar(true)}>
-                     <BookOpen size={15} strokeWidth={2}/> Fiar / Pasar a Saldos
-                   </button>
-                 ) : (
-                   <button type="button" className="posc-btn-fiar posc-btn-fiar--cancel" onClick={() => setModoFiar(false)}>
-                     Cancelar Fiar (Cobro Normal)
-                   </button>
-                 )}
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
+                  <div className="posw-input-group">
+                    <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posw-input" disabled={!clienteSelec || maxSaldoFavor === 0} placeholder="0"/>
+                  </div>
+                </div>
+                {!clienteSelec && <div className="posw-hint">Se activa al elegir un cliente registrado</div>}
+                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible: {formatPrice(maxSaldoFavor)}</div>}
+                
+                <div className="posw-actions">
+                  <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(true)} disabled={!clienteSelec}>
+                    <ReceiptText size={16}/> Fiar / sacar a saldos
+                  </button>
+                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || faltante > 0 || valSaldoFavor > maxSaldoFavor}>
+                    {busy ? 'Cobrando...' : 'Cobrar [F2]'}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="posc-customer-search">
-                 <div style={{ position: 'relative' }}>
-                   <Search size={14} style={{ position: 'absolute', left: 8, top: 9, color: '#64748b' }} />
-                   <input type="text" placeholder="Buscar cliente registrado..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} className="posc-search-input"/>
-                 </div>
-                 {busqueda && clientesFiltrados.length > 0 && (
-                   <ul className="posc-search-res">
-                     {clientesFiltrados.slice(0,5).map(c => (
-                       <li key={c.id} onClick={() => { setClienteId(String(c.id)); setBusqueda(''); }}>{c.nombre}</li>
-                     ))}
-                   </ul>
-                 )}
-                 <div className="posc-hint">Venta de mostrador (Sólo pago de contado). Para fiar, busque un cliente.</div>
+            </>
+          ) : (
+            /* ================= ESTADO FIAR ================= */
+            <>
+              <div className="posw-header">
+                <h2 style={{cursor: 'pointer'}} onClick={() => setModoFiar(false)}><ArrowLeft size={18}/> Fiar a cliente</h2>
+                <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
               </div>
-            )}
-            
-            <div className="posc-actions">
-               <button 
-                 type="button"
-                 id="btn-posc-confirm" 
-                 className={`posc-btn-confirm ${modoFiar ? 'is-fiar' : ''}`}
-                 disabled={busy || (!modoFiar && faltante > 0) || (modoFiar && !clienteSelec) || valSaldoFavor > maxSaldoFavor}
-                 onClick={handleConfirm}
-               >
-                 <Check size={20} strokeWidth={2.5}/>
-                 {busy ? 'Guardando...' : (modoFiar ? `CONFIRMAR FIADO [F2]` : `COBRAR VENTA [F2]`)}
-               </button>
-            </div>
-          </div>
+
+              <div className="posw-body" style={{paddingTop: '10px'}}>
+                <div className="posw-field-row">
+                  <div className="posw-field-label" style={{width: '60px'}}>Cliente</div>
+                  <div className="posw-input-group">
+                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){setSaldoFavor(''); setModoFiar(false);} }}>
+                      <option value="">Mostrador (sin registrar)</option>
+                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {clienteSelec && (
+                  <div className="posw-fiar-info">
+                    Debe <strong>{formatPrice(clienteSelec.saldo_deudor || 0)}</strong> &middot; saldo a favor <strong>{formatPrice(maxSaldoFavor)}</strong>
+                  </div>
+                )}
+
+                <div style={{marginTop: '4px'}}>
+                  <div style={{fontSize: '12px', color: 'var(--mlb-text-secondary)', fontWeight: '600'}}>Total de esta compra</div>
+                  <div style={{fontSize: '24px', fontWeight: '700', fontFamily: 'var(--mlb-font-mono)'}}>{formatPrice(total)}</div>
+                </div>
+
+                <div style={{marginTop: '4px', fontSize: '13px', fontWeight: '600', color: 'var(--mlb-text-secondary)'}}>
+                  Enganche (lo que deja hoy a cuenta) — opcional
+                </div>
+
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Banknote size={16}/> Efectivo</div>
+                  <div className="posw-input-group">
+                    <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posw-input" placeholder="0"/>
+                  </div>
+                </div>
+                
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Smartphone size={16}/> Tarjeta</div>
+                  <div className="posw-input-group">
+                    {cuentas.length > 0 && (
+                      <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posw-select" style={{flex: 1}}>
+                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
+                    )}
+                    <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posw-input" style={{flex: 1}} placeholder="0"/>
+                  </div>
+                </div>
+
+                <div className="posw-field-row">
+                  <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
+                  <div className="posw-input-group">
+                    <input type="number" min="0" step="0.5" value={saldoFavor} onChange={e=>setSaldoFavor(e.target.value)} className="posw-input" disabled={!clienteSelec || maxSaldoFavor === 0} placeholder="0"/>
+                  </div>
+                </div>
+
+                <div className="posw-deuda-box">
+                  <span>Queda debiendo</span>
+                  <strong>{formatPrice(faltante)}</strong>
+                </div>
+
+                <div className="posw-actions">
+                  <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(false)}>
+                    <ArrowLeft size={16}/> Volver
+                  </button>
+                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || valSaldoFavor > maxSaldoFavor}>
+                    {busy ? 'Cobrando...' : 'Confirmar fiado [F2]'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
       </div>
