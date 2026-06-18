@@ -3,7 +3,7 @@ import {
   Search, MoreHorizontal, BadgeDollarSign, UserPlus, WalletCards,
   CircleDollarSign, CalendarDays, ArrowLeft, ArrowRight, Users, ListTodo,
   MessageCircle, IdCard, Tag, Bell, Camera, X, Check, Archive, ArchiveRestore,
-  Trash2, Pencil, FileText,
+  Trash2, Pencil, FileText, Banknote, Smartphone, ReceiptText, Handshake,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SALDOS_CONFIG_DEFAULT, calcularCuentaSaldos, daysAgoIso, todayIso } from '@/lib/saldosLedger'
@@ -686,7 +686,7 @@ const FORM_CFG = {
 
 function MovimientoForm({ tipo, resumen, onSubmit, onCancel }) {
   const cfg = FORM_CFG[tipo] || FORM_CFG.cargo
-  const [form, setForm] = useState({ fecha: todayIso(), concepto: tipo === 'abono' ? 'Abono general' : tipo === 'cargo_atraso' ? 'Cargo por atraso' : '', monto: tipo === 'cargo_atraso' && resumen.cargoAtrasoSugerido > 0 ? String(resumen.cargoAtrasoSugerido) : '', enganche: '', medio: '', quienPago: '', nota: '' })
+  const [form, setForm] = useState({ fecha: todayIso(), concepto: tipo === 'abono' ? 'Abono general' : tipo === 'cargo_atraso' ? 'Cargo por atraso' : '', monto: tipo === 'cargo_atraso' && resumen.cargoAtrasoSugerido > 0 ? String(resumen.cargoAtrasoSugerido) : '', enganche: '', medio: 'Efectivo', quienPago: '', nota: '' })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
   const monto = Number(form.monto)
@@ -696,7 +696,7 @@ function MovimientoForm({ tipo, resumen, onSubmit, onCancel }) {
     e.preventDefault()
     if (!Number.isFinite(monto) || monto <= 0) { toast.error('Poné un monto mayor a cero.'); return }
     if (tipo === 'cargo' && enganche > monto) { toast.error('El enganche no puede ser mayor al cargo.'); return }
-    // Se permite sobre-abono para acumular Saldo a Favor
+    
     setBusy(true)
     try {
       const base = { tipo, fecha: form.fecha, monto, concepto: form.concepto.trim(), nota: form.nota.trim() }
@@ -708,26 +708,66 @@ function MovimientoForm({ tipo, resumen, onSubmit, onCancel }) {
     } finally { setBusy(false) }
   }
 
+  // ==== DISEÑO PREMIUM EXCLUSIVO PARA ABONOS ====
+  if (tipo === 'abono') {
+    return (
+      <form onSubmit={submit} className="sld-premium-abono">
+        <div className="sld-form__head">
+          <div><div className="sld-form__eyebrow">Pagar deuda</div><h2 className="sld-form__title">Abonar a cuenta</h2></div>
+          <button type="button" className="sld-form__cancel" onClick={onCancel}>Cancelar</button>
+        </div>
+
+        <div className="sld-amount-wrapper">
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--mlb-text-secondary)', marginBottom: '8px' }}>Monto a abonar</div>
+          <div className="sld-amount-input-group">
+            <span>$</span>
+            <input type="number" min="0" step="0.5" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0.00" autoFocus />
+          </div>
+          {resumen.saldo > 0 && (
+            <div className="sld-amount-chips">
+              <div className="sld-chip" onClick={() => set('monto', String(resumen.saldo))}><Check size={14}/> Liquidar todo ({formatPrice(resumen.saldo)})</div>
+              {resumen.saldo >= 100 && (
+                <div className="sld-chip" onClick={() => set('monto', String(Math.round(resumen.saldo / 2)))}>Pagar la mitad ({formatPrice(Math.round(resumen.saldo / 2))})</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--mlb-text-secondary)', marginBottom: '12px' }}>¿Cómo paga?</div>
+          <div className="sld-pay-methods">
+            <div className={`sld-method-btn ${form.medio === 'Efectivo' ? 'is-active' : ''}`} onClick={() => set('medio', 'Efectivo')}>
+              <Banknote size={24} strokeWidth={2}/> Efectivo
+            </div>
+            <div className={`sld-method-btn ${form.medio === 'Tarjeta' ? 'is-active is-card' : ''}`} onClick={() => set('medio', 'Tarjeta')}>
+              <Smartphone size={24} strokeWidth={2}/> Tarjeta / Transf.
+            </div>
+          </div>
+        </div>
+
+        <div className="sld-modern-row">
+          <Field label="Fecha de abono"><input className="sld-input" type="date" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
+          <Field label="Quién pagó (Opcional)"><input className="sld-input" value={form.quienPago} onChange={(e) => set('quienPago', e.target.value)} placeholder="Ej. Su hermana" /></Field>
+        </div>
+        
+        <Field label="Nota (Opcional)"><input className="sld-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Agrega un comentario sobre este pago..." /></Field>
+
+        <div className="sld-form__foot"><button type="submit" className="sld-form__submit" disabled={busy}>{busy ? 'Procesando...' : 'Confirmar Abono'}</button></div>
+      </form>
+    )
+  }
+
+  // ==== DISEÑO MODERNO (CARGOS, DESCUENTOS, ATRASOS) ====
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="sld-form-modern">
       <div className="sld-form__head"><div><div className="sld-form__eyebrow">Registrar</div><h2 className="sld-form__title">{cfg.titulo}</h2></div><button type="button" className="sld-form__cancel" onClick={onCancel}>Cancelar</button></div>
       <div className="sld-form__grid">
         <Field label={cfg.conceptoLabel}><input className="sld-input" value={form.concepto} onChange={(e) => set('concepto', e.target.value)} placeholder={cfg.placeholder} /></Field>
         <Field label="Monto"><input className="sld-input" type="number" min="0" step="0.01" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0.00" autoFocus={tipo !== 'cargo_atraso'} /></Field>
         <Field label="Fecha"><input className="sld-input" type="date" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
         {tipo === 'cargo' ? <Field label="Enganche (dejó a cuenta hoy)"><input className="sld-input" type="number" min="0" step="0.01" value={form.enganche} onChange={(e) => set('enganche', e.target.value)} placeholder="Opcional" /></Field> : null}
-        {tipo === 'abono' ? <>
-          <Field label="Medio"><input className="sld-input" value={form.medio} onChange={(e) => set('medio', e.target.value)} placeholder="Efectivo, transferencia…" /></Field>
-          <Field label="Quién pagó"><input className="sld-input" value={form.quienPago} onChange={(e) => set('quienPago', e.target.value)} placeholder="Opcional" /></Field>
-        </> : null}
         <Field label="Nota" full><textarea className="sld-textarea" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Opcional" /></Field>
       </div>
-      {tipo === 'abono' && resumen.saldo > 0 ? (
-        <div className="sld-form__sug">
-          <button type="button" onClick={() => set('monto', String(resumen.saldo))}>Liquidar todo · {formatPrice(resumen.saldo)}</button>
-          {resumen.saldo >= 100 ? <button type="button" onClick={() => set('monto', String(Math.round(resumen.saldo / 2)))}>La mitad · {formatPrice(Math.round(resumen.saldo / 2))}</button> : null}
-        </div>
-      ) : null}
       <div className="sld-form__foot"><button type="submit" className="sld-form__submit" disabled={busy}>{busy ? 'Guardando…' : 'Registrar'}</button></div>
     </form>
   )
