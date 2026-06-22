@@ -227,6 +227,7 @@ export function PdvView() {
       const montoTransferencia = Number(p.transferencia) || 0
       const faltante = Number(result.faltante) || 0
       const favorAplicado = Number(result.favorAplicado) || 0
+      const valeAplicado = Number(result.valeAplicado) || 0
       const cambio = Number(result.cambio) || 0
       const metodo = result.metodo || 'efectivo'
       const tocaCuenta = faltante > 0.01 || favorAplicado > 0.005
@@ -241,6 +242,7 @@ export function PdvView() {
           efectivo: montoEfectivo,
           transferencia: montoTransferencia,
           saldo_favor: favorAplicado,
+          vale: valeAplicado,
           credito: faltante,
         },
         cuenta_bancaria: montoTransferencia > 0 ? cuentaBancaria : null,
@@ -807,235 +809,205 @@ function ModalHead({ icon: Icon, title, onClose, onBack }) {
 }
 
 function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
+  const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const [efectivo, setEfectivo] = useState('')
   const [transferencia, setTransferencia] = useState('')
-
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
-
   const [clienteId, setClienteId] = useState('')
-
   const [modoFiar, setModoFiar] = useState(false)
+  const [activo, setActivo] = useState('efectivo')
+  const [valeInfo, setValeInfo] = useState(null)
+  const [valeOpen, setValeOpen] = useState(false)
+  const [valeInput, setValeInput] = useState('')
 
   const valEfectivo = Number(efectivo) || 0
   const valTransferencia = Number(transferencia) || 0
-
   const clienteSelec = clientes.find((c) => String(c.id) === String(clienteId)) || null
   const maxSaldoFavor = clienteSelec ? Math.max(0, Number(clienteSelec.saldo_a_favor) || 0) : 0
+  const deudaCliente = clienteSelec ? Math.max(0, Number(clienteSelec.saldo_deudor ?? clienteSelec.saldo_pendiente) || 0) : 0
+  const valeDisp = valeInfo ? Math.max(0, Number(valeInfo.disponible) || 0) : 0
 
-  /* Saldo a favor: se aplica AUTOMÁTICAMENTE hasta lo que falte por cubrir
-   * (igual que el backend); no es una casilla manual. */
-  const pagadoCaja = valEfectivo + valTransferencia
-  const favorAplicado = Math.min(maxSaldoFavor, Math.max(0, total - pagadoCaja))
-  const faltante = Math.max(0, Math.round((total - pagadoCaja - favorAplicado) * 100) / 100)
+  const pagadoCaja = Math.round((valEfectivo + valTransferencia) * 100) / 100
+  const restanteTrasCaja = Math.max(0, Math.round((total - pagadoCaja) * 100) / 100)
+  const valeAplicado = Math.round(Math.min(valeDisp, restanteTrasCaja) * 100) / 100
+  const restanteTrasVale = Math.max(0, Math.round((restanteTrasCaja - valeAplicado) * 100) / 100)
+  const favorAplicado = Math.round(Math.min(maxSaldoFavor, restanteTrasVale) * 100) / 100
+  const faltante = Math.round((restanteTrasVale - favorAplicado) * 100) / 100
   const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
-  
+  const cubierto = Math.round((pagadoCaja + valeAplicado + favorAplicado) * 100) / 100
+
+  const activoVal = activo === 'tarjeta' ? transferencia : efectivo
+  const setActivoVal = (fn) => {
+    if (activo === 'tarjeta') setTransferencia((p) => fn(String(p ?? '')))
+    else setEfectivo((p) => fn(String(p ?? '')))
+  }
+  const tecla = (d) => setActivoVal((s) => {
+    if (d === 'back') return s.slice(0, -1)
+    if (d === '00') return s === '' ? '' : s + '00'
+    return (s + d).replace(/^0+(?=\d)/, '')
+  })
+  const pagoJusto = () => {
+    const otro = activo === 'tarjeta' ? valEfectivo : valTransferencia
+    const justo = Math.max(0, Math.round((total - otro - valeAplicado - favorAplicado) * 100) / 100)
+    setActivoVal(() => (justo ? String(justo) : ''))
+  }
+
+  const aplicarVale = async () => {
+    const code = valeInput.trim()
+    if (!code) return
+    if (!api?.buscarVale) { toast.error('Vales solo en la app de escritorio.'); return }
+    try {
+      const v = await api.buscarVale(code)
+      if (!v) { toast.error('Ese vale no existe.'); return }
+      if (!v.activo) { toast.error('Ese vale ya no tiene saldo.'); return }
+      setValeInfo({ codigo: v.codigo, disponible: v.disponible })
+      setValeOpen(false); setValeInput('')
+      toast.success(`Vale ${v.codigo}: ${formatPrice(v.disponible)} disponible.`)
+    } catch { toast.error('No se pudo buscar el vale.') }
+  }
+
   useEffect(() => {
-    const h = (e) => { 
-      if (e.key === 'Escape') {
-        if (modoFiar) setModoFiar(false)
-        else onClose()
-      }
-      if (e.key === 'F2') {
-        e.preventDefault()
-        const btn = document.getElementById('btn-posc-confirm')
-        if (btn && !btn.disabled) btn.click()
+    const h = (e) => {
+      if (e.key === 'Escape') { if (valeOpen) setValeOpen(false); else if (modoFiar) setModoFiar(false); else onClose() }
+      if (e.key === 'Enter' && !valeOpen) {
+        const btn = document.getElementById('btn-pcb-cobrar')
+        if (btn && !btn.disabled) { e.preventDefault(); btn.click() }
       }
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose, modoFiar])
-  
-  const handleConfirm = () => {
-    if (valTransferencia > 0 && !cuenta) { toast.error('Elige cuenta de transferencia.'); return }
+  }, [onClose, modoFiar, valeOpen])
 
+  const confirmar = () => {
+    if (valTransferencia > 0 && !cuenta) { toast.error('Elige la cuenta de la tarjeta.'); return }
+    const valePago = valeInfo && valeAplicado > 0 ? { codigo: valeInfo.codigo, monto: valeAplicado } : undefined
+    const base = {
+      pagos: { efectivo: valEfectivo, transferencia: valTransferencia, vale: valePago },
+      cuentaBancaria: valTransferencia > 0 ? cuenta : null,
+    }
     if (modoFiar) {
       if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return }
-      onCobrar({
-        pagos: { efectivo: valEfectivo, transferencia: valTransferencia },
-        clienteId: clienteSelec.id,
-        fiar: true,
-        cuentaBancaria: valTransferencia > 0 ? cuenta : null,
-      })
+      onCobrar({ ...base, clienteId: clienteSelec.id, fiar: true })
     } else {
-      if (faltante > 0) { toast.error('Falta dinero para cubrir el total.'); return }
-      onCobrar({
-        pagos: { efectivo: valEfectivo, transferencia: valTransferencia },
-        clienteId: clienteSelec?.id || null,
-        fiar: false,
-        cuentaBancaria: valTransferencia > 0 ? cuenta : null,
-      })
+      if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
+      onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
     }
   }
 
+  const nombreCli = clienteSelec ? clienteSelec.nombre : 'Mostrador'
+
   return (
-    <div className="posw-overlay" onClick={onClose}>
-      <div className="posw-wrapper" onClick={e => e.stopPropagation()} role="dialog" aria-label="Cobrar Venta">
-        
-        <div className={`posw-side-tab ${clienteSelec ? 'is-active' : ''}`}>
-          <User size={20} strokeWidth={2.5}/>
+    <div className="pcb-overlay" onClick={onClose}>
+      <div className="pcb" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cobrar venta">
+        <div className="pcb__head">
+          <span className="pcb__title"><Banknote size={18} strokeWidth={1.9} /> {modoFiar ? 'Fiar a' : 'Cobro de'} {nombreCli}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="pcb__cliente">
+              <User size={15} />
+              <select value={clienteId} onChange={(e) => { setClienteId(e.target.value); if (!e.target.value) setModoFiar(false) }}>
+                <option value="">Mostrador (sin cuenta)</option>
+                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </span>
+            <button type="button" className="pcb__close" onClick={onClose}><X size={16} /> Cancelar</button>
+          </div>
         </div>
 
-        <div className={`posw-modal ${modoFiar ? 'is-fiar-mode' : ''}`}>
-          {!modoFiar ? (
-            /* ================= ESTADO COBRAR ================= */
-            <div className="posw-content-wrapper" key="estado-cobrar">
-              <div className="posw-header">
-                <h2>Cobrar venta</h2>
-                <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
+        <div className="pcb__strip">
+          <div className="pcb__strip-total">
+            <div className="pcb__lbl">Total {modoFiar ? 'de la compra' : 'a cobrar'}</div>
+            <div className="pcb__big">{formatPrice(total)}</div>
+            {clienteSelec && (deudaCliente > 0 || maxSaldoFavor > 0) ? (
+              <div style={{ fontSize: 12, color: 'var(--mlb-text-muted)', marginTop: 2 }}>
+                {deudaCliente > 0 ? `debe ${formatPrice(deudaCliente)}` : ''}{deudaCliente > 0 && maxSaldoFavor > 0 ? ' · ' : ''}{maxSaldoFavor > 0 ? `a favor ${formatPrice(maxSaldoFavor)}` : ''}
               </div>
-
-              <div className="posw-totals">
-                <div className="posw-tcol">
-                  <span className="posw-tlabel">Total a pagar</span>
-                  <span className="posw-tval">{formatPrice(total)}</span>
-                </div>
-                <div className="posw-tcol right">
-                  <span className="posw-tlabel">Cambio</span>
-                  <span className="posw-tval cambio">{formatPrice(cambio)}</span>
-                </div>
-              </div>
-
-              <div className="posw-body">
-                <div className="posw-field-row">
-                  <div className="posw-field-label">Cliente</div>
-                  <div className="posw-input-group">
-                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){ setModoFiar(false) } }}>
-                      <option value="">Mostrador (sin registrar)</option>
-                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{marginTop: '8px', marginBottom: '-10px', fontSize: '14px', fontWeight: '600'}}>Cómo paga</div>
-
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Banknote size={16}/> Efectivo</div>
-                  <div className="posw-input-group">
-                    <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posw-input" placeholder="0"/>
-                  </div>
-                </div>
-
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Smartphone size={16}/> Tarjeta</div>
-                  <div className="posw-input-group">
-                    {cuentas.length > 0 && (
-                      <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posw-select" style={{flex: 1}}>
-                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                      </select>
-                    )}
-                    <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posw-input" style={{flex: 1}} placeholder="0"/>
-                  </div>
-                </div>
-
-                {clienteSelec && maxSaldoFavor > 0 && (
-                  <div className="posw-field-row">
-                    <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
-                    <div className="posw-input-group">
-                      <input type="text" readOnly tabIndex={-1} value={favorAplicado > 0 ? `− ${formatPrice(favorAplicado)}` : '—'} className="posw-input"/>
-                    </div>
-                  </div>
-                )}
-                {!clienteSelec && <div className="posw-hint">El saldo a favor se activa al elegir un cliente registrado</div>}
-                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible {formatPrice(maxSaldoFavor)} · se aplica solo lo que haga falta</div>}
-                {clienteSelec && maxSaldoFavor === 0 && <div className="posw-hint">Esta cuenta no tiene saldo a favor</div>}
-
-                <div className="posw-actions">
-                  <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(true)} disabled={!clienteSelec}>
-                    <ReceiptText size={16}/> Fiar / sacar a saldos
-                  </button>
-                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-primary" onClick={handleConfirm} disabled={busy || faltante > 0}>
-                    {busy ? 'Cobrando...' : 'Cobrar [F2]'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            ) : null}
+          </div>
+          {modoFiar ? (
+            <div className="pcb__falta"><div className="pcb__lbl">Queda debiendo</div><div className="pcb__big">{formatPrice(faltante)}</div></div>
+          ) : cambio > 0 ? (
+            <div className="pcb__change"><div className="pcb__lbl">Cambio a dar</div><div className="pcb__big">{formatPrice(cambio)}</div></div>
           ) : (
-            /* ================= ESTADO FIAR ================= */
-            <div className="posw-content-wrapper" key="estado-fiar">
-              <div className="posw-header">
-                <h2 style={{cursor: 'pointer'}} onClick={() => setModoFiar(false)}><ArrowLeft size={18}/> Fiar a cliente</h2>
-                <button type="button" className="posw-close" onClick={onClose}><X size={18}/></button>
-              </div>
-
-              <div className="posw-body" style={{paddingTop: '10px'}}>
-                <div className="posw-field-row">
-                  <div className="posw-field-label" style={{width: '60px'}}>Cliente</div>
-                  <div className="posw-input-group">
-                    <select className="posw-select" value={clienteId} onChange={e => { setClienteId(e.target.value); if(!e.target.value){ setModoFiar(false) } }}>
-                      <option value="">Mostrador (sin registrar)</option>
-                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {clienteSelec && (
-                  <div className="posw-fiar-info">
-                    Debe <strong>{formatPrice(clienteSelec.saldo_deudor || 0)}</strong> &middot; saldo a favor <strong>{formatPrice(maxSaldoFavor)}</strong>
-                  </div>
-                )}
-
-                <div style={{marginTop: '4px'}}>
-                  <div style={{fontSize: '12px', color: 'var(--mlb-text-secondary)', fontWeight: '600'}}>Total de esta compra</div>
-                  <div style={{fontSize: '24px', fontWeight: '700', fontFamily: 'var(--mlb-font-mono)'}}>{formatPrice(total)}</div>
-                </div>
-
-                <div style={{marginTop: '4px', fontSize: '13px', fontWeight: '600', color: 'var(--mlb-text-secondary)'}}>
-                  Enganche (lo que deja hoy a cuenta) — opcional
-                </div>
-
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Banknote size={16}/> Efectivo</div>
-                  <div className="posw-input-group">
-                    <input type="number" min="0" step="0.5" value={efectivo} onChange={e=>setEfectivo(e.target.value)} autoFocus className="posw-input" placeholder="0"/>
-                  </div>
-                </div>
-                
-                <div className="posw-field-row">
-                  <div className="posw-field-label"><Smartphone size={16}/> Tarjeta</div>
-                  <div className="posw-input-group">
-                    {cuentas.length > 0 && (
-                      <select value={cuenta} onChange={e=>setCuenta(e.target.value)} className="posw-select" style={{flex: 1}}>
-                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                      </select>
-                    )}
-                    <input type="number" min="0" step="0.5" value={transferencia} onChange={e=>setTransferencia(e.target.value)} className="posw-input" style={{flex: 1}} placeholder="0"/>
-                  </div>
-                </div>
-
-                {clienteSelec && maxSaldoFavor > 0 && (
-                  <div className="posw-field-row">
-                    <div className="posw-field-label"><Handshake size={16}/> Saldo a favor</div>
-                    <div className="posw-input-group">
-                      <input type="text" readOnly tabIndex={-1} value={favorAplicado > 0 ? `− ${formatPrice(favorAplicado)}` : '—'} className="posw-input"/>
-                    </div>
-                  </div>
-                )}
-                {clienteSelec && maxSaldoFavor > 0 && <div className="posw-hint">Disponible {formatPrice(maxSaldoFavor)} · baja lo que queda debiendo</div>}
-
-                <div className="posw-deuda-box">
-                  <span>Queda debiendo</span>
-                  <strong>{formatPrice(faltante)}</strong>
-                </div>
-
-                <div className="posw-actions">
-                  <button type="button" className="posw-btn posw-btn-outline" onClick={() => setModoFiar(false)}>
-                    <ArrowLeft size={16}/> Volver
-                  </button>
-                  <button type="button" id="btn-posc-confirm" className="posw-btn posw-btn-amber" onClick={handleConfirm} disabled={busy}>
-                    {busy ? 'Cobrando...' : 'Confirmar fiado [F2]'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <div className="pcb__falta"><div className="pcb__lbl">Falta</div><div className="pcb__big">{formatPrice(faltante)}</div></div>
           )}
         </div>
 
+        <div className="pcb__body">
+          <div className="pcb__methods">
+            <div className="pcb__sectit">
+              <span>{modoFiar ? '¿Cuánto deja de enganche?' : '¿Cómo te paga?'}</span>
+              {cubierto > 0 ? <span className="pcb__tally">{formatPrice(cubierto)} de {formatPrice(total)}</span> : null}
+            </div>
+            <div className={`pcb-row ${activo === 'efectivo' ? 'is-on' : ''}`} onClick={() => setActivo('efectivo')}>
+              <span className="pcb-row__l"><span className="pcb-row__ico"><Banknote size={16} /></span> Efectivo</span>
+              <span className="pcb-row__amt">{formatPrice(valEfectivo)}</span>
+            </div>
+            <div className={`pcb-row ${activo === 'tarjeta' ? 'is-on' : ''}`} onClick={() => setActivo('tarjeta')}>
+              <span className="pcb-row__l"><span className="pcb-row__ico"><Smartphone size={16} /></span> Tarjeta</span>
+              <span className="pcb-row__amt">{formatPrice(valTransferencia)}</span>
+            </div>
+            {clienteSelec && maxSaldoFavor > 0 ? (
+              <div className="pcb-row is-gold">
+                <span className="pcb-row__l"><span className="pcb-row__ico" style={{ background: '#fff', color: '#B5872B' }}><Handshake size={16} /></span> <span>Saldo a favor <span style={{ fontSize: 11, color: '#9c7a2a' }}>disp. {formatPrice(maxSaldoFavor)}</span></span></span>
+                <span className="pcb-row__amt" style={{ color: '#7a5e1c' }}>{formatPrice(favorAplicado)}</span>
+              </div>
+            ) : (
+              <div className="pcb-row is-off"><span className="pcb-row__l"><span className="pcb-row__ico"><Handshake size={16} /></span> Saldo a favor</span><span style={{ fontSize: 11.5, color: 'var(--mlb-text-muted)' }}>elige un cliente</span></div>
+            )}
+            {valeInfo ? (
+              <div className="pcb-row">
+                <span className="pcb-row__l"><span className="pcb-row__ico"><ReceiptText size={16} /></span> <span>Vale {valeInfo.codigo} <span style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>disp. {formatPrice(valeDisp)}</span></span></span>
+                <span className="pcb-row__amt" style={{ color: 'var(--mlb-success)' }}>{formatPrice(valeAplicado)}</span>
+              </div>
+            ) : (
+              <div className="pcb-row is-off"><span className="pcb-row__l"><span className="pcb-row__ico"><ReceiptText size={16} /></span> Vale</span><span style={{ fontSize: 11.5, color: 'var(--mlb-text-muted)' }}>toca «Usar vale»</span></div>
+            )}
+          </div>
+
+          <div className="pcb__entry">
+            <div className="pcb__lbl" style={{ marginBottom: 6 }}>{activo === 'tarjeta' ? 'Tarjeta · monto' : 'Efectivo · ¿cuánto te dio?'}</div>
+            {activo === 'tarjeta' && cuentas.length > 0 ? (
+              <select value={cuenta} onChange={(e) => setCuenta(e.target.value)} className="posw-select" style={{ width: '100%', marginBottom: 8 }}>
+                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            ) : null}
+            <div className="pcb__amt-box"><span className="cur">$</span><span className="val">{activoVal || '0'}</span></div>
+            <div className="pcb__keys">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'].map((k) => (
+                <button type="button" key={k} className="pcb-key" onClick={() => tecla(k)}>{k === 'back' ? '⌫' : k}</button>
+              ))}
+            </div>
+            <div className="pcb__chips">
+              <span className="pcb-chip" onClick={pagoJusto}><Check size={13} /> Pago justo</span>
+              {[500, 200, 100].map((n) => <span key={n} className="pcb-chip" onClick={() => setActivoVal((s) => String((Number(s) || 0) + n))}>+${n}</span>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="pcb__foot">
+          <div className="pcb__foot-left">
+            {valeOpen ? (
+              <div className="pcb__vale-row">
+                <input className="posw-input" autoFocus placeholder="Código del vale (o escanéalo)" value={valeInput} onChange={(e) => setValeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void aplicarVale() } }} />
+                <button type="button" className="pcb-chip" onClick={() => void aplicarVale()}>Aplicar</button>
+              </div>
+            ) : (
+              <>
+                <button type="button" className="pcb-chip" style={{ height: 40 }} onClick={() => setValeOpen(true)}><ReceiptText size={15} /> Usar vale</button>
+                <button type="button" className="pcb-chip" style={{ height: 40 }} onClick={() => { if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return } setModoFiar((m) => !m) }}>
+                  {modoFiar ? <><ArrowLeft size={15} /> Venta normal</> : <><ReceiptText size={15} /> Fiar</>}
+                </button>
+              </>
+            )}
+          </div>
+          <button type="button" id="btn-pcb-cobrar" className="pcb-btn-primary" disabled={busy || (!modoFiar && faltante > 0)} onClick={confirmar}>
+            <Check size={18} /> {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Cobrar'} <span className="pcb-kbd">Enter</span>
+          </button>
+        </div>
       </div>
     </div>
   )
 }
-
-/* ── Éxito ─────────────────────────────────────────────────────────── */
 
 function ExitoVenta({ info, onNueva }) {
   useEffect(() => {

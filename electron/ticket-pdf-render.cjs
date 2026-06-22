@@ -254,12 +254,14 @@ async function renderTicketPdf(outPath, payload) {
   const efec = Number(pagos.efectivo) || 0
   const trans = Number(pagos.transferencia) || 0
   const sal = Number(pagos.saldo_favor) || 0
+  const vale = Number(pagos.vale) || 0
   const cred = Number(pagos.credito) || 0
 
-  if (efec > 0 || trans > 0 || sal > 0 || cred > 0) {
+  if (efec > 0 || trans > 0 || sal > 0 || vale > 0 || cred > 0) {
     if (efec > 0) addText(`Efectivo: $${efec.toFixed(2)}`, false, 7.5, 'left', 2)
     if (trans > 0) addText(`Tarjeta/Transf: $${trans.toFixed(2)}`, false, 7.5, 'left', 2)
     if (sal > 0) addText(`Saldo a favor: $${sal.toFixed(2)}`, false, 7.5, 'left', 2)
+    if (vale > 0) addText(`Vale: $${vale.toFixed(2)}`, false, 7.5, 'left', 2)
     if (cred > 0) addText(`Fiado / Por cobrar: $${cred.toFixed(2)}`, false, 7.5, 'left', 2)
   } else if (String(payload.metodo).toLowerCase() === 'efectivo' && payload.pago_con != null) {
     const pagStr = `$${Number(payload.pago_con).toFixed(2)}`
