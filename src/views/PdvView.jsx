@@ -843,8 +843,11 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
   }
   const tecla = (d) => setActivoVal((s) => {
     if (d === 'back') return s.slice(0, -1)
+    if (d === '.') return s.includes('.') ? s : (s === '' ? '0.' : s + '.')
     if (d === '00') return s === '' ? '' : s + '00'
-    return (s + d).replace(/^0+(?=\d)/, '')
+    const next = s + d
+    if (/^\d*\.?\d{0,2}$/.test(next)) return next.replace(/^0+(?=\d)/, '')
+    return s
   })
   const pagoJusto = () => {
     const otro = activo === 'tarjeta' ? valEfectivo : valTransferencia
@@ -965,21 +968,23 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
           </div>
 
           <div className="pcb__entry">
-            <div className="pcb__lbl" style={{ marginBottom: 6 }}>{activo === 'tarjeta' ? 'Tarjeta · monto' : 'Efectivo · ¿cuánto te dio?'}</div>
+            <div className="pcb__lbl" style={{ marginBottom: 12, textAlign: 'center', color: 'var(--mlb-text-secondary)', fontSize: 13, letterSpacing: '.05em' }}>
+              {activo === 'tarjeta' ? 'Ingresa monto en tarjeta' : '¿Cuánto efectivo recibes?'}
+            </div>
             {activo === 'tarjeta' && cuentas.length > 0 ? (
-              <select value={cuenta} onChange={(e) => setCuenta(e.target.value)} className="posw-select" style={{ width: '100%', marginBottom: 8 }}>
+              <select value={cuenta} onChange={(e) => setCuenta(e.target.value)} className="posw-select" style={{ width: '100%', marginBottom: 16 }}>
                 {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             ) : null}
             <div className="pcb__amt-box"><span className="cur">$</span><span className="val">{activoVal || '0'}</span></div>
-            <div className="pcb__keys">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'].map((k) => (
-                <button type="button" key={k} className="pcb-key" onClick={() => tecla(k)}>{k === 'back' ? '⌫' : k}</button>
-              ))}
-            </div>
             <div className="pcb__chips">
-              <span className="pcb-chip" onClick={pagoJusto}><Check size={13} /> Pago justo</span>
-              {[500, 200, 100].map((n) => <span key={n} className="pcb-chip" onClick={() => setActivoVal((s) => String((Number(s) || 0) + n))}>+${n}</span>)}
+              <span className="pcb-chip" onClick={pagoJusto}><Check size={13} strokeWidth={3} /> Exacto</span>
+              {[100, 200, 500].map((n) => <span key={n} className="pcb-chip pcb-chip--money" onClick={() => setActivoVal((s) => String((Number(s) || 0) + n))}>+${n}</span>)}
+            </div>
+            <div className="pcb__keys">
+              {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', 'back'].map((k) => (
+                <button type="button" key={k} className={`pcb-key ${k === 'back' ? 'is-back' : ''}`} onClick={() => tecla(k)}>{k === 'back' ? '⌫' : k}</button>
+              ))}
             </div>
           </div>
         </div>
@@ -1000,7 +1005,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
               </>
             )}
           </div>
-          <button type="button" id="btn-pcb-cobrar" className="pcb-btn-primary" disabled={busy || (!modoFiar && faltante > 0)} onClick={confirmar}>
+          <button type="button" id="btn-pcb-cobrar" className={`pcb-btn-primary ${cubierto >= total && faltante === 0 && !modoFiar ? 'is-ready' : ''}`} disabled={busy || (!modoFiar && faltante > 0)} onClick={confirmar}>
             <Check size={18} /> {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Cobrar'} <span className="pcb-kbd">Enter</span>
           </button>
         </div>
