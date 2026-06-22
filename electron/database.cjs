@@ -3045,11 +3045,25 @@ function ensureVentasSchema(database) {
       monto_efectivo REAL DEFAULT 0,
       monto_transferencia REAL DEFAULT 0,
       monto_credito REAL DEFAULT 0,
+      monto_vale REAL DEFAULT 0,
       notas TEXT DEFAULT '',
       cuenta_bancaria TEXT DEFAULT '',
       saldos_cliente_id INTEGER,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS vales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      codigo TEXT NOT NULL UNIQUE,
+      monto REAL NOT NULL,
+      monto_usado REAL NOT NULL DEFAULT 0,
+      estado TEXT NOT NULL DEFAULT 'activo',
+      origen TEXT DEFAULT '',
+      venta_origen_id INTEGER,
+      nota TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      usado_en TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_vales_codigo ON vales(codigo);
     CREATE TABLE IF NOT EXISTS venta_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       venta_id INTEGER NOT NULL,
@@ -3084,8 +3098,51 @@ function ensureVentasSchema(database) {
                      ALTER TABLE ventas ADD COLUMN monto_transferencia REAL DEFAULT 0;
                      ALTER TABLE ventas ADD COLUMN monto_credito REAL DEFAULT 0;`)
     }
+    if (!vCols.some((c) => c.name === 'monto_vale')) {
+      database.exec(`ALTER TABLE ventas ADD COLUMN monto_vale REAL DEFAULT 0`)
+    }
   } catch (e) {
     console.error('[ventas] migración columnas:', e?.message || e)
+  }
+}
+
+/* ── Vales (saldo a favor "al portador", para clientes NO registrados) ──
+ * Se generan al devolver sin cuenta y se canjean en caja como forma de pago.
+ * No vencen (decisión de la dueña). Nunca se borran: se marcan usados. */
+function generarCodigoVale(database) {
+  for (let i = 0; i < 30; i++) {
+    const code = 'V-' + Math.random().toString(36).slice(2, 7).toUpperCase()
+    const hit = database.prepare('SELECT 1 FROM vales WHERE codigo = ?').get(code)
+    if (!hit) return code
+  }
+  return 'V-' + Date.now().toString(36).toUpperCase()
+}
+
+function crearVale(database, { monto, origen = '', ventaOrigenId = null, nota = '' } = {}) {
+  const m = Math.round(Number(monto) * 100) / 100
+  if (!Number.isFinite(m) || m <= 0) throw new Error('Monto de vale inválido.')
+  const codigo = generarCodigoVale(database)
+  database.prepare(
+    `INSERT INTO vales (codigo, monto, origen, venta_origen_id, nota) VALUES (?, ?, ?, ?, ?)`,
+  ).run(codigo, m, String(origen || '').slice(0, 60), ventaOrigenId, String(nota || '').slice(0, 200))
+  return { ok: true, codigo, monto: m }
+}
+
+function buscarVale(codigo) {
+  const database = getDb()
+  ensureVentasSchema(database)
+  const code = String(codigo || '').trim().toUpperCase()
+  if (!code) return null
+  const v = database.prepare('SELECT * FROM vales WHERE UPPER(codigo) = ?').get(code)
+  if (!v) return null
+  const disponible = Math.max(0, Math.round(((Number(v.monto) || 0) - (Number(v.monto_usado) || 0)) * 100) / 100)
+  return {
+    codigo: v.codigo,
+    monto: Number(v.monto) || 0,
+    usado: Number(v.monto_usado) || 0,
+    disponible,
+    estado: v.estado,
+    activo: v.estado === 'activo' && disponible > 0.005,
   }
 }
 
@@ -3278,14 +3335,30 @@ function addSale(payload) {
   /* Saldo a favor: se aplica AUTOMÁTICAMENTE a esta compra (hasta lo que se
    * deba), igual que el motor saldosLedger. No es una casilla manual: si la
    * clienta tiene saldo a favor, baja lo que paga hoy. */
+  /* Vale (crédito al portador, p. ej. de una devolución sin cuenta): reduce lo
+   * adeudado como crédito; no da cambio. Se valida acá y se marca usado en la tx. */
+  let valeCodigo = ''
+  let valeAplicado = 0
+  const valePago = pagos?.vale
+  if (valePago && (valePago.codigo || valePago.monto != null)) {
+    const vinfo = buscarVale(valePago.codigo)
+    if (!vinfo) throw new Error('Ese vale no existe.')
+    if (!vinfo.activo) throw new Error('Ese vale ya no tiene saldo disponible.')
+    const pedido = valePago.monto != null ? Number(valePago.monto) : vinfo.disponible
+    valeAplicado = Math.round(Math.min(Math.max(0, pedido) || 0, vinfo.disponible, total) * 100) / 100
+    if (valeAplicado > 0.005) valeCodigo = vinfo.codigo
+    else valeAplicado = 0
+  }
+
   const pagadoCaja = Math.round((montoEfectivo + montoTransferencia) * 100) / 100
-  const porCubrir = Math.max(0, Math.round((total - pagadoCaja) * 100) / 100)
+  const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplicado) * 100) / 100)
+  const porCubrir = Math.max(0, Math.round((adeudadoTrasVale - pagadoCaja) * 100) / 100)
   const favorDisponible = clienteId ? favorSaldosCliente(database, clienteId) : 0
   const favorAplicado = Math.round(Math.min(favorDisponible, porCubrir) * 100) / 100
   const faltante = Math.round((porCubrir - favorAplicado) * 100) / 100
-  // El cambio sale SOLO del efectivo entregado de más (tarjeta/saldo nunca dan cambio).
-  const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
-  const sumaPagos = Math.round((pagadoCaja + favorAplicado) * 100) / 100
+  // El cambio sale SOLO del efectivo entregado de más (vale/tarjeta/saldo no dan cambio).
+  const cambio = Math.max(0, Math.round((pagadoCaja - adeudadoTrasVale) * 100) / 100)
+  const sumaPagos = Math.round((pagadoCaja + valeAplicado + favorAplicado) * 100) / 100
 
   if (faltante > 0.01) {
     if (!clienteId) throw new Error(`Pago insuficiente: faltan ${faltante.toFixed(2)}. Selecciona un cliente para fiar el resto.`)
@@ -3296,18 +3369,21 @@ function addSale(payload) {
   const tocaSaldos = !!clienteId && (faltante > 0.01 || favorAplicado > 0.005)
 
   // Lo que paga HOY en caja entra como abono a la cuenta, partido por medio.
-  const abonoTotal = tocaSaldos ? Math.min(pagadoCaja, total) : 0
+  const abonoTotal = tocaSaldos ? Math.min(pagadoCaja, adeudadoTrasVale) : 0
   const abonoEfectivo = Math.round(Math.min(montoEfectivo, abonoTotal) * 100) / 100
   const abonoTransferencia = Math.round((abonoTotal - abonoEfectivo) * 100) / 100
+  const abonoVale = tocaSaldos ? valeAplicado : 0
 
   let metodo
   {
     let conteo = 0
     if (montoEfectivo > 0) conteo++
     if (montoTransferencia > 0) conteo++
+    if (valeAplicado > 0.005) conteo++
     if (faltante > 0.01 || favorAplicado > 0.005) conteo++
     if (conteo > 1) metodo = 'mixto'
     else if (montoTransferencia > 0) metodo = 'transferencia'
+    else if (valeAplicado > 0.005) metodo = 'vale'
     else if (faltante > 0.01 || favorAplicado > 0.005) metodo = 'credito'
     else metodo = 'efectivo'
   }
@@ -3321,12 +3397,13 @@ function addSale(payload) {
         monto: total,
         abonoEfectivo,
         abonoTransferencia,
+        abonoVale,
         descripcion: `Compra en caja (${normalized.length} artículo${normalized.length === 1 ? '' : 's'})`,
       }
     : null
 
   const insVenta = database.prepare(
-    `INSERT INTO ventas (total, pago_con, cambio, metodo, monto_efectivo, monto_transferencia, monto_credito, notas, cuenta_bancaria, saldos_cliente_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO ventas (total, pago_con, cambio, metodo, monto_efectivo, monto_transferencia, monto_credito, monto_vale, notas, cuenta_bancaria, saldos_cliente_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
   const insItem = database.prepare(
     `INSERT INTO venta_items (venta_id, producto_id, codigo_snapshot, nombre_snapshot, precio_snapshot, cantidad) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -3352,15 +3429,16 @@ function addSale(payload) {
   let ventaId
   const run = database.transaction(() => {
     const info = insVenta.run(
-      total, 
-      sumaPagos, 
-      cambio, 
-      metodo, 
+      total,
+      sumaPagos,
+      cambio,
+      metodo,
       montoEfectivo,
       montoTransferencia,
       montoACuenta,
+      valeAplicado,
       notas,
-      cuenta_bancaria, 
+      cuenta_bancaria,
       creditoPayload ? creditoPayload.saldosClienteId : null
     )
     ventaId = Number(info.lastInsertRowid)
@@ -3375,6 +3453,18 @@ function addSale(payload) {
         const r = updStockMulti.run({ c: x.cantidad, id: x.pid })
         if (r.changes === 0) throw new Error(`Stock insuficiente al confirmar «${x.codigo}».`)
       }
+    }
+    if (valeCodigo && valeAplicado > 0.005) {
+      const vr = database.prepare(
+        `UPDATE vales
+            SET monto_usado = monto_usado + @m,
+                estado = CASE WHEN (monto_usado + @m) >= monto - 0.005 THEN 'usado' ELSE estado END,
+                usado_en = datetime('now')
+          WHERE UPPER(codigo) = UPPER(@cod)
+            AND estado = 'activo'
+            AND (monto - monto_usado) >= @m - 0.005`,
+      ).run({ m: valeAplicado, cod: valeCodigo })
+      if (vr.changes === 0) throw new Error('El vale ya no tiene saldo suficiente.')
     }
     if (creditoPayload) {
       /* La compra es un `cargo` y el enganche un `abono`, ambos en la libreta
@@ -3397,6 +3487,12 @@ function addSale(payload) {
         movs.push({
           tipo: 'abono', fecha: hoy, monto: creditoPayload.abonoTransferencia,
           concepto: `Enganche venta #${ventaId}`, medio: 'transferencia', referenciaIds: [ventaId],
+        })
+      }
+      if (creditoPayload.abonoVale > 0) {
+        movs.push({
+          tipo: 'abono', fecha: hoy, monto: creditoPayload.abonoVale,
+          concepto: `Pago con vale · venta #${ventaId}`, medio: 'vale', referenciaIds: [ventaId],
         })
       }
       saldosStore.registrarMovimientos(database, creditoPayload.saldosClienteId, movs)
@@ -3446,7 +3542,7 @@ function addSale(payload) {
   }
   return {
     ok: true, ventaId, total, cambio, metodo,
-    faltante, favorAplicado,
+    faltante, favorAplicado, valeAplicado, valeCodigo,
     saldosClienteId: creditoPayload ? creditoPayload.saldosClienteId : null,
   }
 }
@@ -4342,7 +4438,7 @@ function registrarDevolucionRapida(payload = {}) {
   if (!['efectivo', 'transferencia'].includes(excedenteMetodo)) excedenteMetodo = 'efectivo'
   const montoReembolso = payload?.montoReembolso != null ? Number(payload.montoReembolso) : null
 
-  if (!['efectivo', 'transferencia'].includes(metodoReembolso)) {
+  if (!['efectivo', 'transferencia', 'vale'].includes(metodoReembolso)) {
     throw new Error('Método de reembolso inválido.')
   }
   if (!ventaItemId && !codigo) throw new Error('Falta indicar el renglón o el código a devolver.')
@@ -4400,6 +4496,7 @@ function registrarDevolucionRapida(payload = {}) {
   let devolucionMetodo = metodoReembolso
   let devolucionExcedente = 0
   let devolucionExcedenteMetodo = ''
+  let valeCreado = null
 
   const tx = database.transaction(() => {
     // Marcar el item como devuelto.
@@ -4436,6 +4533,13 @@ function registrarDevolucionRapida(payload = {}) {
           referenciaIds: [item.venta_id],
         }])
       }
+    } else if (metodoReembolso === 'vale') {
+      /* Cliente NO registrado: no se devuelve efectivo. Se genera un VALE al
+       * portador por el monto, que podrá canjear en su próxima compra. */
+      const v = crearVale(database, { monto: reembolso, origen: 'devolucion', ventaOrigenId: item.venta_id, nota: `Devolución de «${codigoRef}»` })
+      valeCreado = { codigo: v.codigo, monto: v.monto }
+      devolucionMonto = reembolso
+      devolucionMetodo = 'vale'
     }
     database.prepare(`
       UPDATE venta_items
@@ -4469,6 +4573,7 @@ function registrarDevolucionRapida(payload = {}) {
     ok: true, reembolso, totalRenglon, cantidad: cantidadDevuelta, ventaId: item.venta_id, productoId: prod.id, codigo: codigoRef,
     ventaEsCredito, saldosClienteId: ventaEsCredito ? saldosClienteId : null, clienteNombre,
     deudaCancelada, excedente: excedenteOut, excedenteMetodo: excedenteOut > 0 ? excedenteMetodo : null,
+    vale: valeCreado,
   }
 }
 
@@ -5249,6 +5354,7 @@ module.exports = {
   getVentaItemPorCodigoDevolucion,
   getVentaDetalle,
   registrarDevolucionRapida,
+  buscarVale,
   scanBanquetaSalidaResult,
   listStaleForBanqueta,
   recordEvent,
