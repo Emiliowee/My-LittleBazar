@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Minus, Package, IdCard, Check, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Minus, Package, IdCard, Check, ShoppingBag, Banknote, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
@@ -292,6 +292,113 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
           </aside>
         </div>
       )}
+    </div>
+  )
+}
+
+/* Abonar (ligero): elegir cliente → registrar el pago. Reusa la lógica de Saldos
+ * (registrarMovimientos tipo 'abono'); el saldo lo recalcula el motor. */
+export function AbonarScreen({ clientes, onSalir }) {
+  const saldosApi = typeof window !== 'undefined' ? window.bazar?.saldos : undefined
+  const [step, setStep] = useState('cliente')
+  const [clienteId, setClienteId] = useState('')
+  const [buscar, setBuscar] = useState('')
+  const [cargando, setCargando] = useState(false)
+  const [monto, setMonto] = useState('')
+  const [medio, setMedio] = useState('efectivo')
+  const [busy, setBusy] = useState(false)
+
+  const lst = useMemo(() => (Array.isArray(clientes) ? clientes : []), [clientes])
+  const clienteSel = lst.find((c) => String(c.id) === String(clienteId)) || null
+  const q = norm(buscar)
+  const resultados = useMemo(() => (q ? lst.filter((c) => norm(c.nombre).includes(q)).slice(0, 10) : []), [lst, q])
+  const saldo = clienteSel ? Math.max(0, Number(clienteSel.saldo) || 0) : 0
+  const favor = clienteSel ? Math.max(0, Number(clienteSel.saldoAFavor) || 0) : 0
+  const montoN = Number(monto) || 0
+  const nuevoSaldo = Math.max(0, Math.round((saldo - montoN) * 100) / 100)
+
+  const seleccionar = (id) => {
+    setClienteId(String(id)); setCargando(true)
+    window.setTimeout(() => { setCargando(false); setStep('abono') }, 450 + Math.floor(Math.random() * 400))
+  }
+
+  const confirmar = async () => {
+    if (!clienteSel) { toast.error('Elige un cliente.'); setStep('cliente'); return }
+    if (!(montoN > 0)) { toast.error('Escribe el monto del abono.'); return }
+    if (!saldosApi?.registrarMovimientos) { toast.error('Saldos no disponible.'); return }
+    setBusy(true)
+    try {
+      const d = new Date()
+      const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const r = await saldosApi.registrarMovimientos({ clienteId: clienteSel.id, movimientos: [{ tipo: 'abono', fecha: hoy, monto: montoN, medio, concepto: 'Abono' }] })
+      if (r && r.ok === false) throw new Error(r.message || 'No se pudo registrar el abono.')
+      toast.success(`Abono de ${formatPrice(montoN)} de ${clienteSel.nombre}. ${nuevoSaldo > 0 ? `Ahora debe ${formatPrice(nuevoSaldo)}` : 'Queda al corriente'}.`)
+      onSalir?.(true)
+    } catch (e) { toast.error(e?.message || 'No se pudo registrar el abono.') }
+    finally { setBusy(false) }
+  }
+
+  const atras = () => (step === 'abono' ? setStep('cliente') : onSalir?.(false))
+
+  return (
+    <div className="fiar2">
+      <div className="fiar2-bar">
+        <button type="button" className="fiar2-back" onClick={atras} aria-label="Volver"><ArrowLeft size={20} strokeWidth={1.9} /></button>
+        <div className="fiar2-titles"><strong>Abonar</strong><span>{step === 'cliente' ? 'Elige el cliente' : 'Registra el pago'}</span></div>
+      </div>
+      <div className="fiar2-cli">
+        <div className="fiar2-cli-inner">
+          {step === 'cliente' ? (
+            <>
+              <h2 className="fiar2-cli-q">¿Quién va a abonar?</h2>
+              <div className="fiar2-search">
+                <Search size={22} strokeWidth={1.9} />
+                <input autoFocus value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Escribe el nombre del cliente…" />
+              </div>
+              {cargando ? (
+                <div className="fiar-loading"><span className="fiar-spinner" /> Cargando datos del cliente…</div>
+              ) : q ? (
+                resultados.length === 0 ? <div className="fiar-empty">Sin clientes para «{buscar}».</div> : (
+                  <div className="fiar2-results">
+                    {resultados.map((c) => {
+                      const cd = Math.max(0, Number(c.saldo) || 0)
+                      return (
+                        <button type="button" key={c.id} className="fiar2-result" onClick={() => seleccionar(c.id)}>
+                          <span className="fiar-avatar">{initials(c.nombre)}</span>
+                          <span className="fiar2-result-nom">{c.nombre}</span>
+                          <span className="fiar2-result-saldo">{cd > 0 ? `debe ${formatPrice(cd)}` : 'al corriente'}</span>
+                          <ArrowRight size={16} strokeWidth={2} className="fiar2-result-go" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              ) : (
+                <div className="fiar2-cli-hint">Empieza a escribir para buscar al cliente.</div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="fiar-sel-card">
+                <FotoId ruta={clienteSel?.idImagen} />
+                <div className="fiar-sel-info">
+                  <strong>{clienteSel?.nombre}</strong>
+                  <span className="fiar-sel-saldo">{saldo > 0 ? `Debe ${formatPrice(saldo)}` : favor > 0 ? `A favor ${formatPrice(favor)}` : 'Sin deuda'}</span>
+                </div>
+                <button type="button" className="fiar2-ghost" onClick={() => { setClienteId(''); setBuscar(''); setStep('cliente') }}>Cambiar</button>
+              </div>
+              <label className="fiar2-ab-label">Monto del abono</label>
+              <input className="fiar2-ab-monto" inputMode="decimal" autoFocus value={monto} onChange={(e) => setMonto(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />
+              <div className="fiar2-ab-medios">
+                <button type="button" className={medio === 'efectivo' ? 'on' : ''} onClick={() => setMedio('efectivo')}><Banknote size={18} strokeWidth={1.9} /> Efectivo</button>
+                <button type="button" className={medio === 'transferencia' ? 'on' : ''} onClick={() => setMedio('transferencia')}><Smartphone size={18} strokeWidth={1.9} /> Transferencia</button>
+              </div>
+              {montoN > 0 ? <div className="fiar2-ab-after">{nuevoSaldo > 0 ? `Quedará debiendo ${formatPrice(nuevoSaldo)}` : 'Quedará al corriente'}</div> : null}
+              <button type="button" className="fiar2-confirm" disabled={busy || !(montoN > 0)} onClick={confirmar}><Check size={19} strokeWidth={2} /> {busy ? 'Guardando…' : 'Registrar abono'}</button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

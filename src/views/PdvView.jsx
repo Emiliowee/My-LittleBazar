@@ -10,7 +10,7 @@ import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
-import { AccionScreen, FiarScreen } from './FiarFlow'
+import { AccionScreen, FiarScreen, AbonarScreen } from './FiarFlow'
 import { corteDelDia, totalFiadoAfuera } from '@/lib/reportes'
 import { banquetaPrecioParaToggleVendido } from '@/lib/banquetaPrint'
 import './pos-monserrat.css'
@@ -317,7 +317,7 @@ export function PdvView() {
           <button type="button" className={`pos-nav__item${modo === 'venta' ? ' is-active' : ''}`} onClick={() => { setModo('venta'); focusScan() }}><ShoppingCart size={19} strokeWidth={1.8} />Punto de venta</button>
           <button type="button" className={`pos-nav__item${modo === 'ventas' ? ' is-active' : ''}`} onClick={() => setModo('ventas')}><ReceiptText size={19} strokeWidth={1.8} />Consultar ventas</button>
           <button type="button" className={`pos-nav__item${modo === 'banqueta' ? ' is-active' : ''}`} onClick={() => setModo('banqueta')}><Store size={19} strokeWidth={1.8} />Banqueta</button>
-          <button type="button" className={`pos-nav__item${modo === 'saldos' || modo === 'fiar' ? ' is-active' : ''}`} onClick={() => { setFiarImport([]); setModo('saldos') }}><Handshake size={19} strokeWidth={1.8} />Abonar y fiar</button>
+          <button type="button" className={`pos-nav__item${modo === 'saldos' || modo === 'fiar' || modo === 'abonar' ? ' is-active' : ''}`} onClick={() => { setFiarImport([]); setFiarClienteId(''); setModo('saldos') }}><Handshake size={19} strokeWidth={1.8} />Abonar y fiar</button>
         </nav>
 
         <div className="pos-sidebar__bottom">
@@ -473,8 +473,13 @@ export function PdvView() {
         ) : modo === 'saldos' ? (
           <AccionScreen
             onBack={() => { setModo('venta'); focusScan() }}
-            onAbonar={() => toast.info('Abono rápido: lo definimos pronto. Por ahora entra a la cuenta del cliente en Saldos.')}
+            onAbonar={() => setModo('abonar')}
             onFiar={() => { setFiarImport([]); setFiarClienteId(''); setModo('fiar') }}
+          />
+        ) : modo === 'abonar' ? (
+          <AbonarScreen
+            clientes={clientes}
+            onSalir={(ok) => { if (ok) { void loadClientes() } setModo('venta'); focusScan() }}
           />
         ) : modo === 'fiar' ? (
           <FiarScreen
@@ -592,12 +597,22 @@ function VentasWorkspace({ onChanged }) {
   const devolver = async (item) => {
     if (item.devuelto_en || busy) return
     if (!api?.registrarDevolucionRapida) { toast.error('Devoluciones solo en la app de escritorio.'); return }
+    /* Venta NO registrada (mostrador, sin cuenta de Saldos): se ofrece entregar
+     * un VALE por el monto en vez de efectivo (saldo a favor al portador). */
+    const esCredito = !!detalle?.clienteNombre
+    let metodoReembolso
+    if (!esCredito) {
+      metodoReembolso = window.confirm('¿Entregar un VALE por este monto en vez de efectivo?\n\nAceptar = generar vale  ·  Cancelar = devolver efectivo') ? 'vale' : 'efectivo'
+    }
     setBusy(true)
     try {
       const montoRenglon = (Number(item.precio_snapshot) || 0) * (Math.max(1, Math.floor(Number(item.cantidad) || 1)))
-      const res = await api.registrarDevolucionRapida({ ventaItemId: item.id, codigo: item.codigo_snapshot, montoReembolso: montoRenglon })
+      const res = await api.registrarDevolucionRapida({ ventaItemId: item.id, codigo: item.codigo_snapshot, montoReembolso: montoRenglon, metodoReembolso })
       if (!res?.ok) throw new Error(res?.message || 'No se pudo devolver.')
-      if (res.ventaEsCredito) {
+      if (res.vale?.codigo) {
+        window.alert(`VALE generado\n\nCódigo: ${res.vale.codigo}\nMonto: ${formatPrice(res.vale.monto)}\n\nAnótalo y entrégaselo al cliente; lo podrá usar en su próxima compra.`)
+        toast.success(`Vale ${res.vale.codigo} por ${formatPrice(res.vale.monto)}.`, { duration: 12000 })
+      } else if (res.ventaEsCredito) {
         let msg = `Devuelta. Se canceló ${formatPrice(res.deudaCancelada || 0)} del fiado${res.clienteNombre ? ` de ${res.clienteNombre}` : ''}.`
         if ((res.excedente || 0) > 0) {
           msg += res.excedenteMetodo === 'saldo_a_favor'
