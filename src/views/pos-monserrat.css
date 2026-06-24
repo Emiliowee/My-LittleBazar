@@ -2253,7 +2253,7 @@
 
 .received-amount-display {
   font-family: var(--mlb-font-mono);
-  font-size: 32px;
+  font-size: 27px;
   font-weight: 700;
   color: var(--mlb-text-primary);
   display: flex;
@@ -2262,7 +2262,7 @@
 }
 
 .received-amount-display .currency {
-  font-size: 24px;
+  font-size: 19px;
   color: var(--mlb-text-muted);
 }
 
@@ -2297,16 +2297,16 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  flex: 1;
 }
 
 .numpad-btn {
+  height: 46px;
   background: var(--mlb-bg-panel);
   border: 2px solid var(--mlb-border-strong);
   border-bottom: 4px solid var(--mlb-border-strong);
   border-radius: 8px;
   font-family: var(--mlb-font-mono);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--mlb-text-primary);
   cursor: pointer;
@@ -2382,7 +2382,7 @@
 }
 
 .summary-row.total-row strong {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 800;
 }
 
@@ -2401,9 +2401,9 @@
   text-transform: uppercase;
 }
 .amount-due-row strong {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  color: #ef4444;
+  color: #b7791f;
 }
 
 .change-return-row {
@@ -2446,14 +2446,14 @@
 
 .confirm-sale-btn {
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   background: var(--mlb-accent);
   color: #fff;
   border: 2px solid transparent;
   border-bottom: 4px solid #c01456;
   border-radius: 12px;
   font-family: var(--mlb-font-display);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
   display: flex;

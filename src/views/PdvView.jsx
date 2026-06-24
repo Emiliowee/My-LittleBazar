@@ -926,9 +926,15 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
             </div>
             <div className="client-header-selector">
               {clienteId ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--mlb-bg-active)', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>
-                  <User size={14} /> {clienteSelec?.nombre}
-                  <button onClick={() => {setClienteId(''); setModoFiar(false)}} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--mlb-bg-active)', padding: '5px 8px 5px 5px', borderRadius: '20px', color: 'var(--mlb-text-primary)' }}>
+                  <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--mlb-accent-soft)', color: 'var(--mlb-accent-ink)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>{(clienteSelec?.nombre || '?').trim().slice(0, 2).toUpperCase()}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{clienteSelec?.nombre}</span>
+                    {(deudaCliente > 0 || maxSaldoFavor > 0) ? (
+                      <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--mlb-text-muted)' }}>{deudaCliente > 0 ? `debe ${formatPrice(deudaCliente)}` : ''}{deudaCliente > 0 && maxSaldoFavor > 0 ? ' · ' : ''}{maxSaldoFavor > 0 ? `a favor ${formatPrice(maxSaldoFavor)}` : ''}</span>
+                    ) : null}
+                  </span>
+                  <button onClick={() => {setClienteId(''); setModoFiar(false)}} style={{ background: 'none', border: 'none', padding: 0, marginLeft: 2, color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex' }} aria-label="Quitar cliente"><X size={14} /></button>
                 </div>
               ) : (
                 <select 
@@ -956,13 +962,13 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               </div>
               <div className="payment-methods-grid">
                 <button className={`pay-method-btn method-efectivo ${activo === 'efectivo' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('efectivo'); setModoFiar(false);}}>
-                  <Banknote size={26} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
+                  <Banknote size={22} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
                 </button>
                 <button className={`pay-method-btn method-tarjeta ${activo === 'tarjeta' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('tarjeta'); setModoFiar(false);}}>
-                  <Smartphone size={26} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
+                  <Smartphone size={22} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
                 </button>
                 <button className={`pay-method-btn method-fiar ${modoFiar ? 'active' : ''}`} onClick={() => {setModoFiar(true); setActivo('efectivo');}}>
-                  <Handshake size={26} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
+                  <Handshake size={22} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
                 </button>
               </div>
             </div>
@@ -998,7 +1004,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
                 <button className="numpad-btn" onClick={() => tecla('9')}>9</button>
                 <button className="numpad-btn" onClick={() => tecla('00')}>00</button>
                 <button className="numpad-btn" onClick={() => tecla('0')}>0</button>
-                <button className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar un dígito" style={{ fontSize: 22 }}>⌫</button>
+                <button className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar"><X size={22} strokeWidth={2.5}/></button>
               </div>
             </div>
             
@@ -1095,7 +1101,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               disabled={busy || (!modoFiar && faltante > 0)} 
               onClick={confirmar}
             >
-              <Check size={26} strokeWidth={2.5} />
+              <Check size={22} strokeWidth={2.5} />
               {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Completar Venta'}
             </button>
             
