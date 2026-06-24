@@ -1,139 +1,103 @@
-/* ── Flujo Fiar (dentro del PDV) — sobre el panel premium .pos-tool ──── */
+/* ── Flujo Fiar (dentro del PDV) — LLENA la pantalla como la venta ───── */
 
-.fiar-panel { display: flex; flex-direction: column; }
+.fiar2 { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--mlb-bg-app); overflow: hidden; }
 
-/* Stepper de avance */
-.fiar-steps { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; padding: 0 4px; }
-.fiar-step { display: inline-flex; align-items: center; gap: 8px; color: var(--mlb-text-muted); }
-.fiar-stepnum { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; background: var(--mlb-bg-input); color: var(--mlb-text-muted); border: 1.5px solid var(--mlb-border); flex: none; }
-.fiar-steplbl { font-size: 13px; font-weight: 700; white-space: nowrap; }
-.fiar-step.is-active .fiar-stepnum { background: var(--mlb-accent); color: #fff; border-color: var(--mlb-accent); }
-.fiar-step.is-active { color: var(--mlb-text-primary); }
-.fiar-step.is-done .fiar-stepnum { background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); border-color: transparent; }
-.fiar-step.is-done { color: var(--mlb-text-secondary); }
-.fiar-stepline { flex: 1; height: 2px; min-width: 16px; background: var(--mlb-border); border-radius: 2px; }
-.fiar-stepline.is-done { background: var(--mlb-accent); }
+.fiar2-bar { display: flex; align-items: center; gap: 16px; padding: 13px 22px; border-bottom: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); }
+.fiar2-back { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
+.fiar2-back:hover { background: var(--mlb-bg-active); color: var(--mlb-text-primary); }
+.fiar2-titles { display: flex; flex-direction: column; }
+.fiar2-titles strong { font-family: var(--mlb-font-display); font-size: 18px; font-weight: 800; color: var(--mlb-text-primary); }
+.fiar2-titles span { font-size: 12.5px; color: var(--mlb-text-muted); }
+.fiar2-steps { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.fiar2-st { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--mlb-text-muted); }
+.fiar2-st i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: var(--mlb-bg-input); border: 1.5px solid var(--mlb-border); }
+.fiar2-st.on { color: var(--mlb-text-primary); }
+.fiar2-st.on i { background: var(--mlb-accent); color: #fff; border-color: var(--mlb-accent); }
+.fiar2-st.done i { background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); border-color: transparent; }
+.fiar2-st-sep { width: 26px; height: 2px; background: var(--mlb-border); border-radius: 2px; }
 
 .fiar-foco-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: #faeeda; color: #633806; font-size: 12px; font-weight: 800; flex: none; }
 .fiar-foco { width: 8px; height: 8px; border-radius: 50%; background: #ef9f27; flex: none; animation: fiar-pulse 1.5s infinite; }
 @keyframes fiar-pulse { 0% { box-shadow: 0 0 0 0 rgba(239,159,39,.55); } 70% { box-shadow: 0 0 0 7px rgba(239,159,39,0); } 100% { box-shadow: 0 0 0 0 rgba(239,159,39,0); } }
 
-/* Etapa (contenido del paso) */
-.fiar-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* ¿Qué desea hacer? — dos mitades que LLENAN */
+.fiar2-accion { flex: 1; min-height: 0; display: flex; }
+.fiar2-half { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border: none; background: var(--mlb-bg-app); cursor: pointer; transition: background-color .15s; }
+.fiar2-half + .fiar2-half { border-left: 1px solid var(--mlb-border); }
+.fiar2-half:hover { background: var(--mlb-bg-hover); }
+.fiar2-half--fiar { background: var(--mlb-accent-soft); }
+.fiar2-half--fiar:hover { background: color-mix(in srgb, var(--mlb-accent) 16%, var(--mlb-bg-panel)); }
+.fiar2-half-ic { width: 92px; height: 92px; border-radius: 26px; display: grid; place-items: center; background: var(--mlb-bg-panel); box-shadow: var(--shadow-sm); }
+.fiar2-half--abonar .fiar2-half-ic { color: var(--mlb-success); }
+.fiar2-half--fiar .fiar2-half-ic { color: var(--mlb-accent-ink); }
+.fiar2-half-nom { font-family: var(--mlb-font-display); font-size: 27px; font-weight: 800; color: var(--mlb-text-primary); }
+.fiar2-half small { font-size: 13.5px; color: var(--mlb-text-muted); }
 
-/* ¿Qué desea hacer? */
-.fiar-accion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 8px 0 4px; }
-.fiar-accion-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 34px 20px; border-radius: 16px; border: 1.5px solid var(--mlb-border); background: var(--mlb-bg-panel); cursor: pointer; transition: transform .12s, border-color .12s, box-shadow .12s; }
-.fiar-accion-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--mlb-border-strong); }
-.fiar-accion-card--fiar { border-color: color-mix(in srgb, var(--mlb-accent) 40%, var(--mlb-border)); background: var(--mlb-accent-soft); }
-.fiar-accion-ic { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; }
-.fiar-accion-ic--abonar { background: color-mix(in srgb, var(--mlb-success) 14%, transparent); color: var(--mlb-success); }
-.fiar-accion-ic--fiar { background: #fff; color: var(--mlb-accent-ink); }
-.fiar-accion-nom { font-family: var(--mlb-font-display); font-weight: 800; font-size: 20px; color: var(--mlb-text-primary); }
-.fiar-accion-card small { font-size: 12.5px; color: var(--mlb-text-muted); }
-
-/* Paso 1 · Cliente */
-.fiar-clientepick { display: flex; flex-direction: column; gap: 14px; }
-.fiar-bigsearch { display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 56px; border: 2px solid var(--mlb-border-strong); border-radius: 14px; background: var(--mlb-bg-panel); color: var(--mlb-text-muted); }
-.fiar-bigsearch input { flex: 1; border: none; background: transparent; font-size: 17px; color: var(--mlb-text-primary); outline: none; }
-.fiar-searchhint { padding: 30px 12px; text-align: center; color: var(--mlb-text-muted); font-size: 14px; }
-.fiar-results { display: flex; flex-direction: column; gap: 8px; }
-.fiar-result { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--mlb-border); border-radius: 12px; background: var(--mlb-bg-panel); cursor: pointer; text-align: left; transition: border-color .12s, background .12s; }
-.fiar-result:hover { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); }
-.fiar-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: none; }
-.fiar-result-nom { flex: 1; font-weight: 700; font-size: 15px; color: var(--mlb-text-primary); }
-.fiar-result-saldo { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
-
-.fiar-loading { display: flex; align-items: center; gap: 12px; padding: 40px; justify-content: center; color: var(--mlb-text-secondary); font-size: 14px; font-weight: 600; }
+/* Paso 1 · Cliente (llena, contenido en columna, sin card sobre fondo vacío) */
+.fiar2-cli { flex: 1; min-height: 0; overflow-y: auto; display: flex; justify-content: center; padding: 42px 24px; }
+.fiar2-cli-inner { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 18px; }
+.fiar2-cli-q { margin: 0; font-family: var(--mlb-font-display); font-size: 26px; font-weight: 800; color: var(--mlb-text-primary); text-align: center; }
+.fiar2-search { display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 58px; border: 2px solid var(--mlb-border-strong); border-radius: 14px; background: var(--mlb-bg-panel); color: var(--mlb-text-muted); box-shadow: var(--shadow-sm); }
+.fiar2-search input { flex: 1; border: none; background: transparent; font-size: 17px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-cli-hint { text-align: center; color: var(--mlb-text-muted); font-size: 14px; padding: 20px; }
+.fiar2-results { display: flex; flex-direction: column; gap: 8px; }
+.fiar2-result { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 1.5px solid var(--mlb-border); border-radius: 12px; background: var(--mlb-bg-panel); cursor: pointer; text-align: left; transition: border-color .12s, background .12s; }
+.fiar2-result:hover { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); }
+.fiar2-result-nom { flex: 1; font-weight: 700; font-size: 15.5px; color: var(--mlb-text-primary); }
+.fiar2-result-saldo { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
+.fiar2-result-go { color: var(--mlb-text-muted); }
+.fiar-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); display: grid; place-items: center; font-size: 14px; font-weight: 800; flex: none; }
+.fiar-empty { padding: 24px; text-align: center; color: var(--mlb-text-muted); font-size: 14px; }
+.fiar-loading { display: flex; align-items: center; gap: 12px; padding: 36px; justify-content: center; color: var(--mlb-text-secondary); font-size: 14px; font-weight: 600; }
 .fiar-spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--mlb-border-strong); border-top-color: var(--mlb-accent); animation: fiar-spin .7s linear infinite; flex: none; }
 @keyframes fiar-spin { to { transform: rotate(360deg); } }
-
 .fiar-sel-card { display: flex; align-items: center; gap: 18px; padding: 20px; border: 2px solid var(--mlb-accent); border-radius: 16px; background: var(--mlb-accent-soft); }
 .fiar-sel-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .fiar-sel-info strong { font-size: 19px; color: var(--mlb-text-primary); }
 .fiar-sel-info span { font-size: 13.5px; color: var(--mlb-text-secondary); }
 .fiar-sel-saldo { font-weight: 700; }
-
-.fiar-idfoto { width: 60px; height: 60px; border-radius: 12px; overflow: hidden; border: 1px solid var(--mlb-border); flex: none; background: var(--mlb-bg-panel); }
+.fiar2-cli-actions { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.fiar2-ghost { padding: 10px 16px; border: 1.5px solid var(--mlb-border-strong); border-radius: 10px; background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.fiar2-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border: none; border-radius: 10px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 14.5px; cursor: pointer; }
+.fiar2-primary:hover { background: var(--mlb-accent-hover); }
+.fiar-idfoto { width: 64px; height: 64px; border-radius: 12px; overflow: hidden; border: 1px solid var(--mlb-border); flex: none; background: var(--mlb-bg-panel); }
 .fiar-idfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fiar-idfoto--vacia { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--mlb-text-muted); font-size: 10px; }
 
-/* Paso 2 · Productos */
-.fiar-prodstep { display: flex; flex-direction: column; gap: 14px; }
-.fiar-prodbar { display: flex; gap: 10px; }
-.fiar-addbtn { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; height: 44px; border: none; border-radius: 10px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; transition: background-color .15s; }
-.fiar-addbtn:hover { background: var(--mlb-accent-hover); }
-.fiar-codebox { flex: 1; display: flex; }
-.fiar-codebox input { flex: 1; height: 44px; padding: 0 14px; border: 1.5px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-input); font-size: 14px; color: var(--mlb-text-primary); outline: none; }
+/* Paso 2 · Productos — parrilla (pos-products/pos-grid) + carrito (pos-cart) */
+.fiar2-prod { flex: 1; min-height: 0; display: flex; }
+.fiar2-cart { display: flex; flex-direction: column; min-height: 0; }
+.fiar2-cart-head { display: flex; align-items: center; gap: 12px; }
+.fiar2-cart-head h2 { font-family: var(--mlb-font-display); font-size: 16px; font-weight: 800; color: var(--mlb-text-primary); margin: 0; }
+.fiar2-cart-sub { font-size: 12.5px; color: var(--mlb-text-muted); }
+.fiar2-cart-items { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding: 14px 16px; }
+.fiar2-cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; color: var(--mlb-text-muted); font-size: 13.5px; text-align: center; }
+.fiar2-line { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-app); }
+.fiar2-line-nom { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--mlb-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fiar2-line-qty { display: inline-flex; align-items: center; gap: 6px; }
+.fiar2-line-qty button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--mlb-border-strong); background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; }
+.fiar2-line-qty button:hover { border-color: var(--mlb-accent); color: var(--mlb-accent); }
+.fiar2-line-qty span { min-width: 16px; text-align: center; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 13px; }
+.fiar2-line-sub { min-width: 64px; text-align: right; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 13px; color: var(--mlb-text-primary); }
+.fiar2-line-x { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; color: var(--mlb-text-muted); display: grid; place-items: center; cursor: pointer; }
+.fiar2-line-x:hover { background: color-mix(in srgb, var(--mlb-danger) 12%, transparent); color: var(--mlb-danger); }
+.fiar2-cart-foot { border-top: 1px solid var(--mlb-border); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.fiar2-engtoggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--mlb-text-primary); cursor: pointer; }
+.fiar2-eng-input { height: 40px; padding: 0 12px; border: 1.5px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-family: var(--mlb-font-mono); font-size: 15px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-tot-row { display: flex; justify-content: space-between; align-items: baseline; }
+.fiar2-tot-row span { font-size: 13px; color: var(--mlb-text-secondary); }
+.fiar2-tot-row strong { font-family: var(--mlb-font-mono); font-size: 18px; font-weight: 700; color: var(--mlb-text-primary); }
+.fiar2-debe-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(183,121,31,.1); }
+.fiar2-debe-row span { font-size: 13px; font-weight: 700; color: #854f0b; }
+.fiar2-debe-row strong { font-family: var(--mlb-font-mono); font-size: 22px; font-weight: 800; color: #b7791f; }
+.fiar2-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: none; border-radius: 12px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; border-bottom: 4px solid #c01456; transition: background-color .15s; }
+.fiar2-confirm:hover { background: var(--mlb-accent-hover); }
+.fiar2-confirm:disabled { opacity: .5; cursor: not-allowed; }
 
-.fiar-items { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
-.fiar-item { display: flex; align-items: center; gap: 14px; padding: 11px 14px; border: 1px solid var(--mlb-border); border-radius: 11px; background: var(--mlb-bg-panel); }
-.fiar-item-nom { flex: 1; font-weight: 600; font-size: 14.5px; color: var(--mlb-text-primary); }
-.fiar-item-qty { display: inline-flex; align-items: center; gap: 8px; }
-.fiar-item-qty button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--mlb-border-strong); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; }
-.fiar-item-qty button:hover { border-color: var(--mlb-accent); color: var(--mlb-accent); }
-.fiar-item-qty span { min-width: 18px; text-align: center; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 14px; }
-.fiar-item-sub { min-width: 72px; text-align: right; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 14px; color: var(--mlb-text-primary); }
-.fiar-item-x { width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent; color: var(--mlb-text-muted); display: grid; place-items: center; cursor: pointer; }
-.fiar-item-x:hover { background: color-mix(in srgb, var(--mlb-danger) 12%, transparent); color: var(--mlb-danger); }
+/* Tarjeta de producto ya en el fiado */
+.pos-card.fiar2-card--in { border-color: var(--mlb-accent); box-shadow: 0 0 0 2px var(--mlb-accent-soft); }
+.fiar2-card-badge { position: absolute; top: 8px; right: 8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: var(--mlb-accent); color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; z-index: 2; }
 
-.fiar-empty { padding: 22px; text-align: center; color: var(--mlb-text-muted); font-size: 14px; }
-.fiar-empty--big { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 22px; border: 2px dashed var(--mlb-border); border-radius: 14px; color: var(--mlb-text-muted); }
-.fiar-empty--big p { margin: 4px 0 0; font-size: 15px; font-weight: 700; color: var(--mlb-text-secondary); }
-.fiar-empty--big span { font-size: 13px; }
-
-.fiar-engbox { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 4px; }
-.fiar-engtoggle { display: inline-flex; align-items: center; gap: 9px; font-size: 14.5px; font-weight: 700; color: var(--mlb-text-primary); cursor: pointer; }
-.fiar-eng-input { height: 42px; padding: 0 13px; border: 1.5px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-input); font-family: var(--mlb-font-mono); font-size: 15px; color: var(--mlb-text-primary); outline: none; width: 200px; }
-
-/* Paso 3 · Confirmar */
-.fiar-confirm { display: flex; flex-direction: column; gap: 14px; }
-.fiar-res-cliente { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px; background: var(--mlb-accent-soft); }
-.fiar-res-cliente strong { display: block; font-size: 16px; color: var(--mlb-text-primary); }
-.fiar-res-cliente span { font-size: 13px; color: var(--mlb-text-secondary); }
-.fiar-res-items { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; padding: 4px 0; }
-.fiar-res-line { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--mlb-text-secondary); }
-.fiar-res-line span:last-child { font-family: var(--mlb-font-mono); font-weight: 600; color: var(--mlb-text-primary); }
-.fiar-res-tot { border-top: 1px solid var(--mlb-border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.fiar-res-row { display: flex; justify-content: space-between; align-items: baseline; }
-.fiar-res-row span { font-size: 14px; color: var(--mlb-text-secondary); }
-.fiar-res-row strong { font-family: var(--mlb-font-mono); font-size: 18px; font-weight: 700; color: var(--mlb-text-primary); }
-.fiar-res-row--eng strong { color: var(--mlb-success); }
-.fiar-res-debe { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: rgba(183,121,31,.1); }
-.fiar-res-debe span { font-size: 14px; font-weight: 700; color: #854f0b; }
-.fiar-res-debe strong { font-family: var(--mlb-font-mono); font-size: 26px; font-weight: 800; color: #b7791f; }
-
-/* Pie */
-.fiar-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--mlb-border); }
-.fiar-btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; border: none; border-radius: 11px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; transition: background-color .15s; }
-.fiar-btn-primary:hover { background: var(--mlb-accent-hover); }
-.fiar-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
-
-/* Selector de productos por categoría (modal) */
-.fiar-picker-ov { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(15, 12, 20, 0.42); padding: 24px; }
-.fiar-picker { width: min(720px, 100%); max-height: 86%; display: flex; flex-direction: column; background: var(--mlb-bg-panel); border: 1px solid var(--mlb-border); border-radius: 18px; box-shadow: var(--shadow-lg); overflow: hidden; }
-.fiar-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--mlb-border); }
-.fiar-picker-head strong { font-family: var(--mlb-font-display); font-size: 17px; color: var(--mlb-text-primary); }
-.fiar-picker-head button { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--mlb-bg-input); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; }
-.fiar-picker-search { display: flex; align-items: center; gap: 10px; margin: 14px 18px 0; padding: 0 14px; height: 44px; border: 1.5px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-input); color: var(--mlb-text-muted); }
-.fiar-picker-search input { flex: 1; border: none; background: transparent; font-size: 14px; color: var(--mlb-text-primary); outline: none; }
-.fiar-picker-cats { display: flex; gap: 8px; overflow-x: auto; padding: 14px 18px 6px; }
-.fiar-picker-cats button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
-.fiar-picker-cats button.is-active { background: var(--mlb-accent); color: #fff; border-color: var(--mlb-accent); }
-.fiar-picker-cats button em { font-style: normal; opacity: .7; font-size: 11px; }
-.fiar-picker-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 10px 18px 16px; }
-.fiar-picker-card { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; min-height: 84px; padding: 12px; border: 1.5px solid var(--mlb-border); border-radius: 11px; background: var(--mlb-bg-app); cursor: pointer; text-align: left; transition: border-color .12s, box-shadow .12s; }
-.fiar-picker-card:hover { border-color: var(--mlb-accent); box-shadow: var(--shadow-sm); }
-.fiar-picker-card.is-added { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); }
-.fiar-picker-nom { font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--mlb-text-primary); }
-.fiar-picker-bottom { display: flex; align-items: center; justify-content: space-between; }
-.fiar-picker-precio { font-family: var(--mlb-font-mono); font-weight: 700; font-size: 14px; color: var(--mlb-text-primary); }
-.fiar-picker-act { width: 24px; height: 24px; border-radius: 7px; background: var(--mlb-accent); color: #fff; display: grid; place-items: center; }
-.fiar-picker-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--mlb-border); }
-.fiar-picker-count { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
-
-@media (max-width: 720px) {
-  .fiar-accion-grid { grid-template-columns: 1fr; }
-  .fiar-steplbl { display: none; }
-  .fiar-prodbar { flex-direction: column; }
+@media (max-width: 860px) {
+  .fiar2-prod { flex-direction: column; }
 }

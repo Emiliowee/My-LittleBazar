@@ -480,6 +480,7 @@ export function PdvView() {
             clientes={clientes}
             productos={productos}
             categorias={categorias}
+            categoriasMeta={categoriasMeta}
             draftItems={fiarImport}
             onSalir={(ok) => { setFiarImport([]); if (ok) { void loadClientes(); void cargarProductos() } setModo('venta'); focusScan() }}
           />
