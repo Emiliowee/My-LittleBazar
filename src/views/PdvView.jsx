@@ -10,6 +10,7 @@ import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
+import { AccionScreen, FiarScreen } from './FiarFlow'
 import { corteDelDia, totalFiadoAfuera } from '@/lib/reportes'
 import { banquetaPrecioParaToggleVendido } from '@/lib/banquetaPrint'
 import './pos-monserrat.css'
@@ -60,7 +61,8 @@ export function PdvView() {
 
   const [pagoPaso, setPagoPaso] = useState(null) // null | metodos | efectivo | transferencia | credito
   const [confirm, setConfirm] = useState(null)
-  const [modo, setModo] = useState('venta') // venta | ventas | devoluciones | banqueta | reportes
+  const [modo, setModo] = useState('venta') // venta | ventas | devoluciones | banqueta | reportes | saldos | fiar
+  const [fiarImport, setFiarImport] = useState([]) // productos importados del cobro hacia el flujo de fiar
 
   const scanRef = useRef(null)
   const busyRef = useRef(false)
@@ -105,6 +107,9 @@ export function PdvView() {
         const r = calcularCuentaSaldos(c)
         return {
           id: c.id, nombre: c.nombre,
+          telefono: c.telefono || '',
+          idImagen: c.identificacion?.imagen || '',
+          saldo: r.saldo, saldoAFavor: r.saldoAFavor,
           saldo_pendiente: r.saldo, saldo_deudor: r.saldo,
           saldo_a_favor: r.saldoAFavor,
         }
@@ -311,6 +316,7 @@ export function PdvView() {
           <button type="button" className={`pos-nav__item${modo === 'venta' ? ' is-active' : ''}`} onClick={() => { setModo('venta'); focusScan() }}><ShoppingCart size={19} strokeWidth={1.8} />Punto de venta</button>
           <button type="button" className={`pos-nav__item${modo === 'ventas' ? ' is-active' : ''}`} onClick={() => setModo('ventas')}><ReceiptText size={19} strokeWidth={1.8} />Consultar ventas</button>
           <button type="button" className={`pos-nav__item${modo === 'banqueta' ? ' is-active' : ''}`} onClick={() => setModo('banqueta')}><Store size={19} strokeWidth={1.8} />Banqueta</button>
+          <button type="button" className={`pos-nav__item${modo === 'saldos' || modo === 'fiar' ? ' is-active' : ''}`} onClick={() => { setFiarImport([]); setModo('saldos') }}><Handshake size={19} strokeWidth={1.8} />Abonar y fiar</button>
         </nav>
 
         <div className="pos-sidebar__bottom">
@@ -463,6 +469,18 @@ export function PdvView() {
           <DevolucionWorkspace cuentas={cuentas} onChanged={() => { void loadClientes(); void cargarProductos() }} />
         ) : modo === 'banqueta' ? (
           <BanquetaWorkspace />
+        ) : modo === 'saldos' ? (
+          <AccionScreen
+            onBack={() => { setModo('venta'); focusScan() }}
+            onAbonar={() => toast.info('Abono rápido: lo definimos pronto. Por ahora entra a la cuenta del cliente en Saldos.')}
+            onFiar={() => { setFiarImport([]); setModo('fiar') }}
+          />
+        ) : modo === 'fiar' ? (
+          <FiarScreen
+            clientes={clientes}
+            draftItems={fiarImport}
+            onSalir={(ok) => { setFiarImport([]); if (ok) { void loadClientes(); void cargarProductos() } setModo('venta'); focusScan() }}
+          />
         ) : (
           <ReportesPosWorkspace />
         )}
@@ -480,6 +498,13 @@ export function PdvView() {
           saldosApi={saldosApi}
           onClientesChanged={loadClientes}
           onCobrar={cobrar}
+          onIrAFiar={() => {
+            const imp = cart.map((l) => ({ productoId: l.pid, codigo: l.codigo, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad }))
+            setFiarImport(imp)
+            setCart([])
+            setPagoPaso(null)
+            setModo('fiar')
+          }}
           onClose={() => { setPagoPaso(null); focusScan() }}
         />
       ) : null}
@@ -810,17 +835,28 @@ function ModalHead({ icon: Icon, title, onClose, onBack }) {
   )
 }
 
-function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart }) {
+function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClose, cart }) {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const [efectivo, setEfectivo] = useState('')
   const [transferencia, setTransferencia] = useState('')
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
   const [clienteId, setClienteId] = useState('')
   const [modoFiar, setModoFiar] = useState(false)
+  const [yendoFiar, setYendoFiar] = useState(false)
   const [activo, setActivo] = useState('efectivo')
   const [valeInfo, setValeInfo] = useState(null)
   const [valeOpen, setValeOpen] = useState(false)
   const [valeInput, setValeInput] = useState('')
+
+  /* Botón "Fiar": no fía aquí; intercambia el pad por un botón que, con una
+   * breve animación de carga (peso intencional), lleva al flujo Sacar fiado
+   * llevando los productos del ticket ya importados. */
+  const irAFiar = () => {
+    if (yendoFiar) return
+    setYendoFiar(true)
+    const ms = 600 + Math.floor(Math.random() * 700)
+    window.setTimeout(() => { onIrAFiar?.() }, ms)
+  }
 
   const valEfectivo = Number(efectivo) || 0
   const valTransferencia = Number(transferencia) || 0
@@ -893,13 +929,8 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
       pagos: { efectivo: valEfectivo, transferencia: valTransferencia, vale: valePago },
       cuentaBancaria: valTransferencia > 0 ? cuenta : null,
     }
-    if (modoFiar) {
-      if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return }
-      onCobrar({ ...base, clienteId: clienteSelec.id, fiar: true })
-    } else {
-      if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
-      onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
-    }
+    if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
+    onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
   }
 
   const generateQuickBills = (totalAmount) => {
@@ -975,39 +1006,51 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               </div>
             </div>
 
-            <div className="numpad-section" style={{display: (activo === 'efectivo' || activo === 'tarjeta' || modoFiar) ? 'flex' : 'none', padding: '0 8px'}}>
-              <div className="checkout-step-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--mlb-text-secondary)', marginTop: '0px', letterSpacing: '0.05em' }}>
-                2. ¿Cuánto recibes?
-              </div>
-              <div className="received-display-wrapper">
-                <span>{modoFiar ? 'Enganche' : (activo === 'tarjeta' ? 'En Tarjeta' : 'Recibido')}</span>
-                <div className="received-amount-display">
-                  <span className="currency">$</span>
-                  <span className="amount">{activoVal || '0'}</span>
+            <div className="numpad-section" style={{display: 'flex', padding: '0 8px'}}>
+              {modoFiar ? (
+                <div className="fiar-switch">
+                  <Handshake size={30} color="#86198f" fill="#f5d0fe" />
+                  <p className="fiar-switch-msg">Pasarás estos productos a <strong>Sacar fiado</strong>. Ahí eliges el cliente y el enganche; no necesitas el teclado.</p>
+                  <button className="fiar-switch-go" disabled={yendoFiar} onClick={irAFiar}>
+                    {yendoFiar ? (<><span className="fiar-switch-spin" /> Abriendo…</>) : (<>Continuar a sacar fiado <ArrowRight size={18} strokeWidth={2.2} /></>)}
+                  </button>
                 </div>
-              </div>
-              
-              <div className="quick-bills-row">
-                <button className="quick-bill-btn" onClick={pagoJusto}>Exacto</button>
-                {generateQuickBills(total).slice(0,3).map(n => (
-                  <button key={n} className="quick-bill-btn" onClick={() => setActivoVal(() => String(n))}>{formatPrice(n)}</button>
-                ))}
-              </div>
+              ) : (
+                <>
+                  <div className="checkout-step-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--mlb-text-secondary)', marginTop: '0px', letterSpacing: '0.05em' }}>
+                    2. ¿Cuánto recibes?
+                  </div>
+                  <div className="received-display-wrapper">
+                    <span>{activo === 'tarjeta' ? 'En Tarjeta' : 'Recibido'}</span>
+                    <div className="received-amount-display">
+                      <span className="currency">$</span>
+                      <span className="amount">{activoVal || '0'}</span>
+                    </div>
+                  </div>
 
-              <div className="numpad-grid">
-                <button className="numpad-btn" onClick={() => tecla('1')}>1</button>
-                <button className="numpad-btn" onClick={() => tecla('2')}>2</button>
-                <button className="numpad-btn" onClick={() => tecla('3')}>3</button>
-                <button className="numpad-btn" onClick={() => tecla('4')}>4</button>
-                <button className="numpad-btn" onClick={() => tecla('5')}>5</button>
-                <button className="numpad-btn" onClick={() => tecla('6')}>6</button>
-                <button className="numpad-btn" onClick={() => tecla('7')}>7</button>
-                <button className="numpad-btn" onClick={() => tecla('8')}>8</button>
-                <button className="numpad-btn" onClick={() => tecla('9')}>9</button>
-                <button className="numpad-btn" onClick={() => tecla('00')}>00</button>
-                <button className="numpad-btn" onClick={() => tecla('0')}>0</button>
-                <button className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar"><X size={22} strokeWidth={2.5}/></button>
-              </div>
+                  <div className="quick-bills-row">
+                    <button className="quick-bill-btn" onClick={pagoJusto}>Exacto</button>
+                    {generateQuickBills(total).slice(0,3).map(n => (
+                      <button key={n} className="quick-bill-btn" onClick={() => setActivoVal(() => String(n))}>{formatPrice(n)}</button>
+                    ))}
+                  </div>
+
+                  <div className="numpad-grid">
+                    <button className="numpad-btn" onClick={() => tecla('1')}>1</button>
+                    <button className="numpad-btn" onClick={() => tecla('2')}>2</button>
+                    <button className="numpad-btn" onClick={() => tecla('3')}>3</button>
+                    <button className="numpad-btn" onClick={() => tecla('4')}>4</button>
+                    <button className="numpad-btn" onClick={() => tecla('5')}>5</button>
+                    <button className="numpad-btn" onClick={() => tecla('6')}>6</button>
+                    <button className="numpad-btn" onClick={() => tecla('7')}>7</button>
+                    <button className="numpad-btn" onClick={() => tecla('8')}>8</button>
+                    <button className="numpad-btn" onClick={() => tecla('9')}>9</button>
+                    <button className="numpad-btn" onClick={() => tecla('00')}>00</button>
+                    <button className="numpad-btn" onClick={() => tecla('0')}>0</button>
+                    <button className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar"><X size={22} strokeWidth={2.5}/></button>
+                  </div>
+                </>
+              )}
             </div>
             
           </div>
@@ -1053,12 +1096,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
                 </div>
               )}
 
-              {modoFiar ? (
-                <div className="amount-due-row">
-                  <span>Queda debiendo</span>
-                  <strong>{formatPrice(faltante)}</strong>
-                </div>
-              ) : cambio > 0 ? (
+              {modoFiar ? null : cambio > 0 ? (
                 <div className="change-return-row">
                   <span>Entregar Cambio</span>
                   <strong>{formatPrice(cambio)}</strong>
@@ -1097,15 +1135,17 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
 
 
 
-            <button 
-              id="btn-pcb-cobrar" 
-              className="confirm-sale-btn" 
-              disabled={busy || (!modoFiar && faltante > 0)} 
-              onClick={confirmar}
-            >
-              <Check size={24} strokeWidth={2.5} />
-              {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Completar Venta'}
-            </button>
+            {!modoFiar && (
+              <button
+                id="btn-pcb-cobrar"
+                className="confirm-sale-btn"
+                disabled={busy || faltante > 0}
+                onClick={confirmar}
+              >
+                <Check size={24} strokeWidth={2.5} />
+                {busy ? 'Cobrando…' : 'Completar Venta'}
+              </button>
+            )}
             
           </div>
         </div>

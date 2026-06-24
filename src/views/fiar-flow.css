@@ -1,0 +1,86 @@
+/* ── Flujo Fiar (dentro del PDV) — estilo boceto/ERP, identidad rosa ─── */
+
+.fiar-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--mlb-bg-app); }
+.fiar-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); }
+.fiar-topbar-pad { width: 130px; }
+.fiar-volver { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--mlb-text-secondary); font-weight: 600; font-size: 14px; cursor: pointer; }
+.fiar-volver:hover { color: var(--mlb-text-primary); }
+.fiar-title { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mlb-font-display); font-weight: 800; font-size: 17px; color: var(--mlb-text-primary); }
+.fiar-foco-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: #faeeda; color: #633806; font-size: 12px; font-weight: 700; }
+.fiar-foco { width: 9px; height: 9px; border-radius: 50%; background: #ef9f27; flex: none; animation: fiar-pulse 1.5s infinite; }
+@keyframes fiar-pulse { 0% { box-shadow: 0 0 0 0 rgba(239,159,39,.55); } 70% { box-shadow: 0 0 0 7px rgba(239,159,39,0); } 100% { box-shadow: 0 0 0 0 rgba(239,159,39,0); } }
+
+/* Entrada ¿qué desea hacer? (imagen 1) */
+.fiar-accion { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 32px; }
+.fiar-accion-q { margin: 0; font-family: var(--mlb-font-display); font-weight: 800; font-size: 23px; color: var(--mlb-text-primary); }
+.fiar-accion-grid { display: grid; grid-template-columns: repeat(2, minmax(190px, 250px)); gap: 22px; }
+.fiar-accion-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; aspect-ratio: 4 / 3; border-radius: 16px; border: 2px solid var(--mlb-border-strong); background: var(--mlb-bg-panel); color: var(--mlb-text-primary); cursor: pointer; transition: transform .12s, border-color .12s, box-shadow .12s; }
+.fiar-accion-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.fiar-accion-nom { font-family: var(--mlb-font-display); font-weight: 800; font-size: 20px; }
+.fiar-accion-card small { font-size: 12px; color: var(--mlb-text-muted); }
+.fiar-accion-abonar:hover { border-color: var(--mlb-success); }
+.fiar-accion-fiar { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
+
+/* Paso 1 · Cliente (imagen 2) */
+.fiar-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; max-width: 760px; width: 100%; margin: 0 auto; }
+.fiar-step-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--mlb-text-secondary); }
+.fiar-search { display: flex; align-items: center; gap: 9px; padding: 0 14px; border: 2px solid var(--mlb-border); border-radius: 11px; background: var(--mlb-bg-panel); color: var(--mlb-text-muted); }
+.fiar-search input { flex: 1; border: none; background: transparent; padding: 13px 0; font-size: 15px; color: var(--mlb-text-primary); outline: none; }
+.fiar-cliente-list { display: flex; flex-direction: column; gap: 7px; }
+.fiar-cliente-row { display: flex; align-items: center; gap: 11px; padding: 11px 14px; border: 2px solid var(--mlb-border); border-radius: 11px; background: var(--mlb-bg-panel); cursor: pointer; text-align: left; transition: border-color .12s, background .12s; }
+.fiar-cliente-row:hover { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); }
+.fiar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: none; }
+.fiar-cliente-nom { flex: 1; font-weight: 700; font-size: 15px; color: var(--mlb-text-primary); }
+.fiar-cliente-saldo { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
+.fiar-empty { padding: 22px; text-align: center; color: var(--mlb-text-muted); font-size: 14px; border: 2px dashed var(--mlb-border); border-radius: 12px; }
+.fiar-loading { display: flex; align-items: center; gap: 12px; padding: 28px; justify-content: center; color: var(--mlb-text-secondary); font-size: 14px; font-weight: 600; }
+.fiar-spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--mlb-border-strong); border-top-color: var(--mlb-accent); animation: fiar-spin .7s linear infinite; flex: none; }
+@keyframes fiar-spin { to { transform: rotate(360deg); } }
+.fiar-cliente-card { display: flex; align-items: flex-start; gap: 16px; padding: 16px; border: 2px solid var(--mlb-accent); border-radius: 14px; background: var(--mlb-accent-soft); }
+.fiar-cliente-datos { display: flex; flex-direction: column; gap: 3px; }
+.fiar-cliente-datos strong { font-size: 17px; color: var(--mlb-text-primary); }
+.fiar-cliente-datos span { font-size: 13px; color: var(--mlb-text-secondary); }
+.fiar-cliente-saldo-line { font-weight: 600; }
+.fiar-link { align-self: flex-start; margin-top: 4px; background: none; border: none; padding: 0; color: var(--mlb-accent); font-weight: 700; font-size: 13px; cursor: pointer; }
+.fiar-idfoto { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--mlb-border); flex: none; background: var(--mlb-bg-panel); }
+.fiar-idfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fiar-idfoto--vacia { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--mlb-text-muted); font-size: 10px; }
+
+/* Paso 2 · Productos (imagen 3) */
+.fiar-prod-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 290px; }
+.fiar-prod-main { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; overflow-y: auto; min-height: 0; }
+.fiar-prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.fiar-prod-card { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; min-height: 92px; padding: 12px; border-radius: 12px; border: 2px solid var(--mlb-accent); background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
+.fiar-prod-x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; border: none; background: var(--mlb-danger); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.fiar-prod-nom { font-weight: 700; font-size: 13px; line-height: 1.25; }
+.fiar-prod-precio { font-family: var(--mlb-font-mono); font-weight: 700; font-size: 14px; }
+.fiar-prod-add { min-height: 92px; display: grid; place-items: center; border: 2px dashed var(--mlb-border-strong); border-radius: 12px; background: transparent; color: var(--mlb-text-muted); cursor: pointer; transition: border-color .12s, color .12s; }
+.fiar-prod-add:hover { border-color: var(--mlb-accent); color: var(--mlb-accent); }
+.fiar-side { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-left: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); overflow-y: auto; }
+.fiar-side-cliente { display: flex; flex-direction: column; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--mlb-border); margin-bottom: 4px; }
+.fiar-side-cliente strong { font-size: 15px; color: var(--mlb-text-primary); }
+.fiar-side-label { font-size: 12px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar-add-row { display: flex; gap: 8px; }
+.fiar-add-row input { flex: 1; padding: 10px 11px; border: 2px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-size: 14px; color: var(--mlb-text-primary); outline: none; }
+.fiar-add-row button { width: 40px; border: none; border-radius: 9px; background: var(--mlb-accent); color: #fff; cursor: pointer; display: grid; place-items: center; }
+.fiar-hint { font-size: 12px; color: var(--mlb-text-muted); }
+.fiar-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--mlb-text-primary); cursor: pointer; }
+.fiar-eng-input { padding: 10px 11px; border: 2px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-family: var(--mlb-font-mono); font-size: 15px; color: var(--mlb-text-primary); outline: none; }
+
+/* Pie común */
+.fiar-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 22px; border-top: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); }
+.fiar-footer--total { justify-content: space-between; }
+.fiar-total { display: flex; align-items: baseline; gap: 12px; }
+.fiar-total-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--mlb-text-secondary); }
+.fiar-total strong { font-family: var(--mlb-font-mono); font-size: 26px; font-weight: 800; color: var(--mlb-text-primary); }
+.fiar-total-debe { font-size: 13px; font-weight: 700; color: #b7791f; font-style: normal; }
+.fiar-btn-ghost { padding: 12px 18px; border: 2px solid var(--mlb-border-strong); border-radius: 11px; background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); font-weight: 700; font-size: 14px; cursor: pointer; }
+.fiar-btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border: none; border-radius: 11px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; transition: background-color .15s; }
+.fiar-btn-primary:hover { background: var(--mlb-accent-hover); }
+.fiar-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  .fiar-prod-layout { grid-template-columns: 1fr; }
+  .fiar-side { border-left: none; border-top: 1px solid var(--mlb-border); }
+  .fiar-accion-grid { grid-template-columns: 1fr; }
+}
