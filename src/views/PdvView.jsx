@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Barcode, Trash2, ShoppingBag, X, Plus, Minus, ArrowRight, User,
   Banknote, Smartphone, Handshake, Check, ArrowLeft, RefreshCcw,
-  ShoppingCart, Printer, ReceiptText, BarChart3, Store, CalendarDays,
+  ShoppingCart, Printer, ReceiptText, BarChart3, Store, CalendarDays, Tag,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
@@ -808,7 +808,7 @@ function ModalHead({ icon: Icon, title, onClose, onBack }) {
   )
 }
 
-function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
+function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart }) {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const [efectivo, setEfectivo] = useState('')
   const [transferencia, setTransferencia] = useState('')
@@ -834,7 +834,6 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
   const favorAplicado = Math.round(Math.min(maxSaldoFavor, restanteTrasVale) * 100) / 100
   const faltante = Math.round((restanteTrasVale - favorAplicado) * 100) / 100
   const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
-  const cubierto = Math.round((pagadoCaja + valeAplicado + favorAplicado) * 100) / 100
 
   const activoVal = activo === 'tarjeta' ? transferencia : efectivo
   const setActivoVal = (fn) => {
@@ -871,15 +870,19 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
 
   useEffect(() => {
     const h = (e) => {
+      if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
       if (e.key === 'Escape') { if (valeOpen) setValeOpen(false); else if (modoFiar) setModoFiar(false); else onClose() }
       if (e.key === 'Enter' && !valeOpen) {
         const btn = document.getElementById('btn-pcb-cobrar')
         if (btn && !btn.disabled) { e.preventDefault(); btn.click() }
       }
+      if (/^[0-9.]$/.test(e.key)) { e.preventDefault(); tecla(e.key) }
+      if (e.key === 'Backspace') { e.preventDefault(); tecla('back') }
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onClose, modoFiar, valeOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, modoFiar, valeOpen, activo])
 
   const confirmar = () => {
     if (valTransferencia > 0 && !cuenta) { toast.error('Elige la cuenta de la tarjeta.'); return }
@@ -897,118 +900,208 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose }) {
     }
   }
 
-  const nombreCli = clienteSelec ? clienteSelec.nombre : 'Mostrador'
+  const generateQuickBills = (totalAmount) => {
+    const suggestions = new Set();
+    const exact = Math.ceil(totalAmount);
+    suggestions.add(exact);
+    const r50  = Math.ceil(totalAmount / 50)  * 50;
+    const r100 = Math.ceil(totalAmount / 100) * 100;
+    const r200 = Math.ceil(totalAmount / 200) * 200;
+    const r500 = Math.ceil(totalAmount / 500) * 500;
+    [r50, r100, r200, r500].forEach(v => { if (v > totalAmount) suggestions.add(v); });
+    return [...suggestions].slice(0, 4);
+  }
+
+  const itemsCount = cart ? cart.reduce((sum, i) => sum + i.cantidad, 0) : 0;
 
   return (
-    <div className="pcb-overlay" onClick={onClose}>
-      <div className="pcb" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cobrar venta">
-        <div className="pcb__head">
-          <span className="pcb__title"><Banknote size={18} strokeWidth={1.9} /> {modoFiar ? 'Fiar a' : 'Cobro de'} {nombreCli}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="pcb__cliente">
-              <User size={15} />
-              <select value={clienteId} onChange={(e) => { setClienteId(e.target.value); if (!e.target.value) setModoFiar(false) }}>
-                <option value="">Mostrador (sin cuenta)</option>
-                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            </span>
-            <button type="button" className="pcb__close" onClick={onClose}><X size={16} /> Cancelar</button>
+    <div className="checkout-overlay active" onClick={onClose}>
+      <div className="checkout-content" role="dialog" aria-label="Cobrar venta" onClick={(e) => e.stopPropagation()}>
+        
+        <div className="checkout-header">
+          <div className="checkout-header-left" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Cobrar Venta</h2>
+              {itemsCount > 0 ? <span className="checkout-items-count">{itemsCount} artículo{itemsCount === 1 ? '' : 's'}</span> : null}
+            </div>
+            <div className="client-header-selector">
+              {clienteId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--mlb-bg-active)', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', fontWeight: 600, color: 'var(--mlb-text-primary)' }}>
+                  <User size={14} /> {clienteSelec?.nombre}
+                  <button onClick={() => {setClienteId(''); setModoFiar(false)}} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
+                </div>
+              ) : (
+                <select 
+                  className="pos-select" 
+                  style={{ padding: '6px 28px 6px 12px', fontSize: '13px', borderRadius: '16px', borderColor: modoFiar ? '#ef4444' : 'var(--mlb-border)', background: 'var(--mlb-bg-app)', fontWeight: '600', color: 'var(--mlb-text-primary)', height: 'auto' }} 
+                  value={clienteId} 
+                  onChange={(e) => { setClienteId(e.target.value); if (!e.target.value) setModoFiar(false) }}
+                >
+                  <option value="">Mostrador (Público general)</option>
+                  {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              )}
+            </div>
           </div>
+          <button className="close-checkout-btn" onClick={onClose}><X size={22} /></button>
         </div>
 
-        <div className="pcb__strip">
-          <div className="pcb__strip-total">
-            <div className="pcb__lbl">Total {modoFiar ? 'de la compra' : 'a cobrar'}</div>
-            <div className="pcb__big">{formatPrice(total)}</div>
-            {clienteSelec && (deudaCliente > 0 || maxSaldoFavor > 0) ? (
-              <div style={{ fontSize: 12, color: 'var(--mlb-text-muted)', marginTop: 2 }}>
-                {deudaCliente > 0 ? `debe ${formatPrice(deudaCliente)}` : ''}{deudaCliente > 0 && maxSaldoFavor > 0 ? ' · ' : ''}{maxSaldoFavor > 0 ? `a favor ${formatPrice(maxSaldoFavor)}` : ''}
+        <div className="checkout-body">
+          {/* Izquierda: Métodos y Teclado */}
+          <div className="checkout-left-panel">
+            
+            <div className="checkout-step-container" style={{ padding: '0 8px', marginBottom: '24px' }}>
+              <div className="checkout-step-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--mlb-text-secondary)', marginBottom: '16px', letterSpacing: '0.05em' }}>
+                1. ¿Cómo te paga?
               </div>
-            ) : null}
-          </div>
-          {modoFiar ? (
-            <div className="pcb__falta"><div className="pcb__lbl">Queda debiendo</div><div className="pcb__big">{formatPrice(faltante)}</div></div>
-          ) : cambio > 0 ? (
-            <div className="pcb__change"><div className="pcb__lbl">Cambio a dar</div><div className="pcb__big">{formatPrice(cambio)}</div></div>
-          ) : (
-            <div className="pcb__falta"><div className="pcb__lbl">Falta</div><div className="pcb__big">{formatPrice(faltante)}</div></div>
-          )}
-        </div>
-
-        <div className="pcb__body">
-          <div className="pcb__methods">
-            <div className="pcb__sectit">
-              <span>{modoFiar ? '¿Cuánto deja de enganche?' : '¿Cómo te paga?'}</span>
-              {cubierto > 0 ? <span className="pcb__tally">{formatPrice(cubierto)} de {formatPrice(total)}</span> : null}
-            </div>
-            <div className={`pcb-row ${activo === 'efectivo' ? 'is-on' : ''}`} onClick={() => setActivo('efectivo')}>
-              <span className="pcb-row__l"><span className="pcb-row__ico"><Banknote size={16} /></span> Efectivo</span>
-              <span className="pcb-row__amt">{formatPrice(valEfectivo)}</span>
-            </div>
-            <div className={`pcb-row ${activo === 'tarjeta' ? 'is-on' : ''}`} onClick={() => setActivo('tarjeta')}>
-              <span className="pcb-row__l"><span className="pcb-row__ico"><Smartphone size={16} /></span> Tarjeta</span>
-              <span className="pcb-row__amt">{formatPrice(valTransferencia)}</span>
-            </div>
-            {clienteSelec && maxSaldoFavor > 0 ? (
-              <div className="pcb-row is-gold">
-                <span className="pcb-row__l"><span className="pcb-row__ico" style={{ background: '#fff', color: '#B5872B' }}><Handshake size={16} /></span> <span>Saldo a favor <span style={{ fontSize: 11, color: '#9c7a2a' }}>disp. {formatPrice(maxSaldoFavor)}</span></span></span>
-                <span className="pcb-row__amt" style={{ color: '#7a5e1c' }}>{formatPrice(favorAplicado)}</span>
-              </div>
-            ) : (
-              <div className="pcb-row is-off"><span className="pcb-row__l"><span className="pcb-row__ico"><Handshake size={16} /></span> Saldo a favor</span><span style={{ fontSize: 11.5, color: 'var(--mlb-text-muted)' }}>elige un cliente</span></div>
-            )}
-            {valeInfo ? (
-              <div className="pcb-row">
-                <span className="pcb-row__l"><span className="pcb-row__ico"><ReceiptText size={16} /></span> <span>Vale {valeInfo.codigo} <span style={{ fontSize: 11, color: 'var(--mlb-text-muted)' }}>disp. {formatPrice(valeDisp)}</span></span></span>
-                <span className="pcb-row__amt" style={{ color: 'var(--mlb-success)' }}>{formatPrice(valeAplicado)}</span>
-              </div>
-            ) : (
-              <div className="pcb-row is-off"><span className="pcb-row__l"><span className="pcb-row__ico"><ReceiptText size={16} /></span> Vale</span><span style={{ fontSize: 11.5, color: 'var(--mlb-text-muted)' }}>toca «Usar vale»</span></div>
-            )}
-          </div>
-
-          <div className="pcb__entry">
-            <div className="pcb__lbl" style={{ marginBottom: 12, textAlign: 'center', color: 'var(--mlb-text-secondary)', fontSize: 13, letterSpacing: '.05em' }}>
-              {activo === 'tarjeta' ? 'Ingresa monto en tarjeta' : '¿Cuánto efectivo recibes?'}
-            </div>
-            {activo === 'tarjeta' && cuentas.length > 0 ? (
-              <select value={cuenta} onChange={(e) => setCuenta(e.target.value)} className="posw-select" style={{ width: '100%', marginBottom: 16 }}>
-                {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            ) : null}
-            <div className="pcb__amt-box"><span className="cur">$</span><span className="val">{activoVal || '0'}</span></div>
-            <div className="pcb__chips">
-              <span className="pcb-chip" onClick={pagoJusto}><Check size={13} strokeWidth={3} /> Exacto</span>
-              {[100, 200, 500].map((n) => <span key={n} className="pcb-chip pcb-chip--money" onClick={() => setActivoVal((s) => String((Number(s) || 0) + n))}>+${n}</span>)}
-            </div>
-            <div className="pcb__keys">
-              {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', 'back'].map((k) => (
-                <button type="button" key={k} className={`pcb-key ${k === 'back' ? 'is-back' : ''}`} onClick={() => tecla(k)}>{k === 'back' ? '⌫' : k}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="pcb__foot">
-          <div className="pcb__foot-left">
-            {valeOpen ? (
-              <div className="pcb__vale-row">
-                <input className="posw-input" autoFocus placeholder="Código del vale (o escanéalo)" value={valeInput} onChange={(e) => setValeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void aplicarVale() } }} />
-                <button type="button" className="pcb-chip" onClick={() => void aplicarVale()}>Aplicar</button>
-              </div>
-            ) : (
-              <>
-                <button type="button" className="pcb-chip" style={{ height: 40 }} onClick={() => setValeOpen(true)}><ReceiptText size={15} /> Usar vale</button>
-                <button type="button" className="pcb-chip" style={{ height: 40 }} onClick={() => { if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return } setModoFiar((m) => !m) }}>
-                  {modoFiar ? <><ArrowLeft size={15} /> Venta normal</> : <><ReceiptText size={15} /> Fiar</>}
+              <div className="payment-methods-grid">
+                <button className={`pay-method-btn method-efectivo ${activo === 'efectivo' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('efectivo'); setModoFiar(false);}}>
+                  <Banknote size={26} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
                 </button>
-              </>
-            )}
+                <button className={`pay-method-btn method-tarjeta ${activo === 'tarjeta' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('tarjeta'); setModoFiar(false);}}>
+                  <Smartphone size={26} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
+                </button>
+                <button className={`pay-method-btn method-fiar ${modoFiar ? 'active' : ''}`} onClick={() => {setModoFiar(true); setActivo('efectivo');}}>
+                  <Handshake size={26} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
+                </button>
+              </div>
+            </div>
+
+            <div className="numpad-section" style={{display: (activo === 'efectivo' || activo === 'tarjeta' || modoFiar) ? 'flex' : 'none', padding: '0 8px'}}>
+              <div className="checkout-step-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--mlb-text-secondary)', marginTop: '0px', letterSpacing: '0.05em' }}>
+                2. ¿Cuánto recibes?
+              </div>
+              <div className="received-display-wrapper">
+                <span>{modoFiar ? 'Enganche' : (activo === 'tarjeta' ? 'En Tarjeta' : 'Recibido')}</span>
+                <div className="received-amount-display">
+                  <span className="currency">$</span>
+                  <span className="amount">{activoVal || '0'}</span>
+                </div>
+              </div>
+              
+              <div className="quick-bills-row">
+                <button className="quick-bill-btn" onClick={pagoJusto}>Exacto</button>
+                {generateQuickBills(total).slice(0,3).map(n => (
+                  <button key={n} className="quick-bill-btn" onClick={() => setActivoVal(() => String(n))}>{formatPrice(n)}</button>
+                ))}
+              </div>
+
+              <div className="numpad-grid">
+                <button className="numpad-btn" onClick={() => tecla('1')}>1</button>
+                <button className="numpad-btn" onClick={() => tecla('2')}>2</button>
+                <button className="numpad-btn" onClick={() => tecla('3')}>3</button>
+                <button className="numpad-btn" onClick={() => tecla('4')}>4</button>
+                <button className="numpad-btn" onClick={() => tecla('5')}>5</button>
+                <button className="numpad-btn" onClick={() => tecla('6')}>6</button>
+                <button className="numpad-btn" onClick={() => tecla('7')}>7</button>
+                <button className="numpad-btn" onClick={() => tecla('8')}>8</button>
+                <button className="numpad-btn" onClick={() => tecla('9')}>9</button>
+                <button className="numpad-btn" onClick={() => tecla('00')}>00</button>
+                <button className="numpad-btn" onClick={() => tecla('0')}>0</button>
+                <button className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar un dígito" style={{ fontSize: 22 }}>⌫</button>
+              </div>
+            </div>
+            
           </div>
-          <button type="button" id="btn-pcb-cobrar" className={`pcb-btn-primary ${cubierto >= total && faltante === 0 && !modoFiar ? 'is-ready' : ''}`} disabled={busy || (!modoFiar && faltante > 0)} onClick={confirmar}>
-            <Check size={18} /> {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Cobrar'} <span className="pcb-kbd">Enter</span>
-          </button>
+
+          {/* Derecha: Resumen y Confirmación */}
+          <div className="checkout-right-panel">
+            <div className="checkout-summary" style={{ marginBottom: '16px' }}>
+              <div className="summary-row total-row" style={{ marginBottom: valeInfo ? '8px' : '0' }}>
+                <span>Total a Cobrar</span>
+                <strong>{formatPrice(total)}</strong>
+              </div>
+
+              {!valeInfo && (
+                <div style={{ marginBottom: '12px', marginTop: '4px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
+                  {valeOpen ? (
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      <input type="text" className="pos-input" placeholder="Código de vale" value={valeInput} onChange={e => setValeInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && aplicarVale()} autoFocus style={{ flex: 1, padding: '6px 8px', fontSize: '12px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px' }} />
+                      <button onClick={aplicarVale} style={{ padding: '6px 10px', background: 'var(--mlb-accent)', border: 'none', color: '#fff', borderRadius: '6px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}>Usar</button>
+                      <button onClick={() => {setValeOpen(false); setValeInput('');}} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={16}/></button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setValeOpen(true)} style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '12px', cursor: 'pointer', fontWeight: '600', padding: 0, opacity: 0.9 }}>
+                      + Tienes código de Vale o Regalo?
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {favorAplicado > 0 && (
+                <div className="summary-row" style={{ color: '#10b981', fontSize: '14px' }}>
+                  <span>Saldo a favor</span>
+                  <strong>-{formatPrice(favorAplicado)}</strong>
+                </div>
+              )}
+
+              {valeInfo && (
+                <div className="summary-row" style={{ color: '#10b981', fontSize: '14px' }}>
+                  <span>Vale ({valeInfo.codigo})</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <strong>-{formatPrice(valeAplicado)}</strong>
+                    <button onClick={() => { setValeInfo(null); setValeInput(''); }} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444', cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
+                  </div>
+                </div>
+              )}
+
+              {modoFiar ? (
+                <div className="amount-due-row">
+                  <span>Queda debiendo</span>
+                  <strong>{formatPrice(faltante)}</strong>
+                </div>
+              ) : cambio > 0 ? (
+                <div className="change-return-row">
+                  <span>Entregar Cambio</span>
+                  <strong>{formatPrice(cambio)}</strong>
+                </div>
+              ) : faltante > 0 ? (
+                <div className="amount-due-row">
+                  <span>Falta Pagar</span>
+                  <strong>{formatPrice(faltante)}</strong>
+                </div>
+              ) : (
+                <div className="change-return-row exact">
+                  <span>Cambio</span>
+                  <strong>$0</strong>
+                </div>
+              )}
+
+              {clienteSelec && (deudaCliente > 0 || maxSaldoFavor > 0) ? (
+                <div style={{ fontSize: 13, color: '#475569', marginTop: 16, padding: '12px 16px', background: '#f1f5f9', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <strong><User size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }}/> {clienteSelec.nombre}</strong>
+                  <span>{deudaCliente > 0 ? `Debía ${formatPrice(deudaCliente)}` : ''}{deudaCliente > 0 && maxSaldoFavor > 0 ? ' · ' : ''}{maxSaldoFavor > 0 ? `A favor ${formatPrice(maxSaldoFavor)}` : ''}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {activo === 'tarjeta' && !modoFiar && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: '16px', textAlign: 'left' }}>
+                <label style={{fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase'}}>
+                  <Smartphone size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom', display: 'inline-block' }} fill="#3b82f6" color="#fff" />
+                  Cuenta Destino
+                </label>
+                <select className="pos-select pos-select-3d" style={{ width: '100%', borderColor: '#bfdbfe', borderBottomColor: '#60a5fa' }} value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
+                  {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            )}
+
+
+
+            <button 
+              id="btn-pcb-cobrar" 
+              className="confirm-sale-btn" 
+              disabled={busy || (!modoFiar && faltante > 0)} 
+              onClick={confirmar}
+            >
+              <Check size={26} strokeWidth={2.5} />
+              {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Completar Venta'}
+            </button>
+            
+          </div>
         </div>
+        
       </div>
     </div>
   )
