@@ -4,7 +4,7 @@ import {
   CircleDollarSign, CalendarDays, ArrowLeft, ArrowRight, Users, ListTodo,
   MessageCircle, IdCard, Tag, Bell, Camera, X, Check, Archive, ArchiveRestore,
   Trash2, Pencil, FileText, Banknote, Smartphone, ReceiptText, Handshake,
-  Settings, Download,
+  Settings, Download, Plus, Package,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SALDOS_CONFIG_DEFAULT, calcularCuentaSaldos, daysAgoIso, todayIso } from '@/lib/saldosLedger'
@@ -202,6 +202,7 @@ export function SaldosView() {
     const handler = (e) => {
       const action = e.detail
       if (action === 'inicio' || action === 'cuentas') { setModo('cuentas'); return }
+      if (action === 'fiar' || action === 'accion') { setModo('accion'); return }
       if (action === 'nuevo') { setModo('nuevo'); return }
       if (action === 'abono') {
         const conSaldo = rows.filter((r) => !r.cuenta.archivada && r.resumen.saldo > 0).sort((a, b) => b.resumen.saldo - a.resumen.saldo)
@@ -213,6 +214,12 @@ export function SaldosView() {
     return () => window.removeEventListener('mlb:saldos-action', handler)
   }, [rows])
 
+  if (modo === 'accion') {
+    return <AccionScreen onBack={() => setModo('cuentas')} onAbonar={() => { toast.info('Abono rápido: lo definimos pronto. Por ahora entra a la cuenta del cliente.'); setModo('cuentas') }} onFiar={() => setModo('fiar')} />
+  }
+  if (modo === 'fiar') {
+    return <FiarScreen rows={rows} onSalir={() => { setModo('cuentas'); void recargar() }} />
+  }
   if (modo === 'nuevo') {
     return <NuevoClienteScreen api={api} onBack={() => setModo('cuentas')} onCreado={async (id) => { await recargar(); abrirHoja(id) }} />
   }
@@ -221,7 +228,7 @@ export function SaldosView() {
   }
   return (
     <>
-      <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} onAjustes={() => setConfigOpen(true)} />
+      <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} onAjustes={() => setConfigOpen(true)} onAccion={() => setModo('accion')} />
       {configOpen && <SaldosConfigModal config={config} onClose={() => setConfigOpen(false)} onSave={guardarConfig} />}
     </>
   )
@@ -229,7 +236,7 @@ export function SaldosView() {
 
 /* ── HUB ───────────────────────────────────────────────────────────── */
 
-function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro, onAjustes }) {
+function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro, onAjustes, onAccion }) {
   const [query, setQuery] = useState('')
   const [filtro, setFiltro] = useState(filtroInicial || 'todas')
 
@@ -290,6 +297,7 @@ function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, 
               <Search size={15} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, teléfono…" />
             </div>
+            <button className="sld-head__cta" onClick={onAccion}><Handshake size={16} strokeWidth={1.9} /> Abonar / Fiar</button>
             <button className="sld-head__icon" aria-label="Ajustes de interés por atraso" title="Interés por atraso" onClick={onAjustes}><Settings size={18} strokeWidth={1.8} /></button>
             <button className="sld-head__icon" aria-label="Nuevo cliente" onClick={onNew}><UserPlus size={18} strokeWidth={1.8} /></button>
           </div>
@@ -667,6 +675,238 @@ function IdImagen({ ruta }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
       <div className="sld-idfoto"><img src={src} alt="Identificación" /></div>
       <button type="button" className="sld-actbtn sld-actbtn--sm" onClick={() => void descargar()}><Download size={14} strokeWidth={1.9} /> Descargar</button>
+    </div>
+  )
+}
+
+/* ── Fiar (flujo del módulo: ¿qué desea hacer? → cliente → productos) ──
+ * Estilo boceto/ERP. Se llega desde la barra lateral (en frío) o desde el
+ * botón Fiar del cobro (con productos importados, vía localStorage 'fiar_draft').
+ * Confirmar crea la venta a crédito con window.bazar.db.addSale(fiar). */
+
+function leerFiarDraft() {
+  try {
+    const v = localStorage.getItem('fiar_draft')
+    if (!v) return null
+    const d = JSON.parse(v)
+    if (!d || !Array.isArray(d.items) || Date.now() - (d.ts || 0) > 600000) return null
+    return d
+  } catch { return null }
+}
+
+function AccionScreen({ onBack, onAbonar, onFiar }) {
+  return (
+    <div className="fiar-shell">
+      <div className="fiar-topbar">
+        <button type="button" className="fiar-volver" onClick={onBack}><ArrowLeft size={18} strokeWidth={1.9} /> Volver</button>
+        <span className="fiar-title"><WalletCards size={18} strokeWidth={1.9} /> Saldos</span>
+        <span className="fiar-topbar-pad" />
+      </div>
+      <div className="fiar-accion">
+        <h2 className="fiar-accion-q">¿Qué desea hacer?</h2>
+        <div className="fiar-accion-grid">
+          <button type="button" className="fiar-accion-card fiar-accion-abonar" onClick={onAbonar}>
+            <CircleDollarSign size={36} strokeWidth={1.6} />
+            <span className="fiar-accion-nom">Abonar</span>
+            <small>Pagar una deuda existente</small>
+          </button>
+          <button type="button" className="fiar-accion-card fiar-accion-fiar" onClick={onFiar}>
+            <Handshake size={36} strokeWidth={1.6} />
+            <span className="fiar-accion-nom">Fiar</span>
+            <small>Llevar mercancía a crédito</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FiarScreen({ rows, onSalir }) {
+  const db = typeof window !== 'undefined' ? window.bazar?.db : undefined
+  const draftRef = useRef(null)
+  if (draftRef.current === null) draftRef.current = leerFiarDraft() || { items: [] }
+  const draft = draftRef.current
+  const importados = Array.isArray(draft.items) && draft.items.length > 0
+
+  const [step, setStep] = useState('cliente')
+  const [clienteId, setClienteId] = useState('')
+  const [buscar, setBuscar] = useState('')
+  const [cargandoCliente, setCargandoCliente] = useState(false)
+  const [items, setItems] = useState(() => (Array.isArray(draft.items) ? draft.items : []).map((it) => ({
+    productoId: Number(it.productoId), codigo: String(it.codigo || ''), nombre: String(it.nombre || 'Producto'),
+    precio: Number(it.precio) || 0, cantidad: Math.max(1, Math.floor(Number(it.cantidad) || 1)),
+  })).filter((it) => it.productoId))
+  const [codigo, setCodigo] = useState('')
+  const [conEnganche, setConEnganche] = useState(false)
+  const [engEfec, setEngEfec] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const clienteRow = rows.find((r) => String(r.cuenta.id) === String(clienteId)) || null
+  const q = norm(buscar)
+  const lista = useMemo(() => {
+    const base = rows.filter((r) => !r.cuenta.archivada)
+    return (q ? base.filter((r) => norm(r.cuenta.nombre).includes(q)) : base).slice(0, 40)
+  }, [rows, q])
+
+  const total = items.reduce((s, it) => s + it.precio * it.cantidad, 0)
+  const enganche = conEnganche ? (Number(engEfec) || 0) : 0
+  const quedaDebiendo = Math.max(0, total - enganche)
+
+  const seleccionar = (id) => {
+    setClienteId(String(id))
+    setCargandoCliente(true)
+    // Ruedita de carga intencional (peso): dura un poco, variable a propósito.
+    const ms = 450 + Math.floor(Math.random() * 500)
+    window.setTimeout(() => setCargandoCliente(false), ms)
+  }
+
+  const agregarCodigo = async () => {
+    const c = String(codigo).trim()
+    if (!c) return
+    if (!db?.getProductByCodigo) { toast.error('Sin conexión al inventario.'); return }
+    try {
+      const p = await db.getProductByCodigo(c)
+      if (!p?.id) { toast.error(`Sin resultados para «${c}».`); return }
+      if (String(p.estado || 'disponible') !== 'disponible') { toast.error(`«${p.codigo}» no está disponible para vender.`); return }
+      setItems((prev) => {
+        const i = prev.findIndex((x) => x.productoId === p.id)
+        if (i >= 0) { const n = [...prev]; n[i] = { ...n[i], cantidad: n[i].cantidad + 1 }; return n }
+        return [...prev, { productoId: p.id, codigo: String(p.codigo || ''), nombre: String(p.descripcion || p.codigo || 'Producto'), precio: Number(p.precio) || 0, cantidad: 1 }]
+      })
+      setCodigo('')
+    } catch { toast.error('No se pudo agregar el artículo.') }
+  }
+
+  const quitar = (pid) => setItems((prev) => prev.filter((x) => x.productoId !== pid))
+
+  const confirmar = async () => {
+    if (!clienteRow) { toast.error('Elige un cliente para fiar.'); setStep('cliente'); return }
+    if (items.length === 0) { toast.error('Agrega productos para fiar.'); return }
+    if (!db?.addSale) { toast.error('Sin conexión a la base de datos.'); return }
+    setBusy(true)
+    try {
+      const res = await db.addSale({
+        items: items.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad })),
+        pagos: { efectivo: enganche, transferencia: 0 },
+        clienteId: clienteRow.cuenta.id,
+        fiar: true,
+        notas: '',
+      })
+      if (!res?.ok) throw new Error('No se pudo registrar el fiado.')
+      try { localStorage.removeItem('fiar_draft') } catch { /* noop */ }
+      const debe = Number(res.faltante)
+      toast.success(`Fiado registrado. ${clienteRow.cuenta.nombre} queda debiendo ${formatPrice(Number.isFinite(debe) ? debe : quedaDebiendo)}.`)
+      onSalir()
+    } catch (e) { toast.error(e?.message || 'No se pudo registrar el fiado.') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fiar-shell">
+      <div className="fiar-topbar">
+        <button type="button" className="fiar-volver" onClick={step === 'productos' ? () => setStep('cliente') : onSalir}>
+          <ArrowLeft size={18} strokeWidth={1.9} /> Volver
+        </button>
+        <span className="fiar-title"><Handshake size={18} strokeWidth={1.9} /> Fiar</span>
+        {importados
+          ? <span className="fiar-foco-badge" title="Productos traídos del punto de venta"><span className="fiar-foco" /><Package size={14} strokeWidth={1.9} /> {items.length} del punto de venta</span>
+          : <span className="fiar-topbar-pad" />}
+      </div>
+
+      {step === 'cliente' ? (
+        <>
+          <div className="fiar-body">
+            <div className="fiar-step-label">Paso 1 · Cliente</div>
+            <div className="fiar-search">
+              <Search size={18} strokeWidth={1.9} />
+              <input autoFocus value={buscar} onChange={(e) => { setBuscar(e.target.value); setClienteId('') }} placeholder="Buscar cliente por nombre…" />
+            </div>
+
+            {clienteId && cargandoCliente ? (
+              <div className="fiar-loading"><span className="fiar-spinner" /> Cargando datos del cliente…</div>
+            ) : clienteRow ? (
+              <div className="fiar-cliente-card">
+                <IdImagen ruta={clienteRow.cuenta.identificacion?.imagen} />
+                <div className="fiar-cliente-datos">
+                  <strong>{clienteRow.cuenta.nombre}</strong>
+                  <span>{clienteRow.cuenta.telefono || 'Sin teléfono'}</span>
+                  <span className="fiar-cliente-saldo-line">
+                    {clienteRow.resumen.saldo > 0 ? `Ya debe ${formatPrice(clienteRow.resumen.saldo)}` : 'Sin deuda previa'}
+                    {clienteRow.resumen.saldoAFavor > 0 ? ` · a favor ${formatPrice(clienteRow.resumen.saldoAFavor)}` : ''}
+                  </span>
+                  <button type="button" className="fiar-link" onClick={() => setClienteId('')}>Cambiar cliente</button>
+                </div>
+              </div>
+            ) : (
+              <div className="fiar-cliente-list">
+                {lista.length === 0 ? (
+                  <div className="fiar-empty">Sin clientes {q ? `para «${buscar}»` : 'registrados'}.</div>
+                ) : lista.map((r) => (
+                  <button type="button" key={r.cuenta.id} className="fiar-cliente-row" onClick={() => seleccionar(r.cuenta.id)}>
+                    <span className="fiar-avatar">{initials(r.cuenta.nombre)}</span>
+                    <span className="fiar-cliente-nom">{r.cuenta.nombre}</span>
+                    <span className="fiar-cliente-saldo">{r.resumen.saldo > 0 ? `debe ${formatPrice(r.resumen.saldo)}` : 'al corriente'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="fiar-footer">
+            <button type="button" className="fiar-btn-ghost" onClick={onSalir}>Cancelar</button>
+            <button type="button" className="fiar-btn-primary" disabled={!clienteRow || cargandoCliente} onClick={() => setStep('productos')}>
+              Continuar <ArrowRight size={18} strokeWidth={2} />
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="fiar-prod-layout">
+            <div className="fiar-prod-main">
+              <div className="fiar-step-label">Paso 2 · Productos a fiar</div>
+              <div className="fiar-prod-grid">
+                {items.map((it) => (
+                  <div key={it.productoId} className="fiar-prod-card">
+                    <button type="button" className="fiar-prod-x" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}><X size={14} strokeWidth={2.2} /></button>
+                    <span className="fiar-prod-nom">{it.nombre}</span>
+                    <span className="fiar-prod-precio">{formatPrice(it.precio)}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</span>
+                  </div>
+                ))}
+                <button type="button" className="fiar-prod-add" onClick={() => document.getElementById('fiar-cod')?.focus()} aria-label="Agregar producto"><Plus size={24} strokeWidth={1.8} /></button>
+              </div>
+              {items.length === 0 ? <div className="fiar-empty">Aún no hay productos. Agrégalos por código del lado derecho →</div> : null}
+            </div>
+
+            <aside className="fiar-side">
+              <div className="fiar-side-cliente">
+                <span className="fiar-side-label">Cuenta del cliente</span>
+                <strong>{clienteRow?.cuenta.nombre || '—'}</strong>
+              </div>
+              <label className="fiar-side-label" htmlFor="fiar-cod">Ingresar código del artículo</label>
+              <div className="fiar-add-row">
+                <input id="fiar-cod" value={codigo} onChange={(e) => setCodigo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') agregarCodigo() }} placeholder="Código…" />
+                <button type="button" onClick={agregarCodigo} aria-label="Agregar"><Plus size={16} strokeWidth={2} /></button>
+              </div>
+              <small className="fiar-hint">Si se escanea con el lector, se mete automático.</small>
+              <label className="fiar-check">
+                <input type="checkbox" checked={conEnganche} onChange={(e) => setConEnganche(e.target.checked)} /> Enganche
+              </label>
+              {conEnganche ? (
+                <input className="fiar-eng-input" inputMode="decimal" value={engEfec} onChange={(e) => setEngEfec(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Monto del enganche" />
+              ) : null}
+            </aside>
+          </div>
+          <div className="fiar-footer fiar-footer--total">
+            <div className="fiar-total">
+              <span className="fiar-total-label">TOTAL</span>
+              <strong>{formatPrice(total)}</strong>
+              {enganche > 0 ? <em className="fiar-total-debe">queda debiendo {formatPrice(quedaDebiendo)}</em> : null}
+            </div>
+            <button type="button" className="fiar-btn-primary" disabled={busy || items.length === 0} onClick={confirmar}>
+              {busy ? 'Guardando…' : 'Continuar'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
