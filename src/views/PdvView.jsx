@@ -59,6 +59,7 @@ export function PdvView() {
   const [clientes, setClientes] = useState([])
 
   const [pagoPaso, setPagoPaso] = useState(null) // null | metodos | efectivo | transferencia | credito
+  const [fiarFlow, setFiarFlow] = useState(null) // null | { clienteId } — flujo Sacar fiado (con productos del carrito)
   const [confirm, setConfirm] = useState(null)
   const [modo, setModo] = useState('venta') // venta | ventas | devoluciones | banqueta | reportes
 
@@ -105,6 +106,8 @@ export function PdvView() {
         const r = calcularCuentaSaldos(c)
         return {
           id: c.id, nombre: c.nombre,
+          telefono: c.telefono || '',
+          idImagen: c.identificacion?.imagen || '',
           saldo_pendiente: r.saldo, saldo_deudor: r.saldo,
           saldo_a_favor: r.saldoAFavor,
         }
@@ -252,6 +255,7 @@ export function PdvView() {
         clienteNombre: cliente?.nombre || null, notas: '',
       }
       setPagoPaso(null)
+      setFiarFlow(null)
       setCart([])
       setConfirm(ticket)
 
@@ -478,7 +482,25 @@ export function PdvView() {
           saldosApi={saldosApi}
           onClientesChanged={loadClientes}
           onCobrar={cobrar}
+          onSacarFiado={(clienteId) => { setPagoPaso(null); setFiarFlow({ clienteId: clienteId || '' }) }}
           onClose={() => { setPagoPaso(null); focusScan() }}
+        />
+      ) : null}
+
+      {fiarFlow ? (
+        <SacarFiadoFlow
+          cart={cart}
+          total={total}
+          clientes={clientes}
+          cuentas={cuentas}
+          clienteIdInicial={fiarFlow.clienteId}
+          saldosApi={saldosApi}
+          busy={busy}
+          onAddCodigo={resolveAndAdd}
+          onRemoveLine={removeLine}
+          onCobrar={cobrar}
+          onClientesChanged={loadClientes}
+          onClose={() => { setFiarFlow(null); focusScan() }}
         />
       ) : null}
 
@@ -808,13 +830,12 @@ function ModalHead({ icon: Icon, title, onClose, onBack }) {
   )
 }
 
-function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart }) {
+function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onSacarFiado, onClose, cart }) {
   const api = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const [efectivo, setEfectivo] = useState('')
   const [transferencia, setTransferencia] = useState('')
   const [cuenta, setCuenta] = useState(cuentas[0]?.id || '')
   const [clienteId, setClienteId] = useState('')
-  const [modoFiar, setModoFiar] = useState(false)
   const [activo, setActivo] = useState('efectivo')
   const [valeInfo, setValeInfo] = useState(null)
   const [valeOpen, setValeOpen] = useState(false)
@@ -871,7 +892,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
   useEffect(() => {
     const h = (e) => {
       if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-      if (e.key === 'Escape') { if (valeOpen) setValeOpen(false); else if (modoFiar) setModoFiar(false); else onClose() }
+      if (e.key === 'Escape') { if (valeOpen) setValeOpen(false); else onClose() }
       if (e.key === 'Enter' && !valeOpen) {
         const btn = document.getElementById('btn-pcb-cobrar')
         if (btn && !btn.disabled) { e.preventDefault(); btn.click() }
@@ -882,7 +903,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose, modoFiar, valeOpen, activo])
+  }, [onClose, valeOpen, activo])
 
   const confirmar = () => {
     if (valTransferencia > 0 && !cuenta) { toast.error('Elige la cuenta de la tarjeta.'); return }
@@ -891,13 +912,8 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
       pagos: { efectivo: valEfectivo, transferencia: valTransferencia, vale: valePago },
       cuentaBancaria: valTransferencia > 0 ? cuenta : null,
     }
-    if (modoFiar) {
-      if (!clienteSelec) { toast.error('Elige un cliente para fiar.'); return }
-      onCobrar({ ...base, clienteId: clienteSelec.id, fiar: true })
-    } else {
-      if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
-      onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
-    }
+    if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
+    onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
   }
 
   const generateQuickBills = (totalAmount) => {
@@ -934,14 +950,14 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
                       <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--mlb-text-muted)' }}>{deudaCliente > 0 ? `debe ${formatPrice(deudaCliente)}` : ''}{deudaCliente > 0 && maxSaldoFavor > 0 ? ' · ' : ''}{maxSaldoFavor > 0 ? `a favor ${formatPrice(maxSaldoFavor)}` : ''}</span>
                     ) : null}
                   </span>
-                  <button onClick={() => {setClienteId(''); setModoFiar(false)}} style={{ background: 'none', border: 'none', padding: 0, marginLeft: 2, color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex' }} aria-label="Quitar cliente"><X size={14} /></button>
+                  <button onClick={() => setClienteId('')} style={{ background: 'none', border: 'none', padding: 0, marginLeft: 2, color: 'var(--mlb-text-muted)', cursor: 'pointer', display: 'flex' }} aria-label="Quitar cliente"><X size={14} /></button>
                 </div>
               ) : (
                 <select 
                   className="pos-select" 
-                  style={{ padding: '6px 28px 6px 12px', fontSize: '13px', borderRadius: '16px', borderColor: modoFiar ? '#ef4444' : 'var(--mlb-border)', background: 'var(--mlb-bg-app)', fontWeight: '600', color: 'var(--mlb-text-primary)', height: 'auto' }} 
-                  value={clienteId} 
-                  onChange={(e) => { setClienteId(e.target.value); if (!e.target.value) setModoFiar(false) }}
+                  style={{ padding: '6px 28px 6px 12px', fontSize: '13px', borderRadius: '16px', borderColor: 'var(--mlb-border)', background: 'var(--mlb-bg-app)', fontWeight: '600', color: 'var(--mlb-text-primary)', height: 'auto' }}
+                  value={clienteId}
+                  onChange={(e) => setClienteId(e.target.value)}
                 >
                   <option value="">Mostrador (Público general)</option>
                   {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -961,24 +977,24 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
                 1. ¿Cómo te paga?
               </div>
               <div className="payment-methods-grid">
-                <button className={`pay-method-btn method-efectivo ${activo === 'efectivo' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('efectivo'); setModoFiar(false);}}>
-                  <Banknote size={24} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
+                <button className={`pay-method-btn method-efectivo ${activo === 'efectivo' ? 'active' : ''}`} onClick={() => setActivo('efectivo')}>
+                  <Banknote size={24} color={activo === 'efectivo' ? "#fff" : "#065f46"} fill={activo === 'efectivo' ? "#10b981" : "#a7f3d0"} /> Efectivo
                 </button>
-                <button className={`pay-method-btn method-tarjeta ${activo === 'tarjeta' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('tarjeta'); setModoFiar(false);}}>
-                  <Smartphone size={24} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
+                <button className={`pay-method-btn method-tarjeta ${activo === 'tarjeta' ? 'active' : ''}`} onClick={() => setActivo('tarjeta')}>
+                  <Smartphone size={24} color={activo === 'tarjeta' ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' ? "#3b82f6" : "#bfdbfe"} /> Transferencia
                 </button>
-                <button className={`pay-method-btn method-fiar ${modoFiar ? 'active' : ''}`} onClick={() => {setModoFiar(true); setActivo('efectivo');}}>
-                  <Handshake size={24} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
+                <button className="pay-method-btn method-fiar" onClick={() => onSacarFiado(clienteId)} title="Sacar a fiado / saldos con estos productos">
+                  <Handshake size={24} color="#86198f" fill="#f5d0fe" /> Fiar
                 </button>
               </div>
             </div>
 
-            <div className="numpad-section" style={{display: (activo === 'efectivo' || activo === 'tarjeta' || modoFiar) ? 'flex' : 'none', padding: '0 8px'}}>
+            <div className="numpad-section" style={{display: 'flex', padding: '0 8px'}}>
               <div className="checkout-step-label" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--mlb-text-secondary)', marginTop: '0px', letterSpacing: '0.05em' }}>
                 2. ¿Cuánto recibes?
               </div>
               <div className="received-display-wrapper">
-                <span>{modoFiar ? 'Enganche' : (activo === 'tarjeta' ? 'En Tarjeta' : 'Recibido')}</span>
+                <span>{activo === 'tarjeta' ? 'En Tarjeta' : 'Recibido'}</span>
                 <div className="received-amount-display">
                   <span className="currency">$</span>
                   <span className="amount">{activoVal || '0'}</span>
@@ -1051,12 +1067,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
                 </div>
               )}
 
-              {modoFiar ? (
-                <div className="amount-due-row">
-                  <span>Queda debiendo</span>
-                  <strong>{formatPrice(faltante)}</strong>
-                </div>
-              ) : cambio > 0 ? (
+              {cambio > 0 ? (
                 <div className="change-return-row">
                   <span>Entregar Cambio</span>
                   <strong>{formatPrice(cambio)}</strong>
@@ -1081,7 +1092,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               ) : null}
             </div>
 
-            {activo === 'tarjeta' && !modoFiar && (
+            {activo === 'tarjeta' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: '16px', textAlign: 'left' }}>
                 <label style={{fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase'}}>
                   <Smartphone size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom', display: 'inline-block' }} fill="#3b82f6" color="#fff" />
@@ -1098,16 +1109,212 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
             <button 
               id="btn-pcb-cobrar" 
               className="confirm-sale-btn" 
-              disabled={busy || (!modoFiar && faltante > 0)} 
+              disabled={busy || faltante > 0}
               onClick={confirmar}
             >
               <Check size={24} strokeWidth={2.5} />
-              {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Completar Venta'}
+              {busy ? 'Cobrando…' : 'Completar Venta'}
             </button>
             
           </div>
         </div>
         
+      </div>
+    </div>
+  )
+}
+
+/* ── Sacar fiado (wizard: cliente → productos + enganche) ──────────────
+ * Se abre desde el botón "Fiar" del cobro llevando los productos del
+ * carrito ya importados. Solo se fía a clientes registrados. Al confirmar
+ * reusa `onCobrar` (addSale con fiar:true) para crear la venta a crédito. */
+function SacarFiadoFlow({ cart, total, clientes, cuentas, clienteIdInicial, saldosApi, busy, onAddCodigo, onRemoveLine, onCobrar, onClientesChanged, onClose }) {
+  const [clienteId, setClienteId] = useState(clienteIdInicial || '')
+  const [paso, setPaso] = useState(clienteIdInicial ? 'productos' : 'cliente')
+  const [buscar, setBuscar] = useState('')
+  const [showNuevo, setShowNuevo] = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoTel, setNuevoTel] = useState('')
+  const [creando, setCreando] = useState(false)
+  const [engEfec, setEngEfec] = useState('')
+  const [engTransf, setEngTransf] = useState('')
+  const [cuenta, setCuenta] = useState(cuentas?.[0]?.id || '')
+  const [codigo, setCodigo] = useState('')
+
+  const clienteSel = clientes.find((c) => String(c.id) === String(clienteId)) || null
+  const q = buscar.trim().toLowerCase()
+  const lista = useMemo(() => {
+    const base = q ? clientes.filter((c) => String(c.nombre || '').toLowerCase().includes(q)) : clientes
+    return base.slice(0, 40)
+  }, [clientes, q])
+
+  const favor = clienteSel ? Math.max(0, Number(clienteSel.saldo_a_favor) || 0) : 0
+  const deuda = clienteSel ? Math.max(0, Number(clienteSel.saldo_deudor ?? clienteSel.saldo_pendiente) || 0) : 0
+  const enganche = (Number(engEfec) || 0) + (Number(engTransf) || 0)
+  const favorAplica = Math.min(favor, Math.max(0, total - enganche))
+  const quedaDebiendo = Math.max(0, total - enganche - favorAplica)
+  const items = cart.reduce((s, l) => s + l.cantidad, 0)
+
+  const crearCliente = async () => {
+    const nombre = nuevoNombre.trim()
+    if (!nombre) { toast.error('Escribe el nombre del cliente.'); return }
+    if (!saldosApi?.crearCliente) { toast.error('Registro de clientes no disponible.'); return }
+    setCreando(true)
+    try {
+      const r = await saldosApi.crearCliente({ nombre, telefono: nuevoTel.trim() })
+      if (!r?.ok || !r.id) throw new Error(r?.message || 'No se pudo registrar.')
+      await onClientesChanged?.()
+      setClienteId(String(r.id))
+      setShowNuevo(false); setNuevoNombre(''); setNuevoTel('')
+      toast.success(`Cliente "${nombre}" registrado. Agrega su identificación luego en Saldos.`)
+    } catch (e) { toast.error(e.message || 'No se pudo registrar el cliente.') }
+    finally { setCreando(false) }
+  }
+
+  const agregar = async () => {
+    const c = codigo.trim()
+    if (!c) return
+    await onAddCodigo(c)
+    setCodigo('')
+  }
+
+  const confirmar = () => {
+    if (!clienteSel) { toast.error('Elige un cliente para fiar.'); setPaso('cliente'); return }
+    if (cart.length === 0) { toast.error('No hay productos para fiar.'); return }
+    if (Number(engTransf) > 0 && !cuenta) { toast.error('Elige la cuenta del enganche por transferencia.'); return }
+    onCobrar({
+      pagos: { efectivo: Number(engEfec) || 0, transferencia: Number(engTransf) || 0 },
+      clienteId: clienteSel.id,
+      cuentaBancaria: Number(engTransf) > 0 ? cuenta : null,
+      fiar: true,
+    })
+  }
+
+  return (
+    <div className="checkout-overlay active" onClick={onClose}>
+      <div className="checkout-content sf-content" role="dialog" aria-label="Sacar fiado" onClick={(e) => e.stopPropagation()}>
+        <div className="checkout-header">
+          <div className="checkout-header-left">
+            <div>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Handshake size={22} /> Sacar fiado</h2>
+              <span className="checkout-items-count">{paso === 'cliente' ? 'Paso 1 de 2 · ¿A quién le fías?' : 'Paso 2 de 2 · Productos y enganche'}</span>
+            </div>
+          </div>
+          <button className="close-checkout-btn" onClick={onClose}><X size={22} /></button>
+        </div>
+
+        <div className="sf-import-badge">
+          <span className="sf-foco" /> {items} artículo{items === 1 ? '' : 's'} importado{items === 1 ? '' : 's'} del punto de venta · <strong>{formatPrice(total)}</strong>
+        </div>
+
+        {paso === 'cliente' ? (
+          <div className="sf-step">
+            <p className="sf-hint">Solo se puede fiar a clientes registrados. Busca al cliente o regístralo.</p>
+            <div className="sf-search">
+              <Search size={18} />
+              <input autoFocus value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Buscar cliente por nombre…" />
+            </div>
+            <div className="sf-client-list">
+              {lista.length === 0 ? (
+                <div className="sf-empty">Sin clientes {q ? `para "${buscar}"` : 'registrados'}.</div>
+              ) : lista.map((c) => {
+                const cd = Math.max(0, Number(c.saldo_deudor ?? c.saldo_pendiente) || 0)
+                const cf = Math.max(0, Number(c.saldo_a_favor) || 0)
+                return (
+                  <button key={c.id} className={`sf-client-row ${String(c.id) === String(clienteId) ? 'sel' : ''}`} onClick={() => setClienteId(String(c.id))}>
+                    <span className="sf-avatar">{(c.nombre || '?').trim().slice(0, 2).toUpperCase()}</span>
+                    <span className="sf-client-name">{c.nombre}</span>
+                    <span className="sf-client-saldo">{cd > 0 ? `debe ${formatPrice(cd)}` : cf > 0 ? `a favor ${formatPrice(cf)}` : 'al corriente'}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {showNuevo ? (
+              <div className="sf-nuevo">
+                <input autoFocus value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Nombre del cliente *" />
+                <input value={nuevoTel} onChange={(e) => setNuevoTel(e.target.value)} placeholder="Teléfono (opcional)" />
+                <div className="sf-nuevo-actions">
+                  <button className="sf-btn-ghost" onClick={() => setShowNuevo(false)}>Cancelar</button>
+                  <button className="sf-btn-primary" disabled={creando} onClick={crearCliente}>{creando ? 'Guardando…' : 'Registrar'}</button>
+                </div>
+                <span className="sf-hint">Podrás agregar su identificación después en Saldos.</span>
+              </div>
+            ) : (
+              <button className="sf-btn-add-client" onClick={() => setShowNuevo(true)}><Plus size={16} /> Registrar cliente nuevo</button>
+            )}
+
+            <div className="sf-footer">
+              <button className="sf-btn-ghost" onClick={onClose}>Cancelar</button>
+              <button className="sf-btn-primary lg" disabled={!clienteSel} onClick={() => setPaso('productos')}>
+                Continuar <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="sf-step">
+            <div className="sf-client-card">
+              {clienteSel?.idImagen && esRutaImagen(clienteSel.idImagen)
+                ? <img className="sf-id-foto" src={fileUrl(clienteSel.idImagen)} alt="Identificación" />
+                : <span className="sf-avatar lg">{(clienteSel?.nombre || '?').trim().slice(0, 2).toUpperCase()}</span>}
+              <div className="sf-client-card-info">
+                <strong>{clienteSel?.nombre}</strong>
+                <span>{deuda > 0 ? `Ya debe ${formatPrice(deuda)}` : 'Sin deuda previa'}{favor > 0 ? ` · a favor ${formatPrice(favor)}` : ''}</span>
+              </div>
+              <button className="sf-btn-ghost sm" onClick={() => setPaso('cliente')}>Cambiar</button>
+            </div>
+
+            <div className="sf-prod-head">
+              <span>Productos a fiar</span>
+              <span className="sf-prod-total">{formatPrice(total)}</span>
+            </div>
+            <div className="sf-prod-list">
+              {cart.length === 0 ? <div className="sf-empty">Agrega productos para fiar.</div> : cart.map((l) => (
+                <div key={l.pid} className="sf-prod-row">
+                  <span className="sf-prod-qty">{l.cantidad}×</span>
+                  <span className="sf-prod-name">{l.nombre}</span>
+                  <span className="sf-prod-sub">{formatPrice((Number(l.precio) || 0) * l.cantidad)}</span>
+                  <button className="sf-prod-del" onClick={() => onRemoveLine(l.pid)} aria-label={`Quitar ${l.nombre}`}><X size={16} /></button>
+                </div>
+              ))}
+            </div>
+            <div className="sf-add-row">
+              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') agregar() }} placeholder="Código del artículo…" />
+              <button className="sf-btn-ghost" onClick={agregar}><Plus size={16} /> Agregar</button>
+            </div>
+            <span className="sf-hint">Con el lector de código se agrega automático.</span>
+
+            <div className="sf-eng">
+              <div className="sf-eng-title">Enganche (opcional)</div>
+              <div className="sf-eng-grid">
+                <label><Banknote size={15} /> Efectivo
+                  <input inputMode="decimal" value={engEfec} onChange={(e) => setEngEfec(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />
+                </label>
+                <label><Smartphone size={15} /> Transferencia
+                  <input inputMode="decimal" value={engTransf} onChange={(e) => setEngTransf(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />
+                </label>
+              </div>
+              {Number(engTransf) > 0 && cuentas?.length ? (
+                <select className="pos-select" value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
+                  {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              ) : null}
+              {favor > 0 ? <div className="sf-favor-note">Se usará {formatPrice(favorAplica)} de su saldo a favor.</div> : null}
+            </div>
+
+            <div className="sf-debe">
+              <span>Queda debiendo</span>
+              <strong>{formatPrice(quedaDebiendo)}</strong>
+            </div>
+
+            <div className="sf-footer">
+              <button className="sf-btn-ghost" onClick={() => setPaso('cliente')}><ArrowLeft size={16} /> Atrás</button>
+              <button className="sf-btn-primary lg" disabled={busy || cart.length === 0} onClick={confirmar}>
+                <Handshake size={18} /> {busy ? 'Guardando…' : 'Confirmar fiado'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
