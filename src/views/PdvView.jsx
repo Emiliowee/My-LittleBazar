@@ -478,6 +478,8 @@ export function PdvView() {
         ) : modo === 'fiar' ? (
           <FiarScreen
             clientes={clientes}
+            productos={productos}
+            categorias={categorias}
             draftItems={fiarImport}
             onSalir={(ok) => { setFiarImport([]); if (ok) { void loadClientes(); void cargarProductos() } setModo('venta'); focusScan() }}
           />
