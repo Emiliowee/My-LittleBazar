@@ -115,8 +115,29 @@ function run() {
     'fiar', 'pago insuficiente sin fiar se rechaza',
   )
 
+  // ── Caso 6: saldo a favor + PAGO DE MÁS → da cambio y consume el favor ──
+  console.log('\n[Caso 6] Saldo a favor + pago de más: da CAMBIO y consume el favor (bug arreglado)')
+  const rosa = saldos.crearCliente(database, { nombre: 'Rosa', nacimiento: '1988-08-08' }).clienteId
+  saldos.registrarMovimientos(database, rosa, [{ tipo: 'abono', fecha: hoy, monto: 100, medio: 'efectivo', concepto: 'Saldo a favor inicial' }])
+  assert(saldoDe(database, rosa) === -100, 'Rosa arranca con 100 a favor')
+  const p6 = alta(480)
+  // Compra de 480; tiene 100 a favor (debería deber 380) y entrega 480 en efectivo.
+  const v6 = db.addSale({ items: [{ productoId: p6.id, cantidad: 1 }], pagos: { efectivo: 480 }, clienteId: rosa })
+  assert(v6.ok && v6.faltante === 0, `sin faltante (vino ${v6.faltante})`)
+  assert(v6.favorAplicado === 100, `aplicó 100 a favor PRIMERO (vino ${v6.favorAplicado})`)
+  assert(v6.cambio === 100, `da 100 de cambio del efectivo de más (vino ${v6.cambio})`)
+  const r6 = ventaRow(database, v6.ventaId)
+  assert(r6.cambio === 100, `la venta guarda cambio 100 (vino ${r6.cambio})`)
+  assert(saldoDe(database, rosa) === 0, `Rosa queda en 0: el favor se consumió, no quedó atrapado como saldo (vino ${saldoDe(database, rosa)})`)
+
+  // ── Caso 7: pago de más sin cliente → cambio normal ──
+  console.log('\n[Caso 7] Pago de más sin cliente da cambio')
+  const p7 = alta(480)
+  const v7 = db.addSale({ items: [{ productoId: p7.id, cantidad: 1 }], pagos: { efectivo: 500 } })
+  assert(v7.ok && v7.cambio === 20 && v7.faltante === 0, `cambio 20 (vino ${v7.cambio})`)
+
   console.log(`\nOK  test-cobro-mixto — ${passed} verificaciones pasaron`)
-  console.log('    Pago mixto + saldo a favor automático + fiar, todo con el contrato nuevo.')
+  console.log('    Pago mixto + saldo a favor PRIMERO (cambio del efectivo de más) + fiar.')
 }
 
 try {

@@ -58,14 +58,15 @@ export function AccionScreen({ onBack, onAbonar, onFiar }) {
   )
 }
 
-export function FiarScreen({ clientes, productos, categorias, categoriasMeta, draftItems, onSalir }) {
+export function FiarScreen({ clientes, productos, categorias, categoriasMeta, draftItems, clienteIdInicial, onSalir }) {
   const db = typeof window !== 'undefined' ? window.bazar?.db : undefined
   const importRef = useRef(null)
   if (importRef.current === null) importRef.current = normItems(draftItems)
   const importados = importRef.current.length > 0
 
-  const [step, setStep] = useState('cliente')
-  const [clienteId, setClienteId] = useState('')
+  // Si vienes del cobro con cliente ya elegido, saltas directo a productos.
+  const [step, setStep] = useState(clienteIdInicial ? 'productos' : 'cliente')
+  const [clienteId, setClienteId] = useState(clienteIdInicial ? String(clienteIdInicial) : '')
   const [buscarCli, setBuscarCli] = useState('')
   const [cargandoCliente, setCargandoCliente] = useState(false)
   const [items, setItems] = useState(importRef.current)

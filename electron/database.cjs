@@ -3356,12 +3356,16 @@ function addSale(payload) {
 
   const pagadoCaja = Math.round((montoEfectivo + montoTransferencia) * 100) / 100
   const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplicado) * 100) / 100)
-  const porCubrir = Math.max(0, Math.round((adeudadoTrasVale - pagadoCaja) * 100) / 100)
+  /* El saldo a favor es DINERO del cliente: se aplica PRIMERO (baja lo que se
+   * debe), luego la caja cubre el resto y el efectivo entregado de más se
+   * devuelve como CAMBIO. (Antes el favor se aplicaba después de la caja, así que
+   * al pagar de más no se daba cambio y el sobrante quedaba atrapado como saldo a
+   * favor — el bug que reportó la dueña.) Vale y favor no dan cambio; solo el efectivo. */
   const favorDisponible = clienteId ? favorSaldosCliente(database, clienteId) : 0
-  const favorAplicado = Math.round(Math.min(favorDisponible, porCubrir) * 100) / 100
-  const faltante = Math.round((porCubrir - favorAplicado) * 100) / 100
-  // El cambio sale SOLO del efectivo entregado de más (vale/tarjeta/saldo no dan cambio).
-  const cambio = Math.max(0, Math.round((pagadoCaja - adeudadoTrasVale) * 100) / 100)
+  const favorAplicado = Math.round(Math.min(favorDisponible, adeudadoTrasVale) * 100) / 100
+  const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplicado) * 100) / 100)
+  const faltante = Math.max(0, Math.round((adeudadoTrasFavor - pagadoCaja) * 100) / 100)
+  const cambio = Math.max(0, Math.round((pagadoCaja - adeudadoTrasFavor) * 100) / 100)
   const sumaPagos = Math.round((pagadoCaja + valeAplicado + favorAplicado) * 100) / 100
 
   if (faltante > 0.01) {
@@ -3373,7 +3377,7 @@ function addSale(payload) {
   const tocaSaldos = !!clienteId && (faltante > 0.01 || favorAplicado > 0.005)
 
   // Lo que paga HOY en caja entra como abono a la cuenta, partido por medio.
-  const abonoTotal = tocaSaldos ? Math.min(pagadoCaja, adeudadoTrasVale) : 0
+  const abonoTotal = tocaSaldos ? Math.min(pagadoCaja, adeudadoTrasFavor) : 0
   const abonoEfectivo = Math.round(Math.min(montoEfectivo, abonoTotal) * 100) / 100
   const abonoTransferencia = Math.round((abonoTotal - abonoEfectivo) * 100) / 100
   const abonoVale = tocaSaldos ? valeAplicado : 0

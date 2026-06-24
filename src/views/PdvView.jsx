@@ -63,6 +63,7 @@ export function PdvView() {
   const [confirm, setConfirm] = useState(null)
   const [modo, setModo] = useState('venta') // venta | ventas | devoluciones | banqueta | reportes | saldos | fiar
   const [fiarImport, setFiarImport] = useState([]) // productos importados del cobro hacia el flujo de fiar
+  const [fiarClienteId, setFiarClienteId] = useState('') // cliente ya elegido en el cobro (salta el paso 1)
 
   const scanRef = useRef(null)
   const busyRef = useRef(false)
@@ -473,7 +474,7 @@ export function PdvView() {
           <AccionScreen
             onBack={() => { setModo('venta'); focusScan() }}
             onAbonar={() => toast.info('Abono rápido: lo definimos pronto. Por ahora entra a la cuenta del cliente en Saldos.')}
-            onFiar={() => { setFiarImport([]); setModo('fiar') }}
+            onFiar={() => { setFiarImport([]); setFiarClienteId(''); setModo('fiar') }}
           />
         ) : modo === 'fiar' ? (
           <FiarScreen
@@ -482,7 +483,8 @@ export function PdvView() {
             categorias={categorias}
             categoriasMeta={categoriasMeta}
             draftItems={fiarImport}
-            onSalir={(ok) => { setFiarImport([]); if (ok) { void loadClientes(); void cargarProductos() } setModo('venta'); focusScan() }}
+            clienteIdInicial={fiarClienteId}
+            onSalir={(ok) => { setFiarImport([]); setFiarClienteId(''); if (ok) { void loadClientes(); void cargarProductos() } setModo('venta'); focusScan() }}
           />
         ) : (
           <ReportesPosWorkspace />
@@ -501,9 +503,10 @@ export function PdvView() {
           saldosApi={saldosApi}
           onClientesChanged={loadClientes}
           onCobrar={cobrar}
-          onIrAFiar={() => {
+          onIrAFiar={(clienteIdSel) => {
             const imp = cart.map((l) => ({ productoId: l.pid, codigo: l.codigo, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad }))
             setFiarImport(imp)
+            setFiarClienteId(clienteIdSel || '')
             setCart([])
             setPagoPaso(null)
             setModo('fiar')
@@ -858,7 +861,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
     if (yendoFiar) return
     setYendoFiar(true)
     const ms = 600 + Math.floor(Math.random() * 700)
-    window.setTimeout(() => { onIrAFiar?.() }, ms)
+    window.setTimeout(() => { onIrAFiar?.(clienteId) }, ms)
   }
 
   const valEfectivo = Number(efectivo) || 0
@@ -868,13 +871,15 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
   const deudaCliente = clienteSelec ? Math.max(0, Number(clienteSelec.saldo_deudor ?? clienteSelec.saldo_pendiente) || 0) : 0
   const valeDisp = valeInfo ? Math.max(0, Number(valeInfo.disponible) || 0) : 0
 
+  // Crédito del cliente PRIMERO (vale + saldo a favor bajan lo que se debe), luego
+  // la caja cubre el resto y el efectivo de más se devuelve como cambio.
   const pagadoCaja = Math.round((valEfectivo + valTransferencia) * 100) / 100
-  const restanteTrasCaja = Math.max(0, Math.round((total - pagadoCaja) * 100) / 100)
-  const valeAplicado = Math.round(Math.min(valeDisp, restanteTrasCaja) * 100) / 100
-  const restanteTrasVale = Math.max(0, Math.round((restanteTrasCaja - valeAplicado) * 100) / 100)
-  const favorAplicado = Math.round(Math.min(maxSaldoFavor, restanteTrasVale) * 100) / 100
-  const faltante = Math.round((restanteTrasVale - favorAplicado) * 100) / 100
-  const cambio = Math.max(0, Math.round((pagadoCaja - total) * 100) / 100)
+  const valeAplicado = Math.round(Math.min(valeDisp, total) * 100) / 100
+  const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplicado) * 100) / 100)
+  const favorAplicado = Math.round(Math.min(maxSaldoFavor, adeudadoTrasVale) * 100) / 100
+  const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplicado) * 100) / 100)
+  const faltante = Math.max(0, Math.round((adeudadoTrasFavor - pagadoCaja) * 100) / 100)
+  const cambio = Math.max(0, Math.round((pagadoCaja - adeudadoTrasFavor) * 100) / 100)
 
   const activoVal = activo === 'tarjeta' ? transferencia : efectivo
   const setActivoVal = (fn) => {
@@ -891,7 +896,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
   })
   const pagoJusto = () => {
     const otro = activo === 'tarjeta' ? valEfectivo : valTransferencia
-    const justo = Math.max(0, Math.round((total - otro - valeAplicado - favorAplicado) * 100) / 100)
+    const justo = Math.max(0, Math.round((adeudadoTrasFavor - otro) * 100) / 100)
     setActivoVal(() => (justo ? String(justo) : ''))
   }
 
