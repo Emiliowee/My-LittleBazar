@@ -61,7 +61,6 @@ export function calcularCuentaSaldos(cuenta, config = {}) {
   const movimientos = ordenarMovimientos(cuenta?.movimientos || [])
   const cargos = []
   const procesados = []
-  const alertas = []
 
   const referenciasConAtraso = new Set()
   for (const mov of movimientos) {
@@ -167,7 +166,6 @@ export function calcularCuentaSaldos(cuenta, config = {}) {
     baseAtraso,
     cargoAtrasoSugerido,
     requiereCargoAtraso: cargoAtrasoSugerido > 0,
-    alertas,
   }
 }
 

@@ -139,71 +139,81 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
     finally { setBusy(false) }
   }
 
-  const atras = () => (step === 'productos' ? setStep('cliente') : onSalir?.(false))
+  const atras = () => (step === 'confirmar' ? setStep('productos') : step === 'productos' ? setStep('cliente') : onSalir?.(false))
+  const cur = step === 'cliente' ? 1 : step === 'productos' ? 2 : 3
 
   return (
     <div className="fiar2">
       <div className="fiar2-bar">
         <button type="button" className="fiar2-back" onClick={atras} aria-label="Volver"><ArrowLeft size={20} strokeWidth={1.9} /></button>
-        <div className="fiar2-titles">
-          <strong>Sacar fiado</strong>
-          <span>{step === 'cliente' ? 'Paso 1 — elige el cliente' : 'Paso 2 — elige los productos'}</span>
-        </div>
-        <div className="fiar2-steps">
-          <span className={`fiar2-st${step === 'cliente' ? ' on' : ' done'}`}><i>{step === 'cliente' ? '1' : <Check size={12} strokeWidth={3} />}</i> Cliente</span>
-          <span className="fiar2-st-sep" />
-          <span className={`fiar2-st${step === 'productos' ? ' on' : ''}`}><i>2</i> Productos</span>
-        </div>
+        <div className="fiar2-titles"><strong>Sacar fiado</strong></div>
         {importados ? <span className="fiar-foco-badge"><span className="fiar-foco" /><Package size={14} strokeWidth={1.9} /> {nItems} del PDV</span> : null}
       </div>
 
+      <div className="fiar2-stepper">
+        <div className={`fiar2-stp${cur === 1 ? ' on' : cur > 1 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 1 ? <Check size={14} strokeWidth={3} /> : 1}</span><span className="fiar2-stp-l">Cliente</span></div>
+        <span className={`fiar2-stl${cur > 1 ? ' done' : ''}`} />
+        <div className={`fiar2-stp${cur === 2 ? ' on' : cur > 2 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 2 ? <Check size={14} strokeWidth={3} /> : 2}</span><span className="fiar2-stp-l">Productos</span></div>
+        <span className={`fiar2-stl${cur > 2 ? ' done' : ''}`} />
+        <div className={`fiar2-stp${cur === 3 ? ' on' : ''}`}><span className="fiar2-stp-n">3</span><span className="fiar2-stp-l">Confirmar</span></div>
+      </div>
+
       {step === 'cliente' ? (
-        <div className="fiar2-cli">
-          <div className="fiar2-cli-inner">
-            <h2 className="fiar2-cli-q">¿A quién le fías?</h2>
-            <div className="fiar2-search">
-              <Search size={22} strokeWidth={1.9} />
-              <input autoFocus value={buscarCli} onChange={(e) => { setBuscarCli(e.target.value); if (clienteId) setClienteId('') }} placeholder="Escribe el nombre del cliente…" />
-            </div>
-            {cargandoCliente ? (
-              <div className="fiar-loading"><span className="fiar-spinner" /> Cargando datos del cliente…</div>
-            ) : clienteSel ? (
-              <div className="fiar-sel-card">
+        <div className="fiar2-stage fiar2-stage--center">
+          {cargandoCliente ? (
+            <div className="fiar-loading"><span className="fiar-spinner" /> Cargando datos del cliente…</div>
+          ) : clienteSel ? (
+            <div className="fiar2-clientesel">
+              <div className="fiar2-cs-head">
                 <FotoId ruta={clienteSel.idImagen} />
-                <div className="fiar-sel-info">
-                  <strong>{clienteSel.nombre}</strong>
-                  <span>{clienteSel.telefono || 'Sin teléfono'}</span>
-                  <span className="fiar-sel-saldo">{saldo > 0 ? `Ya debe ${formatPrice(saldo)}` : 'Sin deuda previa'}{favor > 0 ? ` · a favor ${formatPrice(favor)}` : ''}</span>
-                </div>
-                <div className="fiar2-cli-actions">
-                  <button type="button" className="fiar2-ghost" onClick={() => { setClienteId(''); setBuscarCli('') }}>Cambiar</button>
-                  <button type="button" className="fiar2-primary" onClick={() => setStep('productos')}>Continuar <ArrowRight size={18} strokeWidth={2.1} /></button>
+                <div className="fiar2-cs-id">
+                  <span className="fiar2-cs-tag">Cliente seleccionado</span>
+                  <h3>{clienteSel.nombre}</h3>
                 </div>
               </div>
-            ) : qCli ? (
-              resultados.length === 0 ? (
-                <div className="fiar-empty">Sin clientes para «{buscarCli}».</div>
+              <dl className="fiar2-cs-tabla">
+                <div><dt>Teléfono</dt><dd>{clienteSel.telefono || '—'}</dd></div>
+                <div><dt>Saldo actual</dt><dd className={saldo > 0 ? 'is-debe' : ''}>{saldo > 0 ? `Debe ${formatPrice(saldo)}` : 'Al corriente'}</dd></div>
+                <div><dt>Saldo a favor</dt><dd>{favor > 0 ? formatPrice(favor) : '—'}</dd></div>
+                <div><dt>Identificación</dt><dd>{clienteSel.idImagen ? 'En archivo' : 'Sin ID registrada'}</dd></div>
+              </dl>
+              <div className="fiar2-pane-foot">
+                <button type="button" className="fiar2-ghost" onClick={() => { setClienteId(''); setBuscarCli('') }}>Cambiar cliente</button>
+                <button type="button" className="fiar2-primary" onClick={() => setStep('productos')}>Continuar <ArrowRight size={18} strokeWidth={2.1} /></button>
+              </div>
+            </div>
+          ) : (
+            <div className="fiar2-cli-inner">
+              <h2 className="fiar2-cli-q">¿A quién le fías?</h2>
+              <div className="fiar2-search">
+                <Search size={22} strokeWidth={1.9} />
+                <input autoFocus value={buscarCli} onChange={(e) => setBuscarCli(e.target.value)} placeholder="Escribe el nombre del cliente…" />
+              </div>
+              {qCli ? (
+                resultados.length === 0 ? (
+                  <div className="fiar-empty">Sin clientes para «{buscarCli}».</div>
+                ) : (
+                  <div className="fiar2-results">
+                    {resultados.map((c) => {
+                      const cd = Math.max(0, Number(c.saldo) || 0)
+                      return (
+                        <button type="button" key={c.id} className="fiar2-result" onClick={() => seleccionar(c.id)}>
+                          <span className="fiar-avatar">{initials(c.nombre)}</span>
+                          <span className="fiar2-result-nom">{c.nombre}</span>
+                          <span className="fiar2-result-saldo">{cd > 0 ? `debe ${formatPrice(cd)}` : 'al corriente'}</span>
+                          <ArrowRight size={16} strokeWidth={2} className="fiar2-result-go" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
               ) : (
-                <div className="fiar2-results">
-                  {resultados.map((c) => {
-                    const cd = Math.max(0, Number(c.saldo) || 0)
-                    return (
-                      <button type="button" key={c.id} className="fiar2-result" onClick={() => seleccionar(c.id)}>
-                        <span className="fiar-avatar">{initials(c.nombre)}</span>
-                        <span className="fiar2-result-nom">{c.nombre}</span>
-                        <span className="fiar2-result-saldo">{cd > 0 ? `debe ${formatPrice(cd)}` : 'al corriente'}</span>
-                        <ArrowRight size={16} strokeWidth={2} className="fiar2-result-go" />
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            ) : (
-              <div className="fiar2-cli-hint">Empieza a escribir para buscar al cliente.</div>
-            )}
-          </div>
+                <div className="fiar2-cli-hint">Empieza a escribir para buscar al cliente.</div>
+              )}
+            </div>
+          )}
         </div>
-      ) : (
+      ) : step === 'productos' ? (
         <div className="fiar2-prod">
           <section className="pos-products">
             <div className="pos-search-header">
@@ -285,11 +295,49 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
               ) : null}
               <div className="fiar2-tot-row"><span>Total</span><strong>{formatPrice(total)}</strong></div>
               <div className="fiar2-debe-row"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
-              <button type="button" className="fiar2-confirm" disabled={busy || items.length === 0} onClick={confirmar}>
-                <Handshake size={19} strokeWidth={2} /> {busy ? 'Guardando…' : 'Confirmar fiado'}
+              <button type="button" className="fiar2-confirm" disabled={items.length === 0} onClick={() => setStep('confirmar')}>
+                Continuar <ArrowRight size={18} strokeWidth={2.1} />
               </button>
             </div>
           </aside>
+        </div>
+      ) : (
+        <div className="fiar2-stage fiar2-stage--center">
+          <div className="fiar2-resumen">
+            <h2 className="fiar2-res-title">Revisa antes de fiar</h2>
+            <div className="fiar2-res-cli">
+              <FotoId ruta={clienteSel?.idImagen} />
+              <div>
+                <strong>{clienteSel?.nombre || '—'}</strong>
+                <span>{clienteSel?.telefono || 'Sin teléfono'} · {saldo > 0 ? `ya debía ${formatPrice(saldo)}` : 'sin deuda previa'}</span>
+              </div>
+            </div>
+            <table className="fiar2-res-tabla">
+              <thead><tr><th>Cant.</th><th>Artículo</th><th>Precio</th><th>Importe</th></tr></thead>
+              <tbody>
+                {items.map((it) => (
+                  <tr key={it.productoId}>
+                    <td>{it.cantidad}</td>
+                    <td>{it.nombre}</td>
+                    <td>{formatPrice(it.precio)}</td>
+                    <td>{formatPrice(it.precio * it.cantidad)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="fiar2-res-tot">
+              <div className="fiar2-res-line"><span>Total de la compra</span><span>{formatPrice(total)}</span></div>
+              {enganche > 0 ? <div className="fiar2-res-line is-eng"><span>Enganche en efectivo</span><span>− {formatPrice(enganche)}</span></div> : null}
+              <div className="fiar2-res-debe"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
+              <div className="fiar2-res-nuevo">Su nuevo saldo será <strong>{formatPrice(Math.round((saldo + quedaDebiendo) * 100) / 100)}</strong></div>
+            </div>
+          </div>
+          <div className="fiar2-pane-foot">
+            <button type="button" className="fiar2-ghost" onClick={() => setStep('productos')}>Atrás</button>
+            <button type="button" className="fiar2-confirm" disabled={busy || items.length === 0} onClick={confirmar}>
+              <Handshake size={19} strokeWidth={2} /> {busy ? 'Guardando…' : 'Confirmar fiado'}
+            </button>
+          </div>
         </div>
       )}
     </div>
