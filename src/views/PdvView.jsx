@@ -962,13 +962,13 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               </div>
               <div className="payment-methods-grid">
                 <button className={`pay-method-btn method-efectivo ${activo === 'efectivo' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('efectivo'); setModoFiar(false);}}>
-                  <Banknote size={22} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
+                  <Banknote size={24} color={activo === 'efectivo' && !modoFiar ? "#fff" : "#065f46"} fill={activo === 'efectivo' && !modoFiar ? "#10b981" : "#a7f3d0"} /> Efectivo
                 </button>
                 <button className={`pay-method-btn method-tarjeta ${activo === 'tarjeta' && !modoFiar ? 'active' : ''}`} onClick={() => {setActivo('tarjeta'); setModoFiar(false);}}>
-                  <Smartphone size={22} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
+                  <Smartphone size={24} color={activo === 'tarjeta' && !modoFiar ? "#fff" : "#1e40af"} fill={activo === 'tarjeta' && !modoFiar ? "#3b82f6" : "#bfdbfe"} /> Transferencia
                 </button>
                 <button className={`pay-method-btn method-fiar ${modoFiar ? 'active' : ''}`} onClick={() => {setModoFiar(true); setActivo('efectivo');}}>
-                  <Handshake size={22} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
+                  <Handshake size={24} color={modoFiar ? "#fff" : "#86198f"} fill={modoFiar ? "#d946ef" : "#f5d0fe"} /> Fiar
                 </button>
               </div>
             </div>
@@ -1101,7 +1101,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onClose, cart })
               disabled={busy || (!modoFiar && faltante > 0)} 
               onClick={confirmar}
             >
-              <Check size={22} strokeWidth={2.5} />
+              <Check size={24} strokeWidth={2.5} />
               {busy ? 'Cobrando…' : modoFiar ? 'Confirmar fiado' : 'Completar Venta'}
             </button>
             

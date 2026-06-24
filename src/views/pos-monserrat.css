@@ -2151,9 +2151,10 @@
   padding: 24px 32px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   overflow-y: auto;
-  align-items: center; /* Centrar contenido */
+  align-items: center; /* Centrar horizontal */
+  justify-content: safe center; /* Centrar vertical sin cortar arriba si no cabe */
   scrollbar-width: none;
 }
 
@@ -2229,8 +2230,8 @@
 .numpad-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  flex: 1;
+  gap: 14px;
+  width: 100%;
 }
 
 .received-display-wrapper {
@@ -2253,7 +2254,7 @@
 
 .received-amount-display {
   font-family: var(--mlb-font-mono);
-  font-size: 27px;
+  font-size: 30px;
   font-weight: 700;
   color: var(--mlb-text-primary);
   display: flex;
@@ -2262,7 +2263,7 @@
 }
 
 .received-amount-display .currency {
-  font-size: 19px;
+  font-size: 21px;
   color: var(--mlb-text-muted);
 }
 
@@ -2300,13 +2301,13 @@
 }
 
 .numpad-btn {
-  height: 46px;
+  height: 54px;
   background: var(--mlb-bg-panel);
   border: 2px solid var(--mlb-border-strong);
   border-bottom: 4px solid var(--mlb-border-strong);
   border-radius: 8px;
   font-family: var(--mlb-font-mono);
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--mlb-text-primary);
   cursor: pointer;
@@ -2382,7 +2383,7 @@
 }
 
 .summary-row.total-row strong {
-  font-size: 30px;
+  font-size: 33px;
   font-weight: 800;
 }
 
