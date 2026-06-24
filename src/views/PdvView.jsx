@@ -114,9 +114,11 @@ export function PdvView() {
 
   useEffect(() => {
     void loadClientes()
-    const unsub = window.bazar?.runtime?.subscribeCuentasChanged?.(() => { void loadClientes() })
+    /* Cambios desde otra ventana (venta/devolución/edición de inventario)
+     * deben refrescar también el stock visible del PDV, no solo los clientes. */
+    const unsub = window.bazar?.runtime?.subscribeCuentasChanged?.(() => { void loadClientes(); void cargarProductos() })
     return () => { unsub?.() }
-  }, [loadClientes])
+  }, [loadClientes, cargarProductos])
 
   /* ── Derivados ─────────────────────────────────────────────────── */
 
@@ -456,9 +458,9 @@ export function PdvView() {
         </aside>
           </>
         ) : modo === 'ventas' ? (
-          <VentasWorkspace onChanged={() => { void loadClientes() }} />
+          <VentasWorkspace onChanged={() => { void loadClientes(); void cargarProductos() }} />
         ) : modo === 'devoluciones' ? (
-          <DevolucionWorkspace cuentas={cuentas} onChanged={() => { void loadClientes() }} />
+          <DevolucionWorkspace cuentas={cuentas} onChanged={() => { void loadClientes(); void cargarProductos() }} />
         ) : modo === 'banqueta' ? (
           <BanquetaWorkspace />
         ) : (

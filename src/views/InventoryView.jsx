@@ -287,6 +287,18 @@ export function InventoryView() {
     return () => window.clearTimeout(t)
   }, [q, refresh])
 
+  // Una venta o devolución en la ventana del PDV cambia el stock; si esta vista
+  // de inventario está abierta, debe enterarse y refrescarse (no quedar vieja).
+  useEffect(() => {
+    const handler = () => { void refresh() }
+    const unsub = window.bazar?.runtime?.subscribeCuentasChanged?.(handler)
+    window.addEventListener('bazar:cuentas-changed', handler)
+    return () => {
+      unsub?.()
+      window.removeEventListener('bazar:cuentas-changed', handler)
+    }
+  }, [refresh])
+
   // ProductFormView hace su propio fetch por productId, así que aquí solo
   // necesitamos el id: abrimos la página y el form carga la prenda.
   const openEdit = useCallback((row) => {

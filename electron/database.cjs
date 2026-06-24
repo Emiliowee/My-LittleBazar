@@ -3191,12 +3191,16 @@ function getSales(filters = {}) {
   const desde = String(filters?.from || filters?.desde || '').slice(0, 10)
   const hasta = String(filters?.to || filters?.hasta || '').slice(0, 10)
 
+  /* created_at se guarda en UTC; el usuario filtra por DÍA LOCAL (igual que
+   * diaLocalDeVenta en el front). Convertimos a hora local antes de comparar,
+   * si no las ventas de la tarde/noche (que ruedan al día UTC siguiente) se
+   * salían del reporte de "hoy". */
   if (desde) {
-    where.push(`substr(v.created_at, 1, 10) >= @desde`)
+    where.push(`substr(datetime(v.created_at, 'localtime'), 1, 10) >= @desde`)
     params.desde = desde
   }
   if (hasta) {
-    where.push(`substr(v.created_at, 1, 10) <= @hasta`)
+    where.push(`substr(datetime(v.created_at, 'localtime'), 1, 10) <= @hasta`)
     params.hasta = hasta
   }
   if (metodoFiltro && metodoFiltro !== 'todos') {

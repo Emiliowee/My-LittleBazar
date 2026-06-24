@@ -61,8 +61,7 @@ const config = { fechaCorte: '2026-06-03', diasAtraso: 30, porcentajeAtraso: 0.2
   }
   const res = calcularCuentaSaldos(cuenta, config)
   assert.equal(res.saldo, 0)
-  assert.equal(res.alertas[0].tipo, 'abono_sobrante')
-  assert.equal(res.alertas[0].monto, 50)
+  assert.equal(res.saldoAFavor, 50)
 }
 
 {
