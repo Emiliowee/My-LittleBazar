@@ -19,7 +19,7 @@ const initials = (name) => {
 const normItems = (arr) => (Array.isArray(arr) ? arr : []).map((it) => ({
   productoId: Number(it.productoId), codigo: String(it.codigo || ''), nombre: String(it.nombre || 'Producto'),
   precio: Number(it.precio) || 0, cantidad: Math.max(1, Math.floor(Number(it.cantidad) || 1)),
-  categoria: String(it.categoria || '').trim(),
+  categoria: String(it.categoria || '').trim(), imagen: String(it.imagen || it.imagen_path || ''),
 })).filter((it) => it.productoId)
 
 function FotoId({ ruta }) {
@@ -84,6 +84,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const qCli = norm(buscarCli)
   const resultados = useMemo(() => (qCli ? lstClientes.filter((c) => norm(c.nombre).includes(qCli)).slice(0, 10) : []), [lstClientes, qCli])
 
+  const meta = categoriasMeta || {}
   // Productos a fiar agrupados por categoría (como el boceto del usuario).
   const grupos = useMemo(() => {
     const m = new Map()
@@ -115,7 +116,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
     setItems((prev) => {
       const i = prev.findIndex((x) => x.productoId === p.id)
       if (i >= 0) { const n = [...prev]; n[i] = { ...n[i], cantidad: n[i].cantidad + 1 }; return n }
-      return [...prev, { productoId: p.id, codigo: String(p.codigo || ''), nombre: String(p.descripcion || p.codigo || 'Producto'), precio: Number(p.precio) || 0, cantidad: 1, categoria: String(p.categoria || '').trim() }]
+      return [...prev, { productoId: p.id, codigo: String(p.codigo || ''), nombre: String(p.descripcion || p.codigo || 'Producto'), precio: Number(p.precio) || 0, cantidad: 1, categoria: String(p.categoria || '').trim(), imagen: String(p.imagen_path || '') }]
     })
   }
   const addCodigo = async () => {
@@ -173,17 +174,15 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   return (
     <div className="fiar2">
       <div className="fiar2-bar">
-        <button type="button" className="fiar2-back" onClick={atras} aria-label="Volver"><ArrowLeft size={20} strokeWidth={1.9} /></button>
-        <div className="fiar2-titles"><strong>Sacar fiado</strong></div>
-        {importados ? <span className="fiar-foco-badge"><span className="fiar-foco" /><Package size={14} strokeWidth={1.9} /> {nItems} del PDV</span> : null}
-      </div>
-
-      <div className="fiar2-stepper">
-        <div className={`fiar2-stp${cur === 1 ? ' on' : cur > 1 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 1 ? <Check size={14} strokeWidth={3} /> : 1}</span><span className="fiar2-stp-l">Cliente</span></div>
-        <span className={`fiar2-stl${cur > 1 ? ' done' : ''}`} />
-        <div className={`fiar2-stp${cur === 2 ? ' on' : cur > 2 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 2 ? <Check size={14} strokeWidth={3} /> : 2}</span><span className="fiar2-stp-l">Productos</span></div>
-        <span className={`fiar2-stl${cur > 2 ? ' done' : ''}`} />
-        <div className={`fiar2-stp${cur === 3 ? ' on' : ''}`}><span className="fiar2-stp-n">3</span><span className="fiar2-stp-l">Confirmar</span></div>
+        <button type="button" className="fiar2-back" onClick={atras} aria-label="Volver"><ArrowLeft size={18} strokeWidth={2} /></button>
+        <div className="fiar2-stepper">
+          <div className={`fiar2-stp${cur === 1 ? ' on' : cur > 1 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 1 ? <Check size={13} strokeWidth={3} /> : 1}</span><span className="fiar2-stp-l">Cliente</span></div>
+          <span className={`fiar2-stl${cur > 1 ? ' done' : ''}`} />
+          <div className={`fiar2-stp${cur === 2 ? ' on' : cur > 2 ? ' done' : ''}`}><span className="fiar2-stp-n">{cur > 2 ? <Check size={13} strokeWidth={3} /> : 2}</span><span className="fiar2-stp-l">Productos</span></div>
+          <span className={`fiar2-stl${cur > 2 ? ' done' : ''}`} />
+          <div className={`fiar2-stp${cur === 3 ? ' on' : ''}`}><span className="fiar2-stp-n">3</span><span className="fiar2-stp-l">Confirmar</span></div>
+        </div>
+        {importados ? <span className="fiar-foco-badge"><span className="fiar-foco" /><Package size={14} strokeWidth={1.9} /> {nItems} del PDV</span> : <span className="fiar2-bar-pad" />}
       </div>
 
       {step === 'cliente' ? (
@@ -250,20 +249,29 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
               <div key={cat} className="fiar2-cat">
                 <h3 className="fiar2-cat-h">{cat}</h3>
                 <div className="fiar2-cat-grid">
-                  {its.map((it) => (
-                    <div key={it.productoId} className="fiar2-fc">
-                      <button type="button" className="fiar2-fc-x" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}><X size={13} strokeWidth={2.6} /></button>
-                      <span className="fiar2-fc-nom">{it.nombre}</span>
-                      <div className="fiar2-fc-foot">
-                        <div className="fiar2-fc-qty">
-                          <button type="button" onClick={() => cambiarCant(it.productoId, -1)} aria-label="Menos"><Minus size={12} strokeWidth={2.6} /></button>
-                          <span>{it.cantidad}</span>
-                          <button type="button" onClick={() => cambiarCant(it.productoId, 1)} aria-label="Más"><Plus size={12} strokeWidth={2.6} /></button>
+                  {its.map((it) => {
+                    const ic = emojiDe(it.categoria, meta)
+                    const prodImg = esRutaImagen(it.imagen) ? it.imagen : null
+                    return (
+                      <div key={it.productoId} className="fiar2-fc">
+                        <button type="button" className="fiar2-fc-x" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}><X size={13} strokeWidth={2.6} /></button>
+                        <span className="fiar2-fc-img">
+                          {prodImg ? <img src={fileUrl(prodImg)} alt="" />
+                            : esRutaImagen(ic) ? <img src={fileUrl(ic)} alt="" />
+                            : <span>{ic}</span>}
+                        </span>
+                        <span className="fiar2-fc-nom">{it.nombre}</span>
+                        <div className="fiar2-fc-foot">
+                          <div className="fiar2-fc-qty">
+                            <button type="button" onClick={() => cambiarCant(it.productoId, -1)} aria-label="Menos"><Minus size={12} strokeWidth={2.6} /></button>
+                            <span>{it.cantidad}</span>
+                            <button type="button" onClick={() => cambiarCant(it.productoId, 1)} aria-label="Más"><Plus size={12} strokeWidth={2.6} /></button>
+                          </div>
+                          <span className="fiar2-fc-precio">{formatPrice(it.precio * it.cantidad)}</span>
                         </div>
-                        <span className="fiar2-fc-precio">{formatPrice(it.precio * it.cantidad)}</span>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
