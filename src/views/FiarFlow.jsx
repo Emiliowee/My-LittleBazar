@@ -424,6 +424,7 @@ export function AbonarScreen({ clientes, onSalir }) {
   const [fecha, setFecha] = useState(hoyIso)
   const [quienPago, setQuienPago] = useState('')
   const [nota, setNota] = useState('')
+  const [masOpciones, setMasOpciones] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const lst = useMemo(() => (Array.isArray(clientes) ? clientes : []), [clientes])
@@ -437,7 +438,6 @@ export function AbonarScreen({ clientes, onSalir }) {
   const afterFavor = saldo > 0 ? Math.max(0, Math.round((montoN - saldo) * 100) / 100) : Math.round((favor + montoN) * 100) / 100
   const afterLabel = nuevoSaldo > 0 ? 'Quedará debiendo' : afterFavor > 0 ? 'Quedará a favor' : 'Quedará al corriente'
   const afterValue = nuevoSaldo > 0 ? nuevoSaldo : afterFavor
-  const fmtFecha = (iso) => { try { return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${String(iso).slice(0, 10)}T12:00:00`)) } catch { return iso } }
   const cur = step === 'cliente' ? 1 : 2
 
   const seleccionar = (id) => {
@@ -445,6 +445,14 @@ export function AbonarScreen({ clientes, onSalir }) {
     window.setTimeout(() => { setCargando(false); setStep('abono') }, 450 + Math.floor(Math.random() * 400))
   }
   const cambiar = () => { setClienteId(''); setBuscar(''); setStep('cliente') }
+  const tecla = (d) => setMonto((s) => {
+    if (d === 'back') return s.slice(0, -1)
+    if (d === '00') return s === '' ? '' : s + '00'
+    if (d === '.') return s.includes('.') ? s : (s === '' ? '0.' : s + '.')
+    const next = s + d
+    if (/^\d*\.?\d{0,2}$/.test(next)) return next.replace(/^0+(?=\d)/, '')
+    return s
+  })
 
   const confirmar = async () => {
     if (!clienteSel) { toast.error('Elige un cliente.'); setStep('cliente'); return }
@@ -506,53 +514,49 @@ export function AbonarScreen({ clientes, onSalir }) {
           </div>
         </div>
       ) : (
-        <div className="fiar2-stage fiar2-stage--center">
-          <div className="fiar2-abono">
-            <div className="fiar2-abono-hero">
-              <div className="fiar2-abono-hero-name">{clienteSel?.nombre || '—'}</div>
-              <div className={`fiar2-abono-hero-bal ${saldo > 0 ? 'is-debe' : 'is-ok'}`}>{saldo > 0 ? formatPrice(saldo) : favor > 0 ? formatPrice(favor) : '$0'}</div>
-              <div className="fiar2-abono-hero-lbl">{saldo > 0 ? 'DEUDA ACTUAL' : favor > 0 ? 'SALDO A FAVOR' : 'CUENTA AL CORRIENTE'}</div>
+        <div className="fiar2-abono2">
+          <section className="fiar2-ab-pad">
+            <div className="fiar2-ab-pad-q">¿Cuánto paga <strong>{clienteSel?.nombre || 'el cliente'}</strong>?</div>
+            <div className="fiar2-ab-display"><span className="cur">$</span><span className="amt">{monto || '0'}</span></div>
+            <div className="fiar2-ab-quick">
+              {saldo > 0 ? <button type="button" onClick={() => setMonto(String(saldo))}><Check size={14} strokeWidth={2.6} /> Liquidar todo · {formatPrice(saldo)}</button> : null}
+              {saldo >= 100 ? <button type="button" onClick={() => setMonto(String(Math.round(saldo / 2)))}>La mitad · {formatPrice(Math.round(saldo / 2))}</button> : null}
+            </div>
+            <div className="numpad-grid fiar2-ab-numpad">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0'].map((d) => <button type="button" key={d} className="numpad-btn" onClick={() => tecla(d)}>{d}</button>)}
+              <button type="button" className="numpad-btn numpad-del" onClick={() => tecla('back')} aria-label="Borrar"><X size={20} strokeWidth={2.4} /></button>
+            </div>
+          </section>
+
+          <aside className="fiar2-ab-side2">
+            <div className="fiar2-ab-cli2">
+              <div className="fiar2-ab-cli2-name">{clienteSel?.nombre || '—'}</div>
+              <div className={`fiar2-ab-cli2-bal ${saldo > 0 ? 'is-debe' : 'is-ok'}`}>{saldo > 0 ? formatPrice(saldo) : favor > 0 ? formatPrice(favor) : '$0'}</div>
+              <div className="fiar2-ab-cli2-lbl">{saldo > 0 ? 'DEUDA ACTUAL' : favor > 0 ? 'SALDO A FAVOR' : 'AL CORRIENTE'}</div>
               <button type="button" className="fiar2-link fiar2-link--green" onClick={cambiar}>Cambiar cliente</button>
             </div>
 
-            <div className="fiar2-amount">
-              <span className="fiar2-amount-lbl">Monto a abonar</span>
-              <div className="fiar2-amount-in"><span>$</span><input inputMode="decimal" autoFocus value={monto} onChange={(e) => setMonto(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" /></div>
-              {saldo > 0 ? (
-                <div className="fiar2-amount-chips">
-                  <button type="button" onClick={() => setMonto(String(saldo))}><Check size={14} strokeWidth={2.6} /> Liquidar todo · {formatPrice(saldo)}</button>
-                  {saldo >= 100 ? <button type="button" onClick={() => setMonto(String(Math.round(saldo / 2)))}>La mitad · {formatPrice(Math.round(saldo / 2))}</button> : null}
-                </div>
-              ) : null}
+            <div className="fiar2-ab-medios">
+              <button type="button" className={medio === 'efectivo' ? 'on' : ''} onClick={() => setMedio('efectivo')}><Banknote size={20} strokeWidth={2} /> Efectivo</button>
+              <button type="button" className={medio === 'transferencia' ? 'on' : ''} onClick={() => setMedio('transferencia')}><Smartphone size={20} strokeWidth={2} /> Transferencia</button>
             </div>
 
-            <div className="fiar2-ab-block">
-              <span className="fiar2-amount-lbl">¿Cómo paga?</span>
-              <div className="fiar2-ab-medios">
-                <button type="button" className={medio === 'efectivo' ? 'on' : ''} onClick={() => setMedio('efectivo')}><Banknote size={22} strokeWidth={2} /> Efectivo</button>
-                <button type="button" className={medio === 'transferencia' ? 'on' : ''} onClick={() => setMedio('transferencia')}><Smartphone size={22} strokeWidth={2} /> Transferencia</button>
-              </div>
+            <div className={`fiar2-ab-after2${nuevoSaldo > 0 ? '' : ' is-ok'}`}>
+              <span>{montoN > 0 ? afterLabel : (saldo > 0 ? 'Debe' : 'Saldo a favor')}</span>
+              <strong>{montoN > 0 ? (afterValue > 0 ? formatPrice(afterValue) : '✓') : formatPrice(saldo > 0 ? saldo : favor)}</strong>
             </div>
 
-            <div className="fiar2-ab-row">
-              <label className="fiar2-ab-field"><span>Fecha del abono</span><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
-              <label className="fiar2-ab-field"><span>Quién pagó (opcional)</span><input value={quienPago} onChange={(e) => setQuienPago(e.target.value)} placeholder="Ej. su hermana" /></label>
-            </div>
-            <label className="fiar2-ab-field"><span>Nota (opcional)</span><input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Comentario sobre este pago…" /></label>
-
-            {montoN > 0 ? (
-              <div className="fiar2-abono-result">
-                <div className="fiar2-abono-result-row"><span>{saldo > 0 ? 'Debe ahora' : 'Saldo a favor'}</span><strong>{formatPrice(saldo > 0 ? saldo : favor)}</strong></div>
-                <div className="fiar2-abono-result-row"><span>Abona ({medio === 'efectivo' ? 'efectivo' : 'transferencia'})</span><strong className="is-green">− {formatPrice(montoN)}</strong></div>
-                <div className="fiar2-abono-result-row"><span>Fecha</span><strong>{fmtFecha(fecha)}</strong></div>
-                <div className={`fiar2-abono-result-after${afterValue > 0 && nuevoSaldo > 0 ? '' : ' is-ok'}`}><span>{afterLabel}</span><strong>{afterValue > 0 ? formatPrice(afterValue) : '✓'}</strong></div>
+            <button type="button" className="fiar2-ab-more" onClick={() => setMasOpciones((v) => !v)}>{masOpciones ? '▲ Ocultar' : '▼ Más datos'} · fecha, quién pagó, nota</button>
+            {masOpciones ? (
+              <div className="fiar2-ab-extra">
+                <label className="fiar2-ab-field"><span>Fecha</span><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
+                <label className="fiar2-ab-field"><span>Quién pagó</span><input value={quienPago} onChange={(e) => setQuienPago(e.target.value)} placeholder="Ej. su hermana" /></label>
+                <label className="fiar2-ab-field"><span>Nota</span><input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Comentario…" /></label>
               </div>
             ) : null}
-          </div>
-          <div className="fiar2-pane-foot">
-            <button type="button" className="fiar2-ghost" onClick={cambiar}>Cambiar cliente</button>
-            <button type="button" className="fiar2-confirm fiar2-confirm--green" disabled={busy || !(montoN > 0)} onClick={confirmar}><Check size={19} strokeWidth={2} /> {busy ? 'Guardando…' : 'Confirmar abono'}</button>
-          </div>
+
+            <button type="button" className="fiar2-confirm fiar2-confirm--green fiar2-ab-confirm" disabled={busy || !(montoN > 0)} onClick={confirmar}><Check size={20} strokeWidth={2.2} /> {busy ? 'Guardando…' : 'Confirmar abono'}</button>
+          </aside>
         </div>
       )}
     </div>
