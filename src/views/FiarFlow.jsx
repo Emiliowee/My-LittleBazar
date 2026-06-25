@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Mi
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
+import { calcularCuentaSaldos } from '@/lib/saldosLedger'
 import './fiar-flow.css'
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -425,6 +426,7 @@ export function AbonarScreen({ clientes, onSalir }) {
   const [quienPago, setQuienPago] = useState('')
   const [nota, setNota] = useState('')
   const [masOpciones, setMasOpciones] = useState(false)
+  const [cargos, setCargos] = useState([]) // detalle de la deuda (cargos abiertos) del cliente
   const [busy, setBusy] = useState(false)
 
   const lst = useMemo(() => (Array.isArray(clientes) ? clientes : []), [clientes])
@@ -440,11 +442,16 @@ export function AbonarScreen({ clientes, onSalir }) {
   const afterValue = nuevoSaldo > 0 ? nuevoSaldo : afterFavor
   const cur = step === 'cliente' ? 1 : 2
 
-  const seleccionar = (id) => {
-    setClienteId(String(id)); setCargando(true)
+  const seleccionar = async (id) => {
+    setClienteId(String(id)); setCargando(true); setCargos([])
+    try {
+      const cuentas = await saldosApi?.listCuentas?.({ incluirArchivadas: false })
+      const c = (Array.isArray(cuentas) ? cuentas : []).find((x) => String(x.id) === String(id))
+      if (c) { const r = calcularCuentaSaldos(c); setCargos((r.cargos || []).filter((cg) => (Number(cg.saldo) || 0) > 0.005)) }
+    } catch { /* sin detalle: el saldo total igual se muestra */ }
     window.setTimeout(() => { setCargando(false); setStep('abono') }, 450 + Math.floor(Math.random() * 400))
   }
-  const cambiar = () => { setClienteId(''); setBuscar(''); setStep('cliente') }
+  const cambiar = () => { setClienteId(''); setBuscar(''); setStep('cliente'); setCargos([]) }
   const tecla = (d) => setMonto((s) => {
     if (d === 'back') return s.slice(0, -1)
     if (d === '00') return s === '' ? '' : s + '00'
@@ -535,6 +542,21 @@ export function AbonarScreen({ clientes, onSalir }) {
               <div className="fiar2-ab-cli2-lbl">{saldo > 0 ? 'DEUDA ACTUAL' : favor > 0 ? 'SALDO A FAVOR' : 'AL CORRIENTE'}</div>
               <button type="button" className="fiar2-link fiar2-link--green" onClick={cambiar}>Cambiar cliente</button>
             </div>
+
+            {saldo > 0 && cargos.length > 0 ? (
+              <div className="fiar2-ab-deuda">
+                <span className="fiar2-ab-deuda-h">Le debe por</span>
+                <div className="fiar2-ab-deuda-list">
+                  {cargos.map((cg) => (
+                    <div key={cg.id} className="fiar2-ab-deuda-row">
+                      <span className="fiar2-ab-deuda-nom">{cg.concepto || cg.articulo || 'Cargo'}</span>
+                      <span className="fiar2-ab-deuda-mon">{formatPrice(cg.saldo)}</span>
+                    </div>
+                  ))}
+                </div>
+                <span className="fiar2-ab-deuda-note">El abono se aplica primero a lo más antiguo.</span>
+              </div>
+            ) : null}
 
             <div className="fiar2-ab-medios">
               <button type="button" className={medio === 'efectivo' ? 'on' : ''} onClick={() => setMedio('efectivo')}><Banknote size={20} strokeWidth={2} /> Efectivo</button>
