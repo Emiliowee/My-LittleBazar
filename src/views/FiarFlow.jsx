@@ -19,6 +19,7 @@ const initials = (name) => {
 const normItems = (arr) => (Array.isArray(arr) ? arr : []).map((it) => ({
   productoId: Number(it.productoId), codigo: String(it.codigo || ''), nombre: String(it.nombre || 'Producto'),
   precio: Number(it.precio) || 0, cantidad: Math.max(1, Math.floor(Number(it.cantidad) || 1)),
+  categoria: String(it.categoria || '').trim(),
 })).filter((it) => it.productoId)
 
 function FotoId({ ruta }) {
@@ -70,10 +71,12 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const [buscarCli, setBuscarCli] = useState('')
   const [cargandoCliente, setCargandoCliente] = useState(false)
   const [items, setItems] = useState(importRef.current)
-  const [search, setSearch] = useState('')
-  const [categoria, setCategoria] = useState('Todo')
+  const [codigo, setCodigo] = useState('')
   const [conEnganche, setConEnganche] = useState(false)
   const [engEfec, setEngEfec] = useState('')
+  const [valeInput, setValeInput] = useState('')
+  const [valeInfo, setValeInfo] = useState(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const lstClientes = useMemo(() => (Array.isArray(clientes) ? clientes : []), [clientes])
@@ -81,22 +84,24 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const qCli = norm(buscarCli)
   const resultados = useMemo(() => (qCli ? lstClientes.filter((c) => norm(c.nombre).includes(qCli)).slice(0, 10) : []), [lstClientes, qCli])
 
-  const cats = Array.isArray(categorias) ? categorias : []
-  const meta = categoriasMeta || {}
-  const visibles = useMemo(() => {
-    const nq = norm(search)
-    let rows = Array.isArray(productos) ? productos : []
-    if (categoria !== 'Todo') rows = rows.filter((p) => String(p.categoria || '').trim() === categoria)
-    if (nq) rows = rows.filter((p) => norm(p.descripcion || '').includes(nq) || norm(p.codigo || '').includes(nq))
-    return rows.slice(0, 80)
-  }, [productos, categoria, search])
+  // Productos a fiar agrupados por categoría (como el boceto del usuario).
+  const grupos = useMemo(() => {
+    const m = new Map()
+    for (const it of items) { const c = String(it.categoria || '').trim() || 'Otros'; if (!m.has(c)) m.set(c, []); m.get(c).push(it) }
+    return [...m.entries()]
+  }, [items])
 
-  const enSet = new Set(items.map((x) => x.productoId))
   const total = items.reduce((s, it) => s + it.precio * it.cantidad, 0)
-  const enganche = conEnganche ? Math.min(total, Number(engEfec) || 0) : 0
-  const quedaDebiendo = Math.max(0, total - enganche)
   const saldo = clienteSel ? Math.max(0, Number(clienteSel.saldo) || 0) : 0
   const favor = clienteSel ? Math.max(0, Number(clienteSel.saldoAFavor) || 0) : 0
+  // Vale y saldo a favor bajan lo que se debe (mismo orden que addSale); el resto es la deuda.
+  const valeDisp = valeInfo ? Math.max(0, Number(valeInfo.disponible) || 0) : 0
+  const valeAplica = Math.round(Math.min(valeDisp, total) * 100) / 100
+  const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplica) * 100) / 100)
+  const favorAplica = Math.round(Math.min(favor, adeudadoTrasVale) * 100) / 100
+  const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplica) * 100) / 100)
+  const enganche = conEnganche ? Math.min(adeudadoTrasFavor, Number(engEfec) || 0) : 0
+  const quedaDebiendo = Math.max(0, Math.round((adeudadoTrasFavor - enganche) * 100) / 100)
   const nItems = items.reduce((s, it) => s + it.cantidad, 0)
 
   const seleccionar = (id) => {
@@ -110,8 +115,30 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
     setItems((prev) => {
       const i = prev.findIndex((x) => x.productoId === p.id)
       if (i >= 0) { const n = [...prev]; n[i] = { ...n[i], cantidad: n[i].cantidad + 1 }; return n }
-      return [...prev, { productoId: p.id, codigo: String(p.codigo || ''), nombre: String(p.descripcion || p.codigo || 'Producto'), precio: Number(p.precio) || 0, cantidad: 1 }]
+      return [...prev, { productoId: p.id, codigo: String(p.codigo || ''), nombre: String(p.descripcion || p.codigo || 'Producto'), precio: Number(p.precio) || 0, cantidad: 1, categoria: String(p.categoria || '').trim() }]
     })
+  }
+  const addCodigo = async () => {
+    const c = String(codigo).trim()
+    if (!c) return
+    if (!db?.getProductByCodigo) { toast.error('Sin conexión al inventario.'); return }
+    try {
+      const p = await db.getProductByCodigo(c)
+      if (!p?.id) { toast.error(`Sin resultados para «${c}».`); return }
+      if (String(p.estado || 'disponible') !== 'disponible') { toast.error(`«${p.codigo}» no está disponible.`); return }
+      addProducto(p); setCodigo('')
+    } catch { toast.error('No se pudo agregar el artículo.') }
+  }
+  const aplicarVale = async () => {
+    const code = String(valeInput).trim()
+    if (!code) return
+    if (!db?.buscarVale) { toast.error('Los vales son solo en la app de escritorio.'); return }
+    try {
+      const v = await db.buscarVale(code)
+      if (!v) { toast.error('Ese vale no existe.'); return }
+      if (!v.activo) { toast.error('Ese vale ya no tiene saldo.'); return }
+      setValeInfo(v); toast.success(`Vale ${v.codigo}: ${formatPrice(v.disponible)} disponible.`)
+    } catch { toast.error('No se pudo buscar el vale.') }
   }
   const cambiarCant = (pid, delta) => setItems((prev) => prev.flatMap((x) => {
     if (x.productoId !== pid) return [x]
@@ -126,9 +153,10 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
     if (!db?.addSale) { toast.error('Sin conexión a la base de datos.'); return }
     setBusy(true)
     try {
+      const valePago = valeInfo && valeAplica > 0 ? { codigo: valeInfo.codigo, monto: valeAplica } : undefined
       const res = await db.addSale({
         items: items.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad })),
-        pagos: { efectivo: enganche, transferencia: 0 },
+        pagos: { efectivo: enganche, transferencia: 0, vale: valePago },
         clienteId: clienteSel.id, fiar: true, notas: '',
       })
       if (!res?.ok) throw new Error('No se pudo registrar el fiado.')
@@ -214,92 +242,77 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
           )}
         </div>
       ) : step === 'productos' ? (
-        <div className="fiar2-prod">
-          <section className="pos-products">
-            <div className="pos-search-header">
-              <div className="pos-search-bar">
-                <Search size={22} strokeWidth={1.8} />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Busca un producto o escanea su código…" autoFocus />
-              </div>
-            </div>
-            <div className="pos-categories">
-              <div className="pos-cat-row">
-                <button type="button" className={`pos-cat${categoria === 'Todo' ? ' is-active' : ''}`} onClick={() => setCategoria('Todo')}>Todo<span className="pos-cat__count">{(productos || []).length}</span></button>
-                {cats.map((c) => {
-                  const ic = emojiDe(c.nombre, meta)
-                  return (
-                    <button type="button" key={c.nombre} className={`pos-cat${categoria === c.nombre ? ' is-active' : ''}`} onClick={() => setCategoria(categoria === c.nombre ? 'Todo' : c.nombre)}>
-                      {esRutaImagen(ic) ? <img className="pos-cat__img" src={fileUrl(ic)} alt="" /> : <span>{ic}</span>}{c.nombre}<span className="pos-cat__count">{c.count}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="pos-grid">
-              {visibles.length === 0 ? (
-                <div className="pos-grid__empty"><ShoppingBag size={42} strokeWidth={1.4} /><h3>Nada con ese filtro</h3><p>Prueba con otro nombre, código o categoría.</p></div>
-              ) : visibles.map((p) => {
-                const ic = emojiDe(p.categoria, meta)
-                const prodImg = esRutaImagen(p.imagen_path) ? p.imagen_path : null
-                const yaN = items.find((x) => x.productoId === p.id)?.cantidad || 0
-                return (
-                  <button type="button" key={p.id} className={`pos-card${enSet.has(p.id) ? ' fiar2-card--in' : ''}`} onClick={() => addProducto(p)}>
-                    {yaN > 0 ? <span className="fiar2-card-badge">{yaN}</span> : null}
-                    <span className="pos-card__img">
-                      {prodImg ? <img className="pos-card__photo" src={fileUrl(prodImg)} alt="" />
-                        : esRutaImagen(ic) ? <img className="pos-card__glyph" src={fileUrl(ic)} alt="" />
-                        : <span>{ic}</span>}
-                    </span>
-                    <span className="pos-card__info">
-                      <span className="pos-card__name">{p.descripcion || p.codigo}</span>
-                      <span className="pos-card__price">{formatPrice(p.precio)}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-
-          <aside className="pos-cart fiar2-cart">
-            <div className="pos-cart__header fiar2-cart-head">
-              <span className="fiar-avatar">{initials(clienteSel?.nombre)}</span>
-              <div>
-                <h2>Fiado de {clienteSel?.nombre || 'cliente'}</h2>
-                <span className="fiar2-cart-sub">{saldo > 0 ? `Ya debe ${formatPrice(saldo)}` : 'Sin deuda previa'}</span>
-              </div>
-            </div>
-
-            <div className="fiar2-cart-items">
-              {items.length === 0 ? (
-                <div className="fiar2-cart-empty"><ShoppingBag size={34} strokeWidth={1.4} /><p>Toca productos para fiarlos</p></div>
-              ) : items.map((it) => (
-                <div key={it.productoId} className="fiar2-line">
-                  <span className="fiar2-line-nom">{it.nombre}</span>
-                  <div className="fiar2-line-qty">
-                    <button type="button" onClick={() => cambiarCant(it.productoId, -1)} aria-label="Menos"><Minus size={13} strokeWidth={2.3} /></button>
-                    <span>{it.cantidad}</span>
-                    <button type="button" onClick={() => cambiarCant(it.productoId, 1)} aria-label="Más"><Plus size={13} strokeWidth={2.3} /></button>
-                  </div>
-                  <span className="fiar2-line-sub">{formatPrice(it.precio * it.cantidad)}</span>
-                  <button type="button" className="fiar2-line-x" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}><X size={14} strokeWidth={2.2} /></button>
+        <div className="fiar2-prod2">
+          <div className="fiar2-prod2-main">
+            {items.length === 0 ? (
+              <div className="fiar2-prod2-empty"><ShoppingBag size={40} strokeWidth={1.4} /><p>Aún no hay productos a fiar</p><span>Agrégalos con «+ Agregar productos» o el código de la derecha.</span></div>
+            ) : grupos.map(([cat, its]) => (
+              <div key={cat} className="fiar2-cat">
+                <h3 className="fiar2-cat-h">{cat}</h3>
+                <div className="fiar2-cat-grid">
+                  {its.map((it) => (
+                    <div key={it.productoId} className="fiar2-fc">
+                      <button type="button" className="fiar2-fc-x" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}><X size={13} strokeWidth={2.6} /></button>
+                      <span className="fiar2-fc-nom">{it.nombre}</span>
+                      <div className="fiar2-fc-foot">
+                        <div className="fiar2-fc-qty">
+                          <button type="button" onClick={() => cambiarCant(it.productoId, -1)} aria-label="Menos"><Minus size={12} strokeWidth={2.6} /></button>
+                          <span>{it.cantidad}</span>
+                          <button type="button" onClick={() => cambiarCant(it.productoId, 1)} aria-label="Más"><Plus size={12} strokeWidth={2.6} /></button>
+                        </div>
+                        <span className="fiar2-fc-precio">{formatPrice(it.precio * it.cantidad)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            ))}
+            <button type="button" className="fiar2-fc-add" onClick={() => setPickerOpen(true)}><Plus size={26} strokeWidth={1.8} /><span>Agregar productos</span></button>
+            <div className="fiar2-prod2-total">TOTAL: <strong>{formatPrice(total)}</strong></div>
+          </div>
+
+          <aside className="fiar2-prod2-side">
+            <div className="fiar2-side-cuenta">
+              <span className="fiar2-side-tag">Cuenta del cliente</span>
+              <strong>{clienteSel?.nombre || '—'}</strong>
+              <span className="fiar2-side-saldo">{saldo > 0 ? `Ya debe ${formatPrice(saldo)}` : 'Sin deuda previa'}</span>
             </div>
 
-            <div className="fiar2-cart-foot">
-              <label className="fiar2-engtoggle">
-                <input type="checkbox" checked={conEnganche} onChange={(e) => setConEnganche(e.target.checked)} /> ¿Dejó enganche?
-              </label>
-              {conEnganche ? (
-                <input className="fiar2-eng-input" inputMode="decimal" value={engEfec} onChange={(e) => setEngEfec(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Monto en efectivo" />
-              ) : null}
-              <div className="fiar2-tot-row"><span>Total</span><strong>{formatPrice(total)}</strong></div>
-              <div className="fiar2-debe-row"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
-              <button type="button" className="fiar2-confirm" disabled={items.length === 0} onClick={() => setStep('confirmar')}>
-                Continuar <ArrowRight size={18} strokeWidth={2.1} />
-              </button>
+            <label className="fiar2-side-label" htmlFor="fiar2-cod">Ingresar código del artículo</label>
+            <div className="fiar2-side-code">
+              <input id="fiar2-cod" value={codigo} onChange={(e) => setCodigo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addCodigo() }} placeholder="Código…" />
+              <button type="button" onClick={addCodigo} aria-label="Agregar"><Plus size={16} strokeWidth={2.2} /></button>
             </div>
+            <small className="fiar2-side-hint">Si se escanea con el lector, se mete automático.</small>
+
+            <label className="fiar2-side-check">
+              <input type="checkbox" checked={conEnganche} onChange={(e) => setConEnganche(e.target.checked)} /> Enganche
+            </label>
+            {conEnganche ? (
+              <input className="fiar2-side-input" inputMode="decimal" value={engEfec} onChange={(e) => setEngEfec(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Monto en efectivo" />
+            ) : null}
+
+            {favor > 0 ? (
+              <div className="fiar2-side-favor">Saldo a favor: <strong>{formatPrice(favor)}</strong> <em>se aplicará</em></div>
+            ) : null}
+
+            <div className="fiar2-side-valebox">
+              <span className="fiar2-side-label">Vale</span>
+              {valeInfo ? (
+                <div className="fiar2-side-valechip">Vale {valeInfo.codigo} · −{formatPrice(valeAplica)}<button type="button" onClick={() => { setValeInfo(null); setValeInput('') }} aria-label="Quitar vale"><X size={13} strokeWidth={2.4} /></button></div>
+              ) : (
+                <div className="fiar2-side-code">
+                  <input value={valeInput} onChange={(e) => setValeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') aplicarVale() }} placeholder="Código de vale" />
+                  <button type="button" onClick={aplicarVale}>Usar</button>
+                </div>
+              )}
+            </div>
+
+            <div className="fiar2-side-debe"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
+            <button type="button" className="fiar2-confirm" disabled={items.length === 0} onClick={() => setStep('confirmar')}>Continuar <ArrowRight size={18} strokeWidth={2.1} /></button>
           </aside>
+
+          {pickerOpen ? <ProductoPicker productos={productos} categorias={categorias} categoriasMeta={categoriasMeta} yaEn={items} onAdd={addProducto} onClose={() => setPickerOpen(false)} /> : null}
         </div>
       ) : (
         <div className="fiar2-stage fiar2-stage--center">
@@ -327,6 +340,8 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
             </table>
             <div className="fiar2-res-tot">
               <div className="fiar2-res-line"><span>Total de la compra</span><span>{formatPrice(total)}</span></div>
+              {valeAplica > 0 ? <div className="fiar2-res-line is-eng"><span>Vale {valeInfo?.codigo}</span><span>− {formatPrice(valeAplica)}</span></div> : null}
+              {favorAplica > 0 ? <div className="fiar2-res-line is-eng"><span>Saldo a favor</span><span>− {formatPrice(favorAplica)}</span></div> : null}
               {enganche > 0 ? <div className="fiar2-res-line is-eng"><span>Enganche en efectivo</span><span>− {formatPrice(enganche)}</span></div> : null}
               <div className="fiar2-res-debe"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
               <div className="fiar2-res-nuevo">Su nuevo saldo será <strong>{formatPrice(Math.round((saldo + quedaDebiendo) * 100) / 100)}</strong></div>
@@ -340,6 +355,49 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/* Selector de productos por categoría (modal que abre el botón "+"). */
+function ProductoPicker({ productos, categorias, categoriasMeta, yaEn, onAdd, onClose }) {
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('Todo')
+  const meta = categoriasMeta || {}
+  const cats = Array.isArray(categorias) ? categorias : []
+  const enSet = new Set((yaEn || []).map((x) => x.productoId))
+  const visibles = useMemo(() => {
+    const nq = norm(q)
+    let rows = Array.isArray(productos) ? productos : []
+    if (cat !== 'Todo') rows = rows.filter((p) => String(p.categoria || '').trim() === cat)
+    if (nq) rows = rows.filter((p) => norm(p.descripcion || '').includes(nq) || norm(p.codigo || '').includes(nq))
+    return rows.slice(0, 80)
+  }, [productos, cat, q])
+  return (
+    <div className="fiar2-picker-ov" onClick={onClose}>
+      <div className="fiar2-picker" role="dialog" aria-label="Agregar productos" onClick={(e) => e.stopPropagation()}>
+        <div className="fiar2-picker-head"><strong>Agregar productos</strong><button type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div>
+        <div className="fiar2-picker-search"><Search size={16} strokeWidth={1.9} /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto o código…" /></div>
+        <div className="fiar2-picker-cats">
+          <button type="button" className={cat === 'Todo' ? 'on' : ''} onClick={() => setCat('Todo')}>Todo</button>
+          {cats.map((c) => <button type="button" key={c.nombre} className={cat === c.nombre ? 'on' : ''} onClick={() => setCat(c.nombre)}>{c.nombre} <em>{c.count}</em></button>)}
+        </div>
+        <div className="fiar2-picker-grid">
+          {visibles.length === 0 ? <div className="fiar-empty">Sin productos.</div> : visibles.map((p) => {
+            const ic = emojiDe(p.categoria, meta)
+            const prodImg = esRutaImagen(p.imagen_path) ? p.imagen_path : null
+            const added = enSet.has(p.id)
+            return (
+              <button type="button" key={p.id} className={`fiar2-pk-card${added ? ' is-added' : ''}`} onClick={() => onAdd(p)}>
+                <span className="fiar2-pk-img">{prodImg ? <img src={fileUrl(prodImg)} alt="" /> : esRutaImagen(ic) ? <img src={fileUrl(ic)} alt="" /> : <span>{ic}</span>}</span>
+                <span className="fiar2-pk-nom">{p.descripcion || p.codigo}</span>
+                <span className="fiar2-pk-foot"><span className="fiar2-pk-precio">{formatPrice(p.precio)}</span><span className="fiar2-pk-act">{added ? <Check size={14} strokeWidth={2.6} /> : <Plus size={14} strokeWidth={2.4} />}</span></span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="fiar2-picker-foot"><span>{(yaEn || []).length} producto{(yaEn || []).length === 1 ? '' : 's'} en el fiado</span><button type="button" className="fiar2-confirm" onClick={onClose}>Listo</button></div>
+      </div>
     </div>
   )
 }

@@ -110,39 +110,80 @@
 .fiar-idfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fiar-idfoto--vacia { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--mlb-text-muted); font-size: 10px; }
 
-/* Paso 2 · Productos — parrilla (pos-products/pos-grid) + carrito (pos-cart) */
-.fiar2-prod { flex: 1; min-height: 0; display: flex; }
-.fiar2-cart { display: flex; flex-direction: column; min-height: 0; }
-.fiar2-cart-head { display: flex; align-items: center; gap: 12px; }
-.fiar2-cart-head h2 { font-family: var(--mlb-font-display); font-size: 16px; font-weight: 800; color: var(--mlb-text-primary); margin: 0; }
-.fiar2-cart-sub { font-size: 12.5px; color: var(--mlb-text-muted); }
-.fiar2-cart-items { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding: 14px 16px; }
-.fiar2-cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; color: var(--mlb-text-muted); font-size: 13.5px; text-align: center; }
-.fiar2-line { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-app); }
-.fiar2-line-nom { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--mlb-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fiar2-line-qty { display: inline-flex; align-items: center; gap: 6px; }
-.fiar2-line-qty button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--mlb-border-strong); background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; }
-.fiar2-line-qty button:hover { border-color: var(--mlb-accent); color: var(--mlb-accent); }
-.fiar2-line-qty span { min-width: 16px; text-align: center; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 13px; }
-.fiar2-line-sub { min-width: 64px; text-align: right; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 13px; color: var(--mlb-text-primary); }
-.fiar2-line-x { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; color: var(--mlb-text-muted); display: grid; place-items: center; cursor: pointer; }
-.fiar2-line-x:hover { background: color-mix(in srgb, var(--mlb-danger) 12%, transparent); color: var(--mlb-danger); }
-.fiar2-cart-foot { border-top: 1px solid var(--mlb-border); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.fiar2-engtoggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: var(--mlb-text-primary); cursor: pointer; }
-.fiar2-eng-input { height: 40px; padding: 0 12px; border: 1.5px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-family: var(--mlb-font-mono); font-size: 15px; color: var(--mlb-text-primary); outline: none; }
-.fiar2-tot-row { display: flex; justify-content: space-between; align-items: baseline; }
-.fiar2-tot-row span { font-size: 13px; color: var(--mlb-text-secondary); }
-.fiar2-tot-row strong { font-family: var(--mlb-font-mono); font-size: 18px; font-weight: 700; color: var(--mlb-text-primary); }
-.fiar2-debe-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(183,121,31,.1); }
-.fiar2-debe-row span { font-size: 13px; font-weight: 700; color: #854f0b; }
-.fiar2-debe-row strong { font-family: var(--mlb-font-mono); font-size: 22px; font-weight: 800; color: #b7791f; }
+/* Paso 2 · Productos — tarjetas por categoría (boceto) + panel de control */
+.fiar2-prod2 { flex: 1; min-height: 0; display: flex; }
+.fiar2-prod2-main { flex: 1; min-width: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+.fiar2-prod2-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--mlb-text-muted); text-align: center; }
+.fiar2-prod2-empty p { margin: 4px 0 0; font-size: 16px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-prod2-empty span { font-size: 13px; }
+.fiar2-cat { display: flex; flex-direction: column; gap: 10px; }
+.fiar2-cat-h { margin: 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--mlb-text-secondary); }
+.fiar2-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.fiar2-fc { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; min-height: 92px; padding: 13px; border-radius: 12px; background: var(--mlb-accent); color: #fff; }
+.fiar2-fc-x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--mlb-bg-app); background: var(--mlb-danger); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.fiar2-fc-nom { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.fiar2-fc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fiar2-fc-qty { display: inline-flex; align-items: center; gap: 6px; }
+.fiar2-fc-qty button { width: 22px; height: 22px; border-radius: 6px; border: none; background: rgba(255,255,255,.25); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.fiar2-fc-qty button:hover { background: rgba(255,255,255,.4); }
+.fiar2-fc-qty span { min-width: 14px; text-align: center; font-family: var(--mlb-font-mono); font-weight: 700; font-size: 13px; }
+.fiar2-fc-precio { font-family: var(--mlb-font-mono); font-weight: 800; font-size: 15px; }
+.fiar2-fc-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; align-self: flex-start; min-width: 150px; min-height: 92px; padding: 13px; border: 2px dashed var(--mlb-border-strong); border-radius: 12px; background: transparent; color: var(--mlb-text-muted); font-weight: 700; font-size: 13px; cursor: pointer; }
+.fiar2-fc-add:hover { border-color: var(--mlb-accent); color: var(--mlb-accent); }
+.fiar2-prod2-total { margin-top: auto; padding-top: 10px; text-align: right; font-size: 15px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-prod2-total strong { font-family: var(--mlb-font-mono); font-size: 20px; color: var(--mlb-text-primary); margin-left: 6px; }
+
+/* Panel de control derecho (boceto) */
+.fiar2-prod2-side { width: 300px; flex: none; display: flex; flex-direction: column; gap: 12px; padding: 20px; border-left: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); overflow-y: auto; }
+.fiar2-side-cuenta { display: flex; flex-direction: column; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--mlb-border); }
+.fiar2-side-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--mlb-text-muted); }
+.fiar2-side-cuenta strong { font-size: 16px; color: var(--mlb-text-primary); }
+.fiar2-side-saldo { font-size: 12.5px; color: var(--mlb-text-muted); }
+.fiar2-side-label { font-size: 12.5px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-side-code { display: flex; gap: 8px; }
+.fiar2-side-code input { flex: 1; height: 42px; padding: 0 12px; border: 1.5px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-size: 14px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-side-code button { padding: 0 14px; height: 42px; border: none; border-radius: 9px; background: var(--mlb-accent); color: #fff; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
+.fiar2-side-hint { font-size: 11.5px; color: var(--mlb-text-muted); }
+.fiar2-side-check { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14px; font-weight: 700; color: var(--mlb-text-primary); cursor: pointer; }
+.fiar2-side-input { height: 40px; padding: 0 12px; border: 1.5px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-family: var(--mlb-font-mono); font-size: 15px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-side-favor { font-size: 13px; color: var(--mlb-success); font-weight: 600; }
+.fiar2-side-favor strong { font-family: var(--mlb-font-mono); }
+.fiar2-side-favor em { font-style: normal; color: var(--mlb-text-muted); font-weight: 500; }
+.fiar2-side-valebox { display: flex; flex-direction: column; gap: 6px; }
+.fiar2-side-valechip { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 9px; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); font-size: 13px; font-weight: 700; }
+.fiar2-side-valechip button { background: none; border: none; color: var(--mlb-accent-ink); cursor: pointer; display: flex; }
+.fiar2-side-debe { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding: 12px 14px; border-radius: 10px; background: rgba(183,121,31,.1); }
+.fiar2-side-debe span { font-size: 13px; font-weight: 700; color: #854f0b; }
+.fiar2-side-debe strong { font-family: var(--mlb-font-mono); font-size: 22px; font-weight: 800; color: #b7791f; }
+
 .fiar2-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: none; border-radius: 12px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; border-bottom: 4px solid #c01456; transition: background-color .15s; }
 .fiar2-confirm:hover { background: var(--mlb-accent-hover); }
 .fiar2-confirm:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Tarjeta de producto ya en el fiado */
-.pos-card.fiar2-card--in { border-color: var(--mlb-accent); box-shadow: 0 0 0 2px var(--mlb-accent-soft); }
-.fiar2-card-badge { position: absolute; top: 8px; right: 8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: var(--mlb-accent); color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; z-index: 2; }
+/* Selector de productos por categoría (modal del "+") */
+.fiar2-picker-ov { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(15,12,20,.42); padding: 24px; }
+.fiar2-picker { width: min(760px, 100%); max-height: 86%; display: flex; flex-direction: column; background: var(--mlb-bg-panel); border: 1px solid var(--mlb-border); border-radius: 18px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.fiar2-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--mlb-border); }
+.fiar2-picker-head strong { font-family: var(--mlb-font-display); font-size: 17px; color: var(--mlb-text-primary); }
+.fiar2-picker-head button { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--mlb-bg-input); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; }
+.fiar2-picker-search { display: flex; align-items: center; gap: 10px; margin: 14px 18px 0; padding: 0 14px; height: 44px; border: 1.5px solid var(--mlb-border); border-radius: 10px; background: var(--mlb-bg-input); color: var(--mlb-text-muted); }
+.fiar2-picker-search input { flex: 1; border: none; background: transparent; font-size: 14px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-picker-cats { display: flex; gap: 8px; overflow-x: auto; padding: 14px 18px 6px; }
+.fiar2-picker-cats button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.fiar2-picker-cats button.on { background: var(--mlb-accent); color: #fff; border-color: var(--mlb-accent); }
+.fiar2-picker-cats button em { font-style: normal; opacity: .7; font-size: 11px; }
+.fiar2-picker-grid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 10px 18px 16px; }
+.fiar2-pk-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1.5px solid var(--mlb-border); border-radius: 11px; background: var(--mlb-bg-app); cursor: pointer; text-align: left; transition: border-color .12s; }
+.fiar2-pk-card:hover { border-color: var(--mlb-accent); }
+.fiar2-pk-card.is-added { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); }
+.fiar2-pk-img { height: 56px; display: grid; place-items: center; font-size: 26px; border-radius: 8px; background: var(--mlb-bg-panel); overflow: hidden; }
+.fiar2-pk-img img { width: 100%; height: 100%; object-fit: cover; }
+.fiar2-pk-nom { font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--mlb-text-primary); }
+.fiar2-pk-foot { display: flex; align-items: center; justify-content: space-between; }
+.fiar2-pk-precio { font-family: var(--mlb-font-mono); font-weight: 700; font-size: 14px; color: var(--mlb-text-primary); }
+.fiar2-pk-act { width: 24px; height: 24px; border-radius: 7px; background: var(--mlb-accent); color: #fff; display: grid; place-items: center; }
+.fiar2-picker-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--mlb-border); }
+.fiar2-picker-foot span { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
 
 /* Abonar (formulario simple) */
 .fiar2-ab-label { font-size: 13px; font-weight: 700; color: var(--mlb-text-secondary); margin-top: 6px; }
@@ -154,5 +195,6 @@
 .fiar2-ab-after { text-align: center; font-size: 14px; font-weight: 700; color: #854f0b; }
 
 @media (max-width: 860px) {
-  .fiar2-prod { flex-direction: column; }
+  .fiar2-prod2 { flex-direction: column; }
+  .fiar2-prod2-side { width: auto; border-left: none; border-top: 1px solid var(--mlb-border); }
 }

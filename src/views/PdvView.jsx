@@ -509,7 +509,7 @@ export function PdvView() {
           onClientesChanged={loadClientes}
           onCobrar={cobrar}
           onIrAFiar={(clienteIdSel) => {
-            const imp = cart.map((l) => ({ productoId: l.pid, codigo: l.codigo, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad }))
+            const imp = cart.map((l) => ({ productoId: l.pid, codigo: l.codigo, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad, categoria: l.categoria }))
             setFiarImport(imp)
             setFiarClienteId(clienteIdSel || '')
             setCart([])
