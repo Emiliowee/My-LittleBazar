@@ -185,14 +185,58 @@
 .fiar2-picker-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--mlb-border); }
 .fiar2-picker-foot span { font-size: 13px; color: var(--mlb-text-muted); font-weight: 600; }
 
-/* Abonar (formulario simple) */
-.fiar2-ab-label { font-size: 13px; font-weight: 700; color: var(--mlb-text-secondary); margin-top: 6px; }
-.fiar2-ab-monto { height: 64px; padding: 0 18px; border: 2px solid var(--mlb-border-strong); border-radius: 14px; background: var(--mlb-bg-panel); font-family: var(--mlb-font-mono); font-size: 30px; font-weight: 800; color: var(--mlb-text-primary); outline: none; }
-.fiar2-ab-monto:focus { border-color: var(--mlb-accent); }
-.fiar2-ab-medios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.fiar2-ab-medios button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border: 2px solid var(--mlb-border); border-radius: 12px; background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); font-weight: 700; font-size: 14px; cursor: pointer; }
-.fiar2-ab-medios button.on { border-color: var(--mlb-accent); background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
+/* ── Abonar (estilo del abono de Saldos, en VERDE) ──────────────────── */
+/* Verde para identificar que es abono (distinto del fiar, que es rosa). */
+.fiar2-stepper--green .fiar2-stp.on .fiar2-stp-n { background: var(--mlb-success); border-color: var(--mlb-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--mlb-success) 18%, transparent); }
+.fiar2-stepper--green .fiar2-stp.done .fiar2-stp-n { background: color-mix(in srgb, var(--mlb-success) 16%, transparent); color: var(--mlb-success); }
+.fiar2-stepper--green .fiar2-stl.done { background: var(--mlb-success); }
+.fiar-avatar--green { background: color-mix(in srgb, var(--mlb-success) 14%, transparent); color: var(--mlb-success); }
+.fiar2-result--green:hover { border-color: var(--mlb-success); background: color-mix(in srgb, var(--mlb-success) 8%, transparent); }
+.fiar-spinner--green { border-top-color: var(--mlb-success); }
+.fiar2-confirm--green { background: var(--mlb-success); border-bottom-color: color-mix(in srgb, var(--mlb-success) 60%, #000); }
+.fiar2-confirm--green:hover { background: color-mix(in srgb, var(--mlb-success) 88%, #000); }
+
+.fiar2-abono { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 22px; }
+/* Encabezado tipo hoja de Saldos: nombre + saldo grande a color */
+.fiar2-abono-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0 20px; border-bottom: 1px solid var(--mlb-border); }
+.fiar2-abono-hero-name { font-size: 20px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-abono-hero-bal { font-family: var(--mlb-font-mono); font-size: 56px; font-weight: 800; line-height: 1; color: var(--mlb-success); }
+.fiar2-abono-hero-bal.is-debe { color: #b7791f; }
+.fiar2-abono-hero-lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--mlb-text-muted); margin-top: 4px; }
+.fiar2-link--green { color: var(--mlb-success); margin-top: 8px; }
+
+/* Resumen claro del abono: debe → abona → fecha → queda */
+.fiar2-abono-result { display: flex; flex-direction: column; border: 1px solid var(--mlb-border); border-radius: 12px; overflow: hidden; }
+.fiar2-abono-result-row { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 16px; border-bottom: 1px solid var(--mlb-border); font-size: 14px; }
+.fiar2-abono-result-row span { color: var(--mlb-text-secondary); }
+.fiar2-abono-result-row strong { font-family: var(--mlb-font-mono); font-weight: 700; color: var(--mlb-text-primary); }
+.fiar2-abono-result-row strong.is-green { color: var(--mlb-success); }
+.fiar2-abono-result-after { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: rgba(183,121,31,.1); }
+.fiar2-abono-result-after span { font-size: 14px; font-weight: 700; color: #854f0b; }
+.fiar2-abono-result-after strong { font-family: var(--mlb-font-mono); font-size: 22px; font-weight: 800; color: #b7791f; }
+.fiar2-abono-result-after.is-ok { background: color-mix(in srgb, var(--mlb-success) 12%, transparent); }
+.fiar2-abono-result-after.is-ok span, .fiar2-abono-result-after.is-ok strong { color: var(--mlb-success); }
+
+.fiar2-amount { background: var(--mlb-bg-app); border: 2px solid var(--mlb-border-strong); border-radius: 14px; padding: 22px; text-align: center; transition: border-color .15s; }
+.fiar2-amount:focus-within { border-color: var(--mlb-success); }
+.fiar2-amount-lbl { display: block; font-size: 13px; font-weight: 700; color: var(--mlb-text-secondary); margin-bottom: 12px; }
+.fiar2-amount-in { display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--mlb-font-mono); font-size: 46px; font-weight: 800; color: var(--mlb-text-primary); }
+.fiar2-amount-in span { color: var(--mlb-text-muted); }
+.fiar2-amount-in input { width: 210px; border: none; background: transparent; font: inherit; color: inherit; text-align: left; outline: none; }
+.fiar2-amount-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.fiar2-amount-chips button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1.5px solid var(--mlb-border-strong); border-radius: 9px; background: var(--mlb-bg-panel); color: var(--mlb-text-secondary); font-size: 13px; font-weight: 700; cursor: pointer; }
+.fiar2-amount-chips button:hover { border-color: var(--mlb-success); color: var(--mlb-success); }
+
+.fiar2-ab-block { display: flex; flex-direction: column; gap: 10px; }
+.fiar2-ab-medios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fiar2-ab-medios button { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; border: 2px solid var(--mlb-border-strong); border-radius: 12px; background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-weight: 700; font-size: 14px; cursor: pointer; }
+.fiar2-ab-medios button.on { border-color: var(--mlb-success); background: color-mix(in srgb, var(--mlb-success) 10%, transparent); color: var(--mlb-success); }
+.fiar2-ab-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fiar2-ab-field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-ab-field input { height: 42px; padding: 0 12px; border: 1.5px solid var(--mlb-border); border-radius: 9px; background: var(--mlb-bg-input); font-size: 14px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-ab-field input:focus { border-color: var(--mlb-success); }
 .fiar2-ab-after { text-align: center; font-size: 14px; font-weight: 700; color: #854f0b; }
+.fiar2-ab-after.is-ok { color: var(--mlb-success); }
 
 @media (max-width: 860px) {
   .fiar2-prod2 { flex-direction: column; }
