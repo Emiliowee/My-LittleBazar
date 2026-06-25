@@ -113,7 +113,10 @@ export function calcularCuentaSaldos(cuenta, config = {}) {
       const asignaciones = aplicarMontoMasViejoPrimero(cargos, monto)
       const aplicado = money(asignaciones.reduce((sum, a) => sum + a.monto, 0))
       const sobrante = money(monto - aplicado)
-      if (sobrante > 0) {
+      /* El saldo a favor SOLO nace de devoluciones (descuento) o ajustes; un ABONO
+       * nunca genera saldo a favor (si el cliente paga de más, se le da cambio en
+       * efectivo, no crédito). Regla de negocio confirmada por la dueña. */
+      if (sobrante > 0 && tipo !== 'abono') {
         saldoAFavor = money(saldoAFavor + sobrante)
       }
       procesados.push({

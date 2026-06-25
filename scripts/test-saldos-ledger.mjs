@@ -59,6 +59,21 @@ const config = { fechaCorte: '2026-06-03', diasAtraso: 30, porcentajeAtraso: 0.2
       { id: 'm2', tipo: 'abono', fecha: '2026-05-02', concepto: 'Pago de mas', monto: 250 },
     ],
   }
+  // Regla: un ABONO no genera saldo a favor (el sobrante sería cambio en efectivo).
+  const res = calcularCuentaSaldos(cuenta, config)
+  assert.equal(res.saldo, 0)
+  assert.equal(res.saldoAFavor, 0)
+}
+
+{
+  // En cambio, una DEVOLUCIÓN (descuento) sí puede generar saldo a favor.
+  const cuenta = {
+    id: 'c4b',
+    movimientos: [
+      { id: 'm1', tipo: 'cargo', fecha: '2026-05-01', concepto: 'Falda', monto: 200 },
+      { id: 'm2', tipo: 'descuento', fecha: '2026-05-02', concepto: 'Devolución', monto: 250 },
+    ],
+  }
   const res = calcularCuentaSaldos(cuenta, config)
   assert.equal(res.saldo, 0)
   assert.equal(res.saldoAFavor, 50)

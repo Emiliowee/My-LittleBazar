@@ -17,6 +17,11 @@ const initials = (name) => {
   const p = String(name || '').trim().split(/\s+/).filter(Boolean)
   return p.length ? p.slice(0, 2).map((x) => x[0]?.toUpperCase() || '').join('') : '—'
 }
+const fechaCorta = (v) => {
+  if (!v) return ''
+  try { return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short' }).format(new Date(`${String(v).slice(0, 10)}T12:00:00`)) }
+  catch { return String(v).slice(0, 10) }
+}
 const normItems = (arr) => (Array.isArray(arr) ? arr : []).map((it) => ({
   productoId: Number(it.productoId), codigo: String(it.codigo || ''), nombre: String(it.nombre || 'Producto'),
   precio: Number(it.precio) || 0, cantidad: Math.max(1, Math.floor(Number(it.cantidad) || 1)),
@@ -436,10 +441,11 @@ export function AbonarScreen({ clientes, onSalir }) {
   const saldo = clienteSel ? Math.max(0, Number(clienteSel.saldo) || 0) : 0
   const favor = clienteSel ? Math.max(0, Number(clienteSel.saldoAFavor) || 0) : 0
   const montoN = Number(monto) || 0
-  const nuevoSaldo = Math.max(0, Math.round((saldo - montoN) * 100) / 100) // deuda que queda
-  const afterFavor = saldo > 0 ? Math.max(0, Math.round((montoN - saldo) * 100) / 100) : Math.round((favor + montoN) * 100) / 100
-  const afterLabel = nuevoSaldo > 0 ? 'Quedará debiendo' : afterFavor > 0 ? 'Quedará a favor' : 'Quedará al corriente'
-  const afterValue = nuevoSaldo > 0 ? nuevoSaldo : afterFavor
+  // El abono se TOPA a la deuda (nunca genera saldo a favor). Si paga de más, el
+  // sobrante es CAMBIO en efectivo que se le entrega; no queda como crédito.
+  const abonoReal = Math.min(montoN, saldo)
+  const cambio = Math.max(0, Math.round((montoN - saldo) * 100) / 100)
+  const nuevoSaldo = Math.max(0, Math.round((saldo - abonoReal) * 100) / 100)
   const cur = step === 'cliente' ? 1 : 2
 
   const seleccionar = async (id) => {
@@ -463,13 +469,16 @@ export function AbonarScreen({ clientes, onSalir }) {
 
   const confirmar = async () => {
     if (!clienteSel) { toast.error('Elige un cliente.'); setStep('cliente'); return }
+    if (saldo <= 0) { toast.error('Este cliente no tiene deuda que abonar.'); return }
     if (!(montoN > 0)) { toast.error('Escribe el monto del abono.'); return }
     if (!saldosApi?.registrarMovimientos) { toast.error('Saldos no disponible.'); return }
     setBusy(true)
     try {
-      const r = await saldosApi.registrarMovimientos({ clienteId: clienteSel.id, movimientos: [{ tipo: 'abono', fecha, monto: montoN, medio, concepto: 'Abono general', quienPago: quienPago.trim(), nota: nota.trim() }] })
+      // Se registra solo lo que cubre la deuda (abonoReal); el sobrante es cambio, no se guarda como crédito.
+      const r = await saldosApi.registrarMovimientos({ clienteId: clienteSel.id, movimientos: [{ tipo: 'abono', fecha, monto: abonoReal, medio, concepto: 'Abono general', quienPago: quienPago.trim(), nota: nota.trim() }] })
       if (r && r.ok === false) throw new Error(r.message || 'No se pudo registrar el abono.')
-      toast.success(`Abono de ${formatPrice(montoN)} de ${clienteSel.nombre}. ${nuevoSaldo > 0 ? `Ahora debe ${formatPrice(nuevoSaldo)}` : 'Queda al corriente'}.`)
+      const colita = cambio > 0 ? ` Entrega ${formatPrice(cambio)} de cambio.` : ''
+      toast.success(`Abono de ${formatPrice(abonoReal)} de ${clienteSel.nombre}. ${nuevoSaldo > 0 ? `Ahora debe ${formatPrice(nuevoSaldo)}.` : 'Queda al corriente.'}${colita}`)
       onSalir?.(true)
     } catch (e) { toast.error(e?.message || 'No se pudo registrar el abono.') }
     finally { setBusy(false) }
@@ -547,12 +556,16 @@ export function AbonarScreen({ clientes, onSalir }) {
               <div className="fiar2-ab-deuda">
                 <span className="fiar2-ab-deuda-h">Le debe por</span>
                 <div className="fiar2-ab-deuda-list">
-                  {cargos.map((cg) => (
-                    <div key={cg.id} className="fiar2-ab-deuda-row">
-                      <span className="fiar2-ab-deuda-nom">{cg.concepto || cg.articulo || 'Cargo'}</span>
-                      <span className="fiar2-ab-deuda-mon">{formatPrice(cg.saldo)}</span>
-                    </div>
-                  ))}
+                  {cargos.map((cg) => {
+                    const dias = Number(cg.dias) || 0
+                    const venc = dias >= 30 ? 'vencido' : dias >= 25 ? 'por vencer' : ''
+                    return (
+                      <div key={cg.id} className="fiar2-ab-deuda-row">
+                        <span className="fiar2-ab-deuda-nom">{cg.concepto || cg.articulo || 'Cargo'}<em className="fiar2-ab-deuda-fecha">{fechaCorta(cg.fecha)}{venc ? ` · ${venc}` : ''}</em></span>
+                        <span className={`fiar2-ab-deuda-mon${dias >= 30 ? ' is-venc' : ''}`}>{formatPrice(cg.saldo)}</span>
+                      </div>
+                    )
+                  })}
                 </div>
                 <span className="fiar2-ab-deuda-note">El abono se aplica primero a lo más antiguo.</span>
               </div>
@@ -563,10 +576,11 @@ export function AbonarScreen({ clientes, onSalir }) {
               <button type="button" className={medio === 'transferencia' ? 'on' : ''} onClick={() => setMedio('transferencia')}><Smartphone size={20} strokeWidth={2} /> Transferencia</button>
             </div>
 
-            <div className={`fiar2-ab-after2${nuevoSaldo > 0 ? '' : ' is-ok'}`}>
-              <span>{montoN > 0 ? afterLabel : (saldo > 0 ? 'Debe' : 'Saldo a favor')}</span>
-              <strong>{montoN > 0 ? (afterValue > 0 ? formatPrice(afterValue) : '✓') : formatPrice(saldo > 0 ? saldo : favor)}</strong>
+            <div className={`fiar2-ab-after2${montoN > 0 && nuevoSaldo === 0 ? ' is-ok' : ''}`}>
+              <span>{montoN > 0 ? (nuevoSaldo > 0 ? 'Quedará debiendo' : 'Quedará al corriente') : (saldo > 0 ? 'Debe' : 'Sin deuda')}</span>
+              <strong>{montoN > 0 ? (nuevoSaldo > 0 ? formatPrice(nuevoSaldo) : '✓') : formatPrice(saldo)}</strong>
             </div>
+            {cambio > 0 ? <div className="fiar2-ab-cambio"><span>Cambio a entregar</span><strong>{formatPrice(cambio)}</strong></div> : null}
 
             <button type="button" className="fiar2-ab-more" onClick={() => setMasOpciones((v) => !v)}>{masOpciones ? '▲ Ocultar' : '▼ Más datos'} · fecha, quién pagó, nota</button>
             {masOpciones ? (
@@ -577,7 +591,7 @@ export function AbonarScreen({ clientes, onSalir }) {
               </div>
             ) : null}
 
-            <button type="button" className="fiar2-confirm fiar2-confirm--green fiar2-ab-confirm" disabled={busy || !(montoN > 0)} onClick={confirmar}><Check size={20} strokeWidth={2.2} /> {busy ? 'Guardando…' : 'Confirmar abono'}</button>
+            <button type="button" className="fiar2-confirm fiar2-confirm--green fiar2-ab-confirm" disabled={busy || saldo <= 0 || !(montoN > 0)} onClick={confirmar}><Check size={20} strokeWidth={2.2} /> {busy ? 'Guardando…' : 'Confirmar abono'}</button>
           </aside>
         </div>
       )}

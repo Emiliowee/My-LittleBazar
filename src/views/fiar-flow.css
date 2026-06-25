@@ -223,9 +223,15 @@
 .fiar2-ab-deuda-h { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--mlb-text-secondary); }
 .fiar2-ab-deuda-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; }
 .fiar2-ab-deuda-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid var(--mlb-border); border-radius: 8px; background: var(--mlb-bg-app); font-size: 12.5px; }
-.fiar2-ab-deuda-nom { color: var(--mlb-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fiar2-ab-deuda-mon { font-family: var(--mlb-font-mono); font-weight: 700; color: #b7791f; flex: none; }
+.fiar2-ab-deuda-nom { display: flex; flex-direction: column; min-width: 0; color: var(--mlb-text-primary); overflow: hidden; }
+.fiar2-ab-deuda-nom > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fiar2-ab-deuda-fecha { font-style: normal; font-size: 11px; color: var(--mlb-text-muted); }
+.fiar2-ab-deuda-mon { font-family: var(--mlb-font-mono); font-weight: 700; color: var(--mlb-text-secondary); flex: none; }
+.fiar2-ab-deuda-mon.is-venc { color: var(--mlb-danger); }
 .fiar2-ab-deuda-note { font-size: 11.5px; color: var(--mlb-text-muted); }
+.fiar2-ab-cambio { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--mlb-bg-input); }
+.fiar2-ab-cambio span { font-size: 13px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-ab-cambio strong { font-family: var(--mlb-font-mono); font-size: 18px; font-weight: 800; color: var(--mlb-text-primary); }
 
 .fiar2-ab-medios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fiar2-ab-medios button { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; border: 2px solid var(--mlb-border-strong); border-radius: 12px; background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-weight: 700; font-size: 13.5px; cursor: pointer; }
