@@ -331,7 +331,7 @@ export function PdvView() {
         </div>
       </aside>
 
-      <main className={`pos-main${modo === 'venta' ? '' : modo === 'ventas' ? ' pos-main--ventas' : ' pos-main--tool'}`}>
+      <main className={`pos-main${(modo === 'venta' || modo === 'fiar' || modo === 'saldos' || modo === 'abonar') ? '' : modo === 'ventas' ? ' pos-main--ventas' : ' pos-main--tool'}`}>
         {modo === 'venta' ? (
           <>
         {/* Productos */}
