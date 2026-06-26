@@ -247,7 +247,7 @@ export function SaldosView() {
     return <NuevoClienteScreen api={api} onBack={() => setModo('cuentas')} onCreado={async (id) => { await recargar(); abrirHoja(id) }} />
   }
   if (modo === 'hoja' && seleccionada) {
-    return <HojaScreen api={api} row={seleccionada} workspace={workspace} onBack={() => { setModo('cuentas'); void recargar() }} onChanged={recargar} />
+    return <HojaScreen api={api} row={seleccionada} workspace={workspace} config={config} onBack={() => { setModo('cuentas'); void recargar() }} onChanged={recargar} />
   }
   return (
     <>
@@ -441,10 +441,43 @@ const ACCIONES = [
   { id: 'cargo_atraso', label: 'Atraso', icon: CalendarDays },
 ]
 
-function HojaScreen({ api, row, workspace, onBack, onChanged }) {
+function HojaScreen({ api, row, workspace, config, onBack, onChanged }) {
   const { cuenta, resumen } = row
   const [accionModal, setAccionModal] = useState(null)
   const [waOpen, setWaOpen] = useState(false)
+  const [compras, setCompras] = useState([])
+
+  const diasAtraso = Number(config?.diasAtraso) || 30
+  const pctAtraso = Math.round((Number(config?.porcentajeAtraso) || 0.2) * 100)
+
+  /* "Lo que se llevó": traemos las compras (ventas fiadas) con sus prendas y
+   * categoría. Se recarga cuando cambian los totales (tras abono/cargo). */
+  useEffect(() => {
+    let alive = true
+    const fn = window.bazar?.db?.getComprasCliente
+    if (fn) Promise.resolve(fn(cuenta.id)).then((r) => { if (alive) setCompras(Array.isArray(r) ? r : []) }).catch(() => {})
+    return () => { alive = false }
+  }, [cuenta.id, resumen.totalCargos, resumen.totalAplicado])
+
+  // Mapa ventaId → cargo (saldo pendiente, días) para enlazar cada compra.
+  const cargoPorVenta = useMemo(() => {
+    const m = new Map()
+    for (const c of resumen.cargos || []) {
+      const refs = Array.isArray(c.referenciaIds) ? c.referenciaIds : (c.referenciaId != null ? [c.referenciaId] : [])
+      for (const r of refs) m.set(Number(r), c)
+    }
+    return m
+  }, [resumen])
+
+  // Cuenta regresiva al recargo: el cargo abierto más próximo a vencer.
+  const proximoRecargo = useMemo(() => {
+    const abiertos = (resumen.cargos || []).filter((c) => c.atrasable && c.saldo > 0)
+    if (abiertos.length === 0) return null
+    return abiertos.reduce((min, c) => {
+      const restante = Math.ceil(diasAtraso - c.dias)
+      return min == null || restante < min ? restante : min
+    }, null)
+  }, [resumen, diasAtraso])
 
   const registrar = async (movs) => {
     try {
@@ -490,6 +523,54 @@ function HojaScreen({ api, row, workspace, onBack, onChanged }) {
             </button>
           </div>
         </section>
+
+        {compras.length > 0 && (
+          <div className="sld-history-container">
+            <h3 className="sld-module-title">Lo que se llevó</h3>
+            {proximoRecargo != null && resumen.saldo > 0 && (
+              <div className={cn('sld-llevo-aviso', proximoRecargo <= 0 && 'is-vencido')}>
+                {proximoRecargo > 0
+                  ? <>Faltan <strong>{proximoRecargo} día{proximoRecargo === 1 ? '' : 's'}</strong> para el recargo del {pctAtraso}%. Buen momento para recordarle.</>
+                  : <>Ya corresponde el recargo del <strong>{pctAtraso}%</strong> (sugerido). Conviene cobrarle o avisarle.</>}
+              </div>
+            )}
+            <div className="sld-llevo-list">
+              {compras.map((compra) => {
+                const cargo = cargoPorVenta.get(compra.ventaId)
+                const saldo = cargo ? cargo.saldo : 0
+                const restante = cargo && cargo.atrasable && saldo > 0 ? Math.ceil(diasAtraso - cargo.dias) : null
+                return (
+                  <div key={compra.ventaId} className="sld-llevo-card">
+                    <div className="sld-llevo-card__top">
+                      <span className="sld-llevo-fecha">{fechaCorta(compra.fecha)}</span>
+                      {saldo > 0
+                        ? <span className="sld-llevo-badge is-debe">Debe {formatPrice(saldo)}</span>
+                        : <span className="sld-llevo-badge is-ok">Pagado</span>}
+                    </div>
+                    <div className="sld-llevo-items">
+                      {compra.items.map((it, i) => (
+                        <div key={i} className={cn('sld-llevo-item', it.devuelto && 'is-dev')}>
+                          <span className="sld-llevo-qty">{it.cantidad}×</span>
+                          <span className="sld-llevo-name">{it.nombre}{it.devuelto ? ' · devuelto' : ''}</span>
+                          {it.categoria ? <span className="sld-llevo-cat">{it.categoria}</span> : null}
+                          <span className="sld-llevo-precio">{formatPrice(it.precio * it.cantidad)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="sld-llevo-card__foot">
+                      <span className="sld-llevo-total">Total {formatPrice(compra.total)}</span>
+                      {restante != null && (
+                        <span className={cn('sld-llevo-venc', restante <= 0 && 'is-vencido')}>
+                          {restante > 0 ? `Faltan ${restante} día${restante === 1 ? '' : 's'} para recargo` : 'Recargo sugerido'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="sld-history-container">
            <h3 className="sld-module-title">Historial de Movimientos</h3>

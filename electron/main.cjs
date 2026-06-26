@@ -652,6 +652,7 @@ function registerIpc() {
   ipcMain.handle('db:getReferenceSnapshot', (_, payload) => db.getReferenceSnapshot(payload))
   ipcMain.handle('db:getSales', (_, filters) => db.getSales(filters))
   ipcMain.handle('db:getVentaDetalle', (_, ventaId) => db.getVentaDetalle(ventaId))
+  ipcMain.handle('db:getComprasCliente', (_, clienteId) => db.getComprasCliente(clienteId))
   ipcMain.handle('db:deleteVenta', (_, ventaId) => {
     const result = db.deleteVenta(ventaId)
     if (result?.ok) broadcastCuentasDataChanged()

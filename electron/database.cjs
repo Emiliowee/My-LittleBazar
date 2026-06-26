@@ -4429,6 +4429,42 @@ function deleteVenta(ventaId) {
   return { ok: true, ventaId: id, stockRepuesto, saldosRevertidos, eraFiado: !!venta.saldos_cliente_id }
 }
 
+/**
+ * Compras (ventas ligadas a la cuenta de Saldos) de un cliente, con sus renglones
+ * y la CATEGORÍA de cada prenda, para mostrar en su expediente "qué se llevó y
+ * cuándo". Más recientes primero. La categoría sale del producto (LEFT JOIN; si la
+ * prenda se borró, queda vacía).
+ */
+function getComprasCliente(clienteId) {
+  const database = getDb()
+  ensureVentasSchema(database)
+  const id = Number(clienteId)
+  if (!Number.isFinite(id) || id <= 0) return []
+  const ventas = database.prepare(
+    `SELECT id, total, created_at FROM ventas WHERE saldos_cliente_id = ? ORDER BY datetime(created_at) DESC, id DESC`,
+  ).all(id)
+  if (ventas.length === 0) return []
+  const itemsStmt = database.prepare(
+    `SELECT vi.codigo_snapshot AS codigo, vi.nombre_snapshot AS nombre, vi.cantidad,
+            vi.precio_snapshot AS precio, vi.devuelto_en AS devuelto, p.categoria AS categoria
+       FROM venta_items vi LEFT JOIN productos p ON p.id = vi.producto_id
+      WHERE vi.venta_id = ? ORDER BY vi.id ASC`,
+  )
+  return ventas.map((v) => ({
+    ventaId: Number(v.id),
+    fecha: v.created_at,
+    total: Number(v.total) || 0,
+    items: itemsStmt.all(v.id).map((it) => ({
+      codigo: String(it.codigo || ''),
+      nombre: String(it.nombre || it.codigo || ''),
+      categoria: String(it.categoria || ''),
+      cantidad: Number(it.cantidad) || 1,
+      precio: Number(it.precio) || 0,
+      devuelto: it.devuelto != null,
+    })),
+  }))
+}
+
 function getVentaForCredito(movimientoId) {
   const database = getDb()
   ensureCreditoSchema(database)
@@ -5117,6 +5153,7 @@ module.exports = {
   getVentaItemPorCodigoDevolucion,
   getVentaDetalle,
   deleteVenta,
+  getComprasCliente,
   registrarDevolucionRapida,
   buscarVale,
   listVales,

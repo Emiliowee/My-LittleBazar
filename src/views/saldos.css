@@ -284,6 +284,31 @@ select.sld-input { appearance: auto; }
 .sld-vale__badge.is-off { background: var(--mlb-bg-input); color: var(--mlb-text-muted); }
 .sld-vale__actions { display: flex; align-items: center; gap: 4px; }
 
+/* "Lo que se llevó" — compras del cliente en su expediente */
+.sld-llevo-aviso { margin: 0 0 14px; padding: 11px 14px; border-radius: 10px; font-size: 13px; line-height: 1.45;
+  background: rgba(245, 158, 11, .12); color: #92600c; border: 1px solid rgba(245, 158, 11, .25); }
+.sld-llevo-aviso.is-vencido { background: rgba(239, 68, 68, .10); color: #b42318; border-color: rgba(239, 68, 68, .25); }
+[data-theme="dark"] .sld-llevo-aviso { color: #f4c77b; }
+[data-theme="dark"] .sld-llevo-aviso.is-vencido { color: #f5a3a3; }
+.sld-llevo-list { display: flex; flex-direction: column; gap: 12px; }
+.sld-llevo-card { border: 1px solid var(--mlb-border); border-radius: 14px; background: var(--mlb-bg-panel); padding: 14px 16px; }
+.sld-llevo-card__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sld-llevo-fecha { font-size: 12.5px; font-weight: 700; color: var(--mlb-text-secondary); text-transform: capitalize; }
+.sld-llevo-badge { font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 9999px; }
+.sld-llevo-badge.is-debe { background: rgba(245, 158, 11, .15); color: #b06d0a; }
+.sld-llevo-badge.is-ok { background: rgba(16, 185, 129, .14); color: #0f9b6c; }
+.sld-llevo-items { display: flex; flex-direction: column; gap: 6px; }
+.sld-llevo-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mlb-text-primary); }
+.sld-llevo-item.is-dev { opacity: .55; text-decoration: line-through; }
+.sld-llevo-qty { font-family: var(--mlb-font-mono); font-weight: 700; color: var(--mlb-text-muted); min-width: 26px; }
+.sld-llevo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sld-llevo-cat { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 2px 8px; border-radius: 9999px; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink, var(--mlb-accent)); white-space: nowrap; }
+.sld-llevo-precio { font-family: var(--mlb-font-mono); font-weight: 700; color: var(--mlb-text-secondary); }
+.sld-llevo-card__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--mlb-border); }
+.sld-llevo-total { font-size: 13px; font-weight: 800; color: var(--mlb-text-primary); }
+.sld-llevo-venc { font-size: 11.5px; font-weight: 700; color: #b06d0a; }
+.sld-llevo-venc.is-vencido { color: #b42318; }
+
 @media (max-width: 1100px) {
   .sld-tiles { grid-template-columns: 1fr; }
   .sld-resumen { grid-template-columns: 1fr; }
