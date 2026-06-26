@@ -14,6 +14,7 @@ import {
   FilterX,
   ScanLine,
   Minus,
+  Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProductFormView } from '@/views/ProductFormView'
@@ -198,6 +199,7 @@ export function InventoryView() {
   const [scanCaptureOpen, setScanCaptureOpen] = useState(false)
   const [scanValue, setScanValue] = useState('')
   const [pendingNewCodigo, setPendingNewCodigo] = useState(null)
+  const [cloneFromId, setCloneFromId] = useState(null)
   const [addQty, setAddQty] = useState('1')
   editIdRef.current = editId
   qRef.current = q
@@ -317,6 +319,19 @@ export function InventoryView() {
     setFocusedId(null)
     setPendingNewCodigo(null)
     setAltaMode('new')
+    setAltaOpen(true)
+  }, [])
+
+  /** Clonar: alta nueva pre-llenada con los datos de una prenda existente (mismo
+   *  tipo/precio) pero con código nuevo. Para "me llegó otra igual". */
+  const openClone = useCallback((row) => {
+    if (!row) return
+    const id = invRowId(row)
+    if (id == null) { toast.error('Identificador de articulo no valido.'); return }
+    setEditId(null)
+    setFocusedId(null)
+    setCloneFromId(id)
+    setAltaMode('clone')
     setAltaOpen(true)
   }, [])
 
@@ -636,6 +651,7 @@ export function InventoryView() {
       <ProductFormView
         productId={altaMode === 'edit' ? editId : null}
         initialCodigo={altaMode === 'new' ? pendingNewCodigo : null}
+        cloneFromId={altaMode === 'clone' ? cloneFromId : null}
         onClose={closeAlta}
         onSaved={onAltaSaved}
       />
@@ -860,6 +876,11 @@ export function InventoryView() {
                         icon={<Pencil className="size-3.5" strokeWidth={1.75} />}
                         label="Editar"
                         onClick={() => void openEdit(r)}
+                      />
+                      <RowActionButton
+                        icon={<Copy className="size-3.5" strokeWidth={1.75} />}
+                        label="Clonar (otra igual)"
+                        onClick={() => void openClone(r)}
                       />
                       <RowActionButton
                         icon={<Printer className="size-3.5" strokeWidth={1.75} />}

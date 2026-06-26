@@ -17,7 +17,7 @@ import { buildAltaSuggestions } from '@/lib/altaSuggest'
  * y rutea lo que reconoce a Categoría y Marca (que también podés escribir a mano).
  * El aviso de precio sugiere por esa combinación, desde datos reales.
  */
-export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) {
+export function ProductFormView({ productId, initialCodigo, cloneFromId, onClose, onSaved }) {
   const api = window.bazar?.db
   const isEdit = productId != null
 
@@ -78,6 +78,21 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
           setCodigo(String(prod.codigo || ''))
           setImagenPath(String(prod.imagen_path || ''))
           catTouched.current = true; marcaTouched.current = true; precioTouched.current = true
+        } else if (cloneFromId) {
+          // Clonar: copiar datos de la prenda origen, pero con CÓDIGO NUEVO.
+          const src = await api?.getProductById?.(cloneFromId)
+          const next = await api?.nextCodigoMsr?.()
+          if (!alive) return
+          if (src) {
+            const desc = String(src.descripcion || '')
+            setSmartInput(desc); setNombre(desc)
+            setCategoria(String(src.categoria || ''))
+            setMarca(String(src.marca || ''))
+            setPrecioInput(src.precio != null ? String(src.precio) : '')
+            setImagenPath(String(src.imagen_path || ''))
+            catTouched.current = true; marcaTouched.current = true; precioTouched.current = true
+          }
+          setCodigo(next ? String(next) : '')
         } else if (initialCodigo) {
           setCodigo(String(initialCodigo))
         } else {
@@ -92,7 +107,7 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
     }
     void run()
     return () => { alive = false }
-  }, [api, isEdit, productId, initialCodigo, onClose])
+  }, [api, isEdit, productId, initialCodigo, cloneFromId, onClose])
 
   useEffect(() => {
     if (!loading && !isEdit) {
@@ -285,10 +300,14 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="max-w-2xl pl-12 md:pl-20 pr-8 py-7">
           <h1 className="text-[20px] font-semibold tracking-[-0.015em] text-[var(--mlb-text-primary)]">
-            {isEdit ? 'Editar prenda' : 'Nuevo artículo'}
+            {isEdit ? 'Editar prenda' : cloneFromId ? 'Clonar artículo' : 'Nuevo artículo'}
           </h1>
           <p className="mt-1 text-[12.5px] text-[var(--mlb-text-muted)]">
-            {isEdit ? 'Cambiá lo que necesites y guardá.' : 'Escribí qué es. La categoría y la marca se acomodan solas; lo que falte, lo completás abajo.'}
+            {isEdit
+              ? 'Cambiá lo que necesites y guardá.'
+              : cloneFromId
+                ? 'Copia de una prenda existente con un código NUEVO. Ajustá lo que cambie e imprimí su etiqueta.'
+                : 'Escribí qué es. La categoría y la marca se acomodan solas; lo que falte, lo completás abajo.'}
           </p>
 
           {loading ? (
