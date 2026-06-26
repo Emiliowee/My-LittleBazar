@@ -1,7 +1,7 @@
 {
   "name": "my-little-bazar",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
     "node": ">=20 <25"
@@ -83,19 +83,45 @@
   "build": {
     "appId": "com.mylittlebazar.app",
     "productName": "My Little Bazar",
+    "copyright": "Copyright © 2026 My Little Bazar",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
     ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
+      "**/node_modules/bindings/**",
+      "**/node_modules/file-uri-to-path/**",
+      "**/node_modules/pdf-to-printer/**"
+    ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "My-Little-Bazar-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "My Little Bazar"
     },
     "mac": {
-      "target": "dmg"
-    }
+      "target": "dmg",
+      "icon": "build/icon.png"
+    },
+    "publish": null
   }
 }

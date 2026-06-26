@@ -1,0 +1,50 @@
+name: Build installer
+
+# Compila el instalador de Windows en un runner con privilegios (windows-latest),
+# evitando el muro de symlinks de winCodeSign que aparece en máquinas locales sin
+# Modo de programador. Se dispara al empujar un tag vX.Y.Z o manualmente.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar instalador
+        run: npm run build
+        env:
+          # No firmamos (sin certificado); evita que electron-builder intente firmar.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Subir instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: My-Little-Bazar-Setup
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: Adjuntar al Release (solo en tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.exe
+          generate_release_notes: true
