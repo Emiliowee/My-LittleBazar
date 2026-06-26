@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
+import { imprimirVale } from '@/lib/valeTicket'
 import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
@@ -611,8 +612,9 @@ function VentasWorkspace({ onChanged }) {
       const res = await api.registrarDevolucionRapida({ ventaItemId: item.id, codigo: item.codigo_snapshot, montoReembolso: montoRenglon, metodoReembolso })
       if (!res?.ok) throw new Error(res?.message || 'No se pudo devolver.')
       if (res.vale?.codigo) {
-        window.alert(`VALE generado\n\nCódigo: ${res.vale.codigo}\nMonto: ${formatPrice(res.vale.monto)}\n\nAnótalo y entrégaselo al cliente; lo podrá usar en su próxima compra.`)
         toast.success(`Vale ${res.vale.codigo} por ${formatPrice(res.vale.monto)}.`, { duration: 12000 })
+        const imprimir = window.confirm(`VALE generado\n\nCódigo: ${res.vale.codigo}\nMonto: ${formatPrice(res.vale.monto)}\n\n¿Imprimir el vale ahora?\n(Aceptar = imprimir / Guardar como PDF · Cancelar = solo anotarlo)`)
+        if (imprimir) imprimirVale({ codigo: res.vale.codigo, monto: res.vale.monto, nota: `Devolución de ${item.codigo_snapshot || ''}`.trim() })
       } else if (res.ventaEsCredito) {
         let msg = `Devuelta. Se canceló ${formatPrice(res.deudaCancelada || 0)} del fiado${res.clienteNombre ? ` de ${res.clienteNombre}` : ''}.`
         if ((res.excedente || 0) > 0) {

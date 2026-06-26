@@ -2848,6 +2848,36 @@ function buscarVale(codigo) {
   }
 }
 
+/**
+ * Lista los vales para la vista de Saldos (ver / reimprimir). Más recientes
+ * primero. `disponible` y `activo` se calculan; no vencen.
+ * @param {{ soloActivos?: boolean }} [opts]
+ */
+function listVales(opts = {}) {
+  const database = getDb()
+  ensureVentasSchema(database)
+  const rows = database.prepare('SELECT * FROM vales ORDER BY datetime(created_at) DESC, id DESC').all()
+  const lista = rows.map((v) => {
+    const monto = Number(v.monto) || 0
+    const usado = Number(v.monto_usado) || 0
+    const disponible = Math.max(0, Math.round((monto - usado) * 100) / 100)
+    return {
+      codigo: v.codigo,
+      monto,
+      usado,
+      disponible,
+      estado: v.estado,
+      activo: v.estado === 'activo' && disponible > 0.005,
+      origen: v.origen || '',
+      nota: v.nota || '',
+      ventaOrigenId: v.venta_origen_id != null ? Number(v.venta_origen_id) : null,
+      createdAt: v.created_at || null,
+      usadoEn: v.usado_en || null,
+    }
+  })
+  return opts?.soloActivos ? lista.filter((x) => x.activo) : lista
+}
+
 function ensureIntercambiosSchema(database) {
   ensureVentasSchema(database)
   database.exec(`
@@ -5022,6 +5052,7 @@ module.exports = {
   getVentaDetalle,
   registrarDevolucionRapida,
   buscarVale,
+  listVales,
   scanBanquetaSalidaResult,
   listStaleForBanqueta,
   recordEvent,

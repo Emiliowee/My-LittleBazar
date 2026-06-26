@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('bazar', {
     getSales: (filters) => ipcRenderer.invoke('db:getSales', filters),
     getVentaDetalle: (ventaId) => ipcRenderer.invoke('db:getVentaDetalle', ventaId),
     buscarVale: (codigo) => ipcRenderer.invoke('db:buscarVale', codigo),
+    listVales: (opts) => ipcRenderer.invoke('db:listVales', opts),
     addSale: (sale) => ipcRenderer.invoke('db:addSale', sale),
     getVentaItemPorCodigoDevolucion: (codigo) => ipcRenderer.invoke('db:getVentaItemPorCodigoDevolucion', codigo),
     registrarDevolucionRapida: (payload) => ipcRenderer.invoke('db:registrarDevolucionRapida', payload),

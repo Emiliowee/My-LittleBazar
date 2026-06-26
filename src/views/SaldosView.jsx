@@ -4,10 +4,11 @@ import {
   CircleDollarSign, CalendarDays, ArrowLeft, ArrowRight, Users, ListTodo,
   MessageCircle, IdCard, Tag, Bell, Camera, X, Check, Archive, ArchiveRestore,
   Trash2, Pencil, FileText, Banknote, Smartphone, ReceiptText, Handshake,
-  Settings, Download,
+  Settings, Download, Ticket, Printer, Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SALDOS_CONFIG_DEFAULT, calcularCuentaSaldos, daysAgoIso, todayIso } from '@/lib/saldosLedger'
+import { imprimirVale } from '@/lib/valeTicket'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import './saldos.css'
@@ -159,6 +160,7 @@ export function SaldosView() {
   const [selectedId, setSelectedId] = useState(null)
   const [filtroInicial, setFiltroInicial] = useState('todas')
   const [configOpen, setConfigOpen] = useState(false)
+  const [valesOpen, setValesOpen] = useState(false)
 
   const recargar = useCallback(async () => {
     try { setCuentas(await llamar(api.listCuentas({}))) }
@@ -249,15 +251,16 @@ export function SaldosView() {
   }
   return (
     <>
-      <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} onAjustes={() => setConfigOpen(true)} />
+      <CuentasScreen rows={rows} cargando={cargando} demo={api.demo} workspace={workspace} filtroInicial={filtroInicial} onNew={() => setModo('nuevo')} onOpen={abrirHoja} onFiltro={irFiltro} onAjustes={() => setConfigOpen(true)} onVales={() => setValesOpen(true)} />
       {configOpen && <SaldosConfigModal config={config} onClose={() => setConfigOpen(false)} onSave={guardarConfig} />}
+      {valesOpen && <ValesModal api={api} workspace={workspace} onClose={() => setValesOpen(false)} />}
     </>
   )
 }
 
 /* ── HUB ───────────────────────────────────────────────────────────── */
 
-function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro, onAjustes }) {
+function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, onOpen, onFiltro, onAjustes, onVales }) {
   const [query, setQuery] = useState('')
   const [filtro, setFiltro] = useState(filtroInicial || 'todas')
 
@@ -318,6 +321,7 @@ function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, 
               <Search size={15} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, teléfono…" />
             </div>
+            <button className="sld-head__icon" aria-label="Vales emitidos" title="Vales" onClick={onVales}><Ticket size={18} strokeWidth={1.8} /></button>
             <button className="sld-head__icon" aria-label="Ajustes de interés por atraso" title="Interés por atraso" onClick={onAjustes}><Settings size={18} strokeWidth={1.8} /></button>
             <button className="sld-head__icon" aria-label="Nuevo cliente" onClick={onNew}><UserPlus size={18} strokeWidth={1.8} /></button>
           </div>
@@ -977,6 +981,91 @@ function SaldosConfigModal({ config, onClose, onSave }) {
             <button type="submit" className="sld-actbtn" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+/** Vales emitidos: ver, copiar y reimprimir (PDF o impresora). */
+function ValesModal({ workspace, onClose }) {
+  const [vales, setVales] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [query, setQuery] = useState('')
+  const disponible = !!window.bazar?.listVales
+
+  useEffect(() => {
+    let alive = true
+    if (!disponible) { setCargando(false); return }
+    Promise.resolve(window.bazar.listVales())
+      .then((rows) => { if (alive) setVales(Array.isArray(rows) ? rows : []) })
+      .catch(() => { if (alive) toast.error('No se pudieron cargar los vales.') })
+      .finally(() => { if (alive) setCargando(false) })
+    return () => { alive = false }
+  }, [disponible])
+
+  const filtrados = useMemo(() => {
+    const q = query.trim().toUpperCase()
+    if (!q) return vales
+    return vales.filter((v) => [v.codigo, v.origen, v.nota].some((x) => String(x || '').toUpperCase().includes(q)))
+  }, [vales, query])
+
+  const activos = vales.filter((v) => v.activo)
+  const totalDisp = activos.reduce((s, v) => s + (Number(v.disponible) || 0), 0)
+
+  const copiar = async (codigo) => {
+    try { await navigator.clipboard.writeText(codigo); toast.success(`Código ${codigo} copiado.`) }
+    catch { toast.error('No se pudo copiar el código.') }
+  }
+
+  return (
+    <div className="sld-modal-overlay" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="sld-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Vales emitidos" style={{ margin: 'auto', maxWidth: 680, width: '92vw' }}>
+        <div className="sld-modal__head">
+          <h2><Ticket size={18} strokeWidth={2} /> Vales emitidos</h2>
+          <button type="button" className="sld-head__icon" onClick={onClose}><X size={18} /></button>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--mlb-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Crédito al portador que entregas al devolver sin cuenta. No vencen.{' '}
+          {activos.length > 0
+            ? <b>{activos.length} activo{activos.length === 1 ? '' : 's'} · {formatPrice(totalDisp)} disponible.</b>
+            : 'Por ahora no hay vales activos.'}
+        </p>
+        <div className="sld-head__search" style={{ marginBottom: 14 }}>
+          <Search size={15} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por código u origen…" />
+        </div>
+        {cargando ? (
+          <p style={{ fontSize: 13, color: 'var(--mlb-text-muted)', padding: '12px 2px' }}>Cargando…</p>
+        ) : !disponible ? (
+          <p style={{ fontSize: 13, color: 'var(--mlb-text-muted)', padding: '12px 2px' }}>Los vales solo están disponibles en la app de escritorio.</p>
+        ) : filtrados.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--mlb-text-muted)', padding: '12px 2px' }}>
+            {vales.length === 0 ? 'Todavía no se ha emitido ningún vale.' : 'Ningún vale coincide con la búsqueda.'}
+          </p>
+        ) : (
+          <div className="sld-vales">
+            {filtrados.map((v) => (
+              <div key={v.codigo} className={cn('sld-vale', !v.activo && 'is-usado')}>
+                <div className="sld-vale__main">
+                  <span className="sld-vale__code">{v.codigo}</span>
+                  <span className="sld-vale__meta">{fechaCorta(v.createdAt)}{v.nota ? ` · ${v.nota}` : (v.origen ? ` · ${v.origen}` : '')}</span>
+                </div>
+                <div className="sld-vale__amount">
+                  <span className="sld-vale__disp">{formatPrice(v.disponible)}</span>
+                  {Math.abs((Number(v.disponible) || 0) - (Number(v.monto) || 0)) > 0.005
+                    ? <span className="sld-vale__of">de {formatPrice(v.monto)}</span> : null}
+                </div>
+                <span className={cn('sld-vale__badge', v.activo ? 'is-on' : 'is-off')}>
+                  {v.activo ? 'Activo' : ((Number(v.disponible) || 0) <= 0.005 ? 'Usado' : 'Inactivo')}
+                </span>
+                <div className="sld-vale__actions">
+                  <button type="button" className="sld-head__icon" title="Copiar código" onClick={() => copiar(v.codigo)}><Copy size={15} /></button>
+                  <button type="button" className="sld-head__icon" title="Reimprimir o guardar PDF" onClick={() => imprimirVale(v, { negocio: workspace })}><Printer size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
