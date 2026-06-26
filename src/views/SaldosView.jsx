@@ -175,7 +175,11 @@ export function SaldosView() {
       if (s.workspaceDisplayName) setWorkspace(String(s.workspaceDisplayName))
       if (s.saldosConfig) {
         const dias = Number(s.saldosConfig.diasAtraso); const pct = Number(s.saldosConfig.porcentajeAtraso)
-        setConfig({ diasAtraso: Number.isFinite(dias) && dias > 0 ? dias : SALDOS_CONFIG_DEFAULT.diasAtraso, porcentajeAtraso: Number.isFinite(pct) && pct > 0 ? pct / 100 : SALDOS_CONFIG_DEFAULT.porcentajeAtraso })
+        setConfig({
+          diasAtraso: Number.isFinite(dias) && dias > 0 ? dias : SALDOS_CONFIG_DEFAULT.diasAtraso,
+          porcentajeAtraso: Number.isFinite(pct) && pct > 0 ? pct / 100 : SALDOS_CONFIG_DEFAULT.porcentajeAtraso,
+          interesAutomatico: !!s.saldosConfig.interesAutomatico,
+        })
       }
     }).catch(() => {})
     return () => { alive = false }
@@ -186,13 +190,37 @@ export function SaldosView() {
     return { cuenta, resumen, estado: estadoCuenta(cuenta, resumen) }
   }), [cuentas, config])
 
+  /* Interés AUTOMÁTICO (opt-in en Config): al cargar, si está activado, agrega el
+   * cargo de interés a las cuentas vencidas. Guardado: el motor excluye los cargos
+   * que ya tienen un cargo_atraso (referenciaIds), así no se cobra dos veces; y un
+   * ref evita re-correrlo en esta sesión. */
+  const interesAplicadoRef = useRef(false)
+  useEffect(() => {
+    if (!config.interesAutomatico || cargando || interesAplicadoRef.current) return
+    const pendientes = rows.filter((r) => !r.cuenta.archivada && r.resumen.requiereCargoAtraso && r.resumen.cargoAtrasoSugerido > 0)
+    if (pendientes.length === 0) return
+    interesAplicadoRef.current = true
+    void (async () => {
+      const d = new Date()
+      const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      let n = 0
+      for (const r of pendientes) {
+        try {
+          await llamar(api.registrarMovimientos({ clienteId: r.cuenta.id, movimientos: [{ tipo: 'cargo_atraso', fecha: hoy, monto: r.resumen.cargoAtrasoSugerido, concepto: 'Interés por atraso (automático)', referenciaIds: r.resumen.cargosVencidos.map((c) => c.id) }] }))
+          n += 1
+        } catch { /* sigue con las demás */ }
+      }
+      if (n > 0) { toast.info(`Se aplicó interés por atraso a ${n} cuenta${n === 1 ? '' : 's'}.`); await recargar() }
+    })()
+  }, [config.interesAutomatico, cargando, rows, api, recargar])
+
   const seleccionada = rows.find((r) => r.cuenta.id === selectedId) || null
   const abrirHoja = (id) => { setSelectedId(id); setModo('hoja') }
   const irFiltro = (f) => { setFiltroInicial(f); setModo('cuentas') }
-  const guardarConfig = async ({ diasAtraso, porcentajeAtraso }) => {
+  const guardarConfig = async ({ diasAtraso, porcentajeAtraso, interesAutomatico }) => {
     try {
-      await window.bazar?.settings?.set?.({ saldosConfig: { diasAtraso, porcentajeAtraso } })
-      setConfig({ diasAtraso, porcentajeAtraso: porcentajeAtraso / 100 })
+      await window.bazar?.settings?.set?.({ saldosConfig: { diasAtraso, porcentajeAtraso, interesAutomatico: !!interesAutomatico } })
+      setConfig({ diasAtraso, porcentajeAtraso: porcentajeAtraso / 100, interesAutomatico: !!interesAutomatico })
       setConfigOpen(false)
       toast.success('Listo. El interés por atraso se actualizó.')
     } catch { toast.error('No se pudieron guardar los ajustes.') }
@@ -903,6 +931,7 @@ function Field({ label, children, full }) {
 function SaldosConfigModal({ config, onClose, onSave }) {
   const [dias, setDias] = useState(String(config?.diasAtraso ?? 30))
   const [pct, setPct] = useState(String(Math.round((config?.porcentajeAtraso ?? 0.2) * 100)))
+  const [auto, setAuto] = useState(!!config?.interesAutomatico)
   const [busy, setBusy] = useState(false)
   const submit = async (e) => {
     e.preventDefault()
@@ -911,7 +940,7 @@ function SaldosConfigModal({ config, onClose, onSave }) {
     if (!Number.isFinite(d) || d <= 0) { toast.error('Los días deben ser mayores a 0.'); return }
     if (!Number.isFinite(p) || p < 0 || p > 100) { toast.error('El interés debe estar entre 0 y 100%.'); return }
     setBusy(true)
-    try { await onSave({ diasAtraso: d, porcentajeAtraso: p }) } finally { setBusy(false) }
+    try { await onSave({ diasAtraso: d, porcentajeAtraso: p, interesAutomatico: auto }) } finally { setBusy(false) }
   }
   return (
     <div className="sld-modal-overlay" onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -928,9 +957,16 @@ function SaldosConfigModal({ config, onClose, onSave }) {
             <Field label="Días sin abonar"><input className="sld-input" type="number" min="1" step="1" value={dias} onChange={(e) => setDias(e.target.value)} autoFocus /></Field>
             <Field label="Interés sugerido (%)"><input className="sld-input" type="number" min="0" max="100" step="1" value={pct} onChange={(e) => setPct(e.target.value)} /></Field>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--mlb-text-muted)', margin: '8px 2px 18px' }}>
+          <p style={{ fontSize: 12, color: 'var(--mlb-text-muted)', margin: '8px 2px 14px' }}>
             Hoy: {Number(pct) || 0}% después de {Number(dias) || 0} días sin abono.
           </p>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '12px 14px', border: '1px solid var(--mlb-border)', borderRadius: 10, marginBottom: 18, cursor: 'pointer' }}>
+            <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} style={{ marginTop: 2 }} />
+            <span style={{ fontSize: 13, color: 'var(--mlb-text-primary)', lineHeight: 1.45 }}>
+              <b>Cobrar el interés automáticamente</b><br />
+              <span style={{ color: 'var(--mlb-text-muted)' }}>Al cumplirse los días, el sistema agrega el cargo de interés solo (sin preguntar). Si lo dejas apagado, solo te lo sugiere.</span>
+            </span>
+          </label>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="sld-form__cancel" onClick={onClose}>Cancelar</button>
             <button type="submit" className="sld-actbtn" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>

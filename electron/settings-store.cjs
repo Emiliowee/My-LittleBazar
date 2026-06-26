@@ -62,11 +62,12 @@ const DEFAULTS = {
   intercambioDiasMaximos: 30,
   /**
    * Interés por atraso en Saldos: si una clienta no abona nada en `diasAtraso`
-   * días, el sistema SUGIERE cobrar `porcentajeAtraso`% sobre lo que aún debe
-   * (la dueña decide si lo aplica; nunca es automático). `porcentajeAtraso` es
-   * número entero (20 = 20%); el motor saldosLedger lo usa como fracción.
+   * días, el sistema SUGIERE cobrar `porcentajeAtraso`% sobre lo que aún debe.
+   * Por defecto es SUGERIDO (la dueña decide). Si `interesAutomatico` está en true,
+   * el sistema agrega el cargo de interés solo al cumplirse los días.
+   * `porcentajeAtraso` es entero (20 = 20%); el motor saldosLedger lo usa como fracción.
    */
-  saldosConfig: { diasAtraso: 30, porcentajeAtraso: 20 },
+  saldosConfig: { diasAtraso: 30, porcentajeAtraso: 20, interesAutomatico: false },
   /**
    * ── Onboarding (My Little Bazar v1) ────────────────────────────────
    * Bandera que decide si mostramos el flujo de bienvenida (nombre del
