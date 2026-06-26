@@ -33,6 +33,7 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
   const [codigo, setCodigo] = useState('')
   const [imagenPath, setImagenPath] = useState('')
   const [imprimir, setImprimir] = useState(false)
+  const [catMeta, setCatMeta] = useState({}) // iconos/imágenes de categoría configurados (Ajustes → Categorías)
 
   const [invRows, setInvRows] = useState([])
   const [groups, setGroups] = useState([])
@@ -99,6 +100,16 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
       return () => clearTimeout(t)
     }
   }, [loading, isEdit])
+
+  /* Iconos/imágenes de categoría que la dueña configuró, para mostrar el correcto
+   * en el preview (antes mostraba siempre el emoji por defecto). */
+  useEffect(() => {
+    let alive = true
+    void window.bazar?.settings?.get?.().then((s) => {
+      if (alive && s?.categoriasMeta && typeof s.categoriasMeta === 'object') setCatMeta(s.categoriasMeta)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   const categorias = useMemo(
     () => [...new Set(invRows.map((r) => String(r.categoria || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
@@ -194,7 +205,7 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
     } catch (err) { toast.error(ipcErrorMessage(err) || 'No se pudo imprimir.') }
   }, [])
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (seguir = false) => {
     const desc = (nombre.trim() || [categoria.trim(), marca.trim()].filter(Boolean).join(' ')).trim()
     if (!desc && !categoria.trim()) { toast.error('Escribí qué es o la categoría.'); smartRef.current?.focus?.(); return }
     const precioNum = Number(precioInput)
@@ -220,7 +231,22 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
       if (isEdit) { await api.updateProduct({ id: productId, ...payload }); toast.success('Prenda actualizada.') }
       else { const res = await api.addProduct(payload); savedId = res?.id ?? null; toast.success('Prenda guardada.') }
       if (imprimir) await doPrint(payload.codigo, payload.descripcion, payload.precio, savedId, cantNum)
-      onSaved?.()
+
+      /* "Guardar y seguir" (alta en cadena): para registrar MUCHAS prendas sin
+       * reabrir el formulario. Conserva categoría/marca/precio como base (lo común
+       * es dar de alta varias del mismo tipo), limpia lo individual y genera el
+       * siguiente código. La señora puede escanear la etiqueta que ya trae cada una. */
+      if (seguir && !isEdit) {
+        setSmartInput(''); setNombre(''); setImagenPath(''); setCantidad('1')
+        setPrecioInput(''); precioTouched.current = false
+        catTouched.current = false; marcaTouched.current = false
+        try { const next = await api?.nextCodigoMsr?.(); setCodigo(next ? String(next) : '') } catch { /* noop */ }
+        setInvRows((prev) => (savedId ? [{ id: savedId, descripcion: payload.descripcion, categoria: payload.categoria, marca: payload.marca, precio: payload.precio }, ...prev] : prev))
+        onSaved?.({ id: savedId, keepOpen: true })
+        setTimeout(() => smartRef.current?.focus?.(), 40)
+      } else {
+        onSaved?.({ id: savedId })
+      }
     } catch (err) { toast.error(ipcErrorMessage(err) || 'No se pudo guardar.') } finally { setSaving(false) }
   }, [nombre, categoria, marca, precioInput, cantidad, codigo, imagenPath, isEdit, productId, api, onSaved, doPrint, imprimir])
 
@@ -244,7 +270,12 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
         </button>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => onClose?.()} className="mlb-focus-ring inline-flex h-8 items-center rounded-md px-3 text-[12.5px] text-[var(--mlb-text-secondary)] transition-colors hover:bg-[var(--mlb-bg-hover)]">Cancelar</button>
-          <button type="button" onClick={() => void handleSave()} disabled={saving || loading} className="mlb-focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-[var(--mlb-accent)] px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-[var(--mlb-accent-hover)] disabled:opacity-50">
+          {!isEdit && (
+            <button type="button" onClick={() => void handleSave(true)} disabled={saving || loading} title="Guardar esta y dejar el formulario listo para la siguiente" className="mlb-focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-[var(--mlb-accent)] px-3 text-[12.5px] font-semibold text-[var(--mlb-accent)] transition-colors hover:bg-[var(--mlb-accent-soft)] disabled:opacity-50">
+              Guardar y seguir
+            </button>
+          )}
+          <button type="button" onClick={() => void handleSave(false)} disabled={saving || loading} className="mlb-focus-ring inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-[var(--mlb-accent)] px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-[var(--mlb-accent-hover)] disabled:opacity-50">
             {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
             {isEdit ? 'Guardar cambios' : 'Guardar prenda'}
           </button>
@@ -328,7 +359,9 @@ export function ProductFormView({ productId, initialCodigo, onClose, onSaved }) 
                     <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-input)] text-[30px] leading-none">
                       {esRutaImagen(imagenPath)
                         ? <img src={rutaAFileUrl(imagenPath)} alt="" className="size-full object-cover" />
-                        : <span aria-hidden>{emojiDeCategoria(categoria, {})}</span>}
+                        : esRutaImagen(emojiDeCategoria(categoria, catMeta))
+                          ? <img src={rutaAFileUrl(emojiDeCategoria(categoria, catMeta))} alt="" className="size-full object-cover" />
+                          : <span aria-hidden>{emojiDeCategoria(categoria, catMeta)}</span>}
                     </div>
                     <div className="flex flex-col gap-2">
                       <button
