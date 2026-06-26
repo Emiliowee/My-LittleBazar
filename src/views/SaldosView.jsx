@@ -802,7 +802,7 @@ function ClienteForm({ api, cuenta, onCancel, onSaved, onSubmit, onCampoChange }
   const editar = !!cuenta
   const [form, setForm] = useState({
     nombre: cuenta?.nombre || '', nacimiento: cuenta?.nacimiento || '', telefono: cuenta?.telefono || '',
-    direccion: cuenta?.direccion || '', identificacionEstado: cuenta?.identificacion?.estado || 'pendiente',
+    direccion: cuenta?.direccion || '', identificacionEstado: cuenta?.identificacion?.estado === 'omitida' ? 'omitida' : 'completa',
     identificacionMotivo: cuenta?.identificacion?.motivo || '', identificacionImagen: cuenta?.identificacion?.imagen || '',
     etiquetas: cuenta?.etiquetas || [],
   })
@@ -815,7 +815,7 @@ function ClienteForm({ api, cuenta, onCancel, onSaved, onSubmit, onCampoChange }
   const subirFoto = async () => {
     const pick = window.bazar?.saldos?.elegirImagenId
     if (!pick) { toast.info('Subir foto funciona en la app de escritorio.'); return }
-    try { const r = await pick(); if (r?.cancelled) return; if (r?.ok && r.path) { set('identificacionImagen', r.path); if (form.identificacionEstado === 'pendiente') set('identificacionEstado', 'completa') } else if (r?.message) toast.error(r.message) }
+    try { const r = await pick(); if (r?.cancelled) return; if (r?.ok && r.path) { set('identificacionImagen', r.path); set('identificacionEstado', 'completa') } else if (r?.message) toast.error(r.message) }
     catch (err) { toast.error(String(err?.message || err)) }
   }
 
@@ -823,6 +823,11 @@ function ClienteForm({ api, cuenta, onCancel, onSaved, onSubmit, onCampoChange }
     e.preventDefault()
     if (!form.nombre.trim()) { toast.error('Escribí el nombre del cliente.'); return }
     if (!editar && !form.nacimiento) { toast.error('La fecha de nacimiento es obligatoria.'); return }
+    if (form.identificacionEstado === 'omitida') {
+      if (!form.identificacionMotivo.trim()) { toast.error('Si omites la identificación, escribí el motivo.'); return }
+    } else if (!form.identificacionImagen) {
+      toast.error('La identificación es obligatoria: subí la foto del ID o elegí «Omitir» con un motivo.'); return
+    }
     setBusy(true)
     try {
       if (editar) { await llamar(api.actualizarCliente({ id: cuenta.id, ...form })); toast.success('Expediente actualizado.'); await onSaved?.() }
@@ -842,7 +847,7 @@ function ClienteForm({ api, cuenta, onCancel, onSaved, onSubmit, onCampoChange }
           <Field label="Teléfono"><input className="sld-input" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} placeholder="Opcional" /></Field>
           <Field label="Identificación">
             <select className="sld-input" value={form.identificacionEstado} onChange={(e) => set('identificacionEstado', e.target.value)}>
-              <option value="pendiente">Pendiente (la trae después)</option><option value="completa">Completa</option><option value="omitida">Omitir identificación</option>
+              <option value="completa">Con identificación (foto)</option><option value="omitida">Omitir (con motivo)</option>
             </select>
           </Field>
           {form.identificacionEstado === 'omitida' ? (
