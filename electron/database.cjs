@@ -762,6 +762,12 @@ function getInventoryList(filters = {}) {
       if (estadoIndex === 1) {
         where.push('NOT EXISTS (SELECT 1 FROM venta_items vi WHERE vi.producto_id = p.id)')
       }
+    } else if (estadoIndex === 0 && !soldArchive && !search) {
+      /* Vista "Todos" por defecto: NO mezclar lo que salió a banqueta ni lo
+       * desactivado (no vendido en banqueta). Tienen su vista/filtro propios y
+       * estorbaban el inventario del día a día. Si la dueña BUSCA un código, sí
+       * aparece aunque esté en banqueta (no se oculta en búsqueda). */
+      where.push("LOWER(TRIM(COALESCE(p.estado,''))) NOT IN ('en_banqueta','desactivado')")
     }
   }
 

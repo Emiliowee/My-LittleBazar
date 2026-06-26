@@ -80,7 +80,9 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const [codigo, setCodigo] = useState('')
   const [conEnganche, setConEnganche] = useState(false)
   const [engEfec, setEngEfec] = useState('')
-  const [usarFavorF, setUsarFavorF] = useState(true) // la dueña decide si usa el saldo a favor
+  // En FIAR el saldo a favor SIEMPRE baja la deuda (el motor de Saldos lo netea
+  // contra el cargo nuevo). No es opcional: un switch aquí no haría nada real.
+  const usarFavorF = true
   const [valeInput, setValeInput] = useState('')
   const [valeInfo, setValeInfo] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -308,7 +310,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
             ) : null}
 
             {favor > 0 ? (
-              <label className="fiar2-side-favor"><input type="checkbox" checked={usarFavorF} onChange={(e) => setUsarFavorF(e.target.checked)} /> Usar saldo a favor <strong>{formatPrice(favor)}</strong></label>
+              <div className="fiar2-side-favor"><Check size={14} strokeWidth={2.4} /> Saldo a favor <strong>{formatPrice(favor)}</strong> se aplica a la deuda</div>
             ) : null}
 
             <div className="fiar2-side-valebox">
