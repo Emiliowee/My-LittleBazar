@@ -4369,6 +4369,66 @@ function getVentaDetalle(ventaId) {
   return { venta, items, clienteNombre }
 }
 
+/**
+ * Elimina una venta por completo, dejando todo "como antes de la venta":
+ *  - Las prendas NO devueltas vuelven al inventario (disponible, stock repuesto).
+ *    Las que YA se devolvieron no se tocan (su stock volvió en la devolución).
+ *  - Se ANULAN los movimientos de Saldos que referencian esta venta (el cargo del
+ *    fiado, su enganche y cualquier descuento de devolución) → no queda deuda ni
+ *    saldo a favor por esta venta.
+ *  - Se borra la venta y sus renglones (desaparece de la lista y de reportes).
+ * Los VALES ya emitidos por una devolución NO se tocan (son crédito al portador
+ * ya entregado). Pensado como "deshacer" una venta equivocada.
+ */
+function deleteVenta(ventaId) {
+  const database = getDb()
+  ensureVentasSchema(database)
+  const id = Number(ventaId)
+  if (!Number.isFinite(id) || id <= 0) throw new Error('Venta inválida.')
+  const venta = database.prepare('SELECT * FROM ventas WHERE id = ?').get(id)
+  if (!venta) throw new Error('Esa venta no existe (quizá ya se eliminó).')
+  const items = database.prepare(
+    'SELECT id, producto_id, cantidad, devuelto_en FROM venta_items WHERE venta_id = ?',
+  ).all(id)
+
+  let stockRepuesto = 0
+  let saldosRevertidos = 0
+  const tx = database.transaction(() => {
+    for (const it of items) {
+      if (it.devuelto_en) continue // ya volvió al inventario en su devolución
+      const prod = database.prepare('SELECT id, pieza_unica FROM productos WHERE id = ?').get(it.producto_id)
+      if (!prod) continue // el producto ya no existe; nada que reponer
+      if (Number(prod.pieza_unica) === 1) {
+        database.prepare(`UPDATE productos SET estado = 'disponible', vendido_en = NULL, updated_at = datetime('now') WHERE id = ?`).run(prod.id)
+      } else {
+        const cant = Math.max(1, Math.floor(Number(it.cantidad) || 1))
+        database.prepare(`UPDATE productos SET stock = stock + ?, estado = 'disponible', vendido_en = NULL, updated_at = datetime('now') WHERE id = ?`).run(cant, prod.id)
+      }
+      stockRepuesto += 1
+    }
+    // Anular los movimientos de Saldos que referencian esta venta (cargo del fiado,
+    // enganche/abonos y descuentos de devolución). Quedan en historial, fuera del saldo.
+    const movs = database.prepare(
+      `SELECT m.id FROM saldos_movimientos m
+        WHERE m.anulado = 0
+          AND EXISTS (SELECT 1 FROM json_each(m.referencia_ids) j WHERE j.value = ?)`,
+    ).all(id)
+    for (const m of movs) {
+      database.prepare(`UPDATE saldos_movimientos SET anulado = 1, anulado_motivo = ?, anulado_en = datetime('now') WHERE id = ?`).run(`Venta #${id} eliminada`, m.id)
+      saldosRevertidos += 1
+    }
+    database.prepare('DELETE FROM venta_items WHERE venta_id = ?').run(id)
+    database.prepare('DELETE FROM ventas WHERE id = ?').run(id)
+  })
+  tx()
+
+  recordEvent({
+    type: 'sale.deleted', actor: 'user', scope: 'sale', entityRef: id, source: 'pdv',
+    payload: { ventaId: id, total: Number(venta.total) || 0, stockRepuesto, saldosRevertidos, eraFiado: !!venta.saldos_cliente_id },
+  })
+  return { ok: true, ventaId: id, stockRepuesto, saldosRevertidos, eraFiado: !!venta.saldos_cliente_id }
+}
+
 function getVentaForCredito(movimientoId) {
   const database = getDb()
   ensureCreditoSchema(database)
@@ -5056,6 +5116,7 @@ module.exports = {
   addIntercambio,
   getVentaItemPorCodigoDevolucion,
   getVentaDetalle,
+  deleteVenta,
   registrarDevolucionRapida,
   buscarVale,
   listVales,

@@ -1241,6 +1241,21 @@
 }
 .pos-sr__filters input { width: 125px; }
 
+/* Chips de rango (Hoy / 7 días / Todo) */
+.pos-sr__rango { display: inline-flex; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background: var(--mlb-bg-panel); }
+.pos-sr__rangobtn { height: 36px; padding: 0 12px; border: none; background: transparent; font-size: 13px; font-weight: 700; color: var(--mlb-text-muted); cursor: pointer; border-right: 1px solid rgba(0,0,0,0.08); }
+.pos-sr__rangobtn:last-child { border-right: none; }
+.pos-sr__rangobtn.is-on { background: var(--mlb-accent); color: #fff; }
+[data-theme="dark"] .pos-sr__rango { border-color: rgba(255,255,255,0.1); }
+
+/* Encabezado de día en la lista de ventas */
+.pos-sr__daygroup { background: var(--mlb-bg-hover); }
+.pos-sr__daygroup td { padding: 7px 10px !important; border-top: 1px solid rgba(0,0,0,0.06); }
+.pos-sr__dayname { font-size: 12px; font-weight: 800; text-transform: capitalize; color: var(--mlb-text-primary); }
+.pos-sr__daycount { font-size: 11px; font-weight: 600; color: var(--mlb-text-muted); }
+.pos-sr__daytotal { font-size: 12px; font-weight: 800; color: var(--mlb-text-secondary); }
+[data-theme="dark"] .pos-sr__daygroup { background: rgba(255,255,255,0.04); }
+
 .pos-sr__actions {
   display: flex;
   gap: 10px;

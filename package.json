@@ -24,6 +24,7 @@
     "test:devoluciones": "electron scripts/test-devoluciones.cjs",
     "test:cobro": "electron scripts/test-cobro-mixto.cjs",
     "test:escenarios": "electron scripts/test-saldos-escenarios.cjs",
+    "test:eliminar-venta": "electron scripts/test-eliminar-venta.cjs",
     "test:vales": "electron scripts/test-vales.cjs",
     "test:banqueta": "electron scripts/test-banqueta.cjs",
     "test:fiado-saldos": "electron scripts/test-fiado-saldos.cjs",

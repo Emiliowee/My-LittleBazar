@@ -652,6 +652,11 @@ function registerIpc() {
   ipcMain.handle('db:getReferenceSnapshot', (_, payload) => db.getReferenceSnapshot(payload))
   ipcMain.handle('db:getSales', (_, filters) => db.getSales(filters))
   ipcMain.handle('db:getVentaDetalle', (_, ventaId) => db.getVentaDetalle(ventaId))
+  ipcMain.handle('db:deleteVenta', (_, ventaId) => {
+    const result = db.deleteVenta(ventaId)
+    if (result?.ok) broadcastCuentasDataChanged()
+    return result
+  })
   ipcMain.handle('db:buscarVale', (_, codigo) => db.buscarVale(codigo))
   ipcMain.handle('db:listVales', (_, opts) => db.listVales(opts))
   ipcMain.handle('db:addSale', (_, sale) => {

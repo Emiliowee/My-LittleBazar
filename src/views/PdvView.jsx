@@ -536,6 +536,30 @@ function fechaCortaVenta(s) {
   } catch { return String(s || '') }
 }
 
+function isoLocal(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+function hoyISO() { return isoLocal(new Date()) }
+function diasAtrasISO(n) { const d = new Date(); d.setDate(d.getDate() - n); return isoLocal(d) }
+/** Día LOCAL de una venta (created_at viene en UTC). */
+function diaDeVenta(s) {
+  try { const d = new Date(String(s || '').replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? '' : isoLocal(d) }
+  catch { return '' }
+}
+/** Solo la hora local, para las filas (el día ya va en el encabezado del grupo). */
+function horaDeVenta(s) {
+  try { const d = new Date(String(s || '').replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) }
+  catch { return '' }
+}
+/** Encabezado amable del grupo de día: "Hoy", "Ayer" o "26 de junio". */
+function etiquetaDia(iso) {
+  if (!iso) return 'Sin fecha'
+  if (iso === hoyISO()) return 'Hoy'
+  if (iso === diasAtrasISO(1)) return 'Ayer'
+  try {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+  } catch { return iso }
+}
+
 function metodoVentaLabel(m) {
   const v = String(m || '').toLowerCase()
   if (v === 'efectivo') return 'Efectivo'
@@ -555,15 +579,38 @@ function VentasWorkspace({ onChanged }) {
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [metodo, setMetodo] = useState('todos')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [rango, setRango] = useState('hoy')
+  const [from, setFrom] = useState(hoyISO())
+  const [to, setTo] = useState(hoyISO())
+
+  const aplicarRango = useCallback((r) => {
+    setRango(r)
+    if (r === 'hoy') { const h = hoyISO(); setFrom(h); setTo(h) }
+    else if (r === '7') { setFrom(diasAtrasISO(6)); setTo(hoyISO()) }
+    else if (r === 'todo') { setFrom(''); setTo('') }
+  }, [])
 
   const cargar = useCallback(async () => {
     if (!api?.getSales) { setLoading(false); return }
     setLoading(true)
-    try { const rows = await api.getSales({ limit: 200, query, metodo, from, to }); setVentas(Array.isArray(rows) ? rows : []) }
+    try { const rows = await api.getSales({ limit: 300, query, metodo, from, to }); setVentas(Array.isArray(rows) ? rows : []) }
     catch { setVentas([]) } finally { setLoading(false) }
   }, [api, query, metodo, from, to])
+
+  /* Agrupar por DÍA local para la lista (la dueña piensa "lo de hoy", "lo de ayer"). */
+  const gruposDia = useMemo(() => {
+    const map = new Map()
+    for (const v of ventas) {
+      const dia = diaDeVenta(v.created_at)
+      if (!map.has(dia)) map.set(dia, [])
+      map.get(dia).push(v)
+    }
+    return [...map.entries()].map(([dia, items]) => ({
+      dia,
+      items,
+      total: items.reduce((s, x) => s + (Number(x.total) || 0), 0),
+    }))
+  }, [ventas])
 
   useEffect(() => { void cargar() }, [cargar])
   useEffect(() => {
@@ -633,6 +680,29 @@ function VentasWorkspace({ onChanged }) {
     } catch (err) { toast.error(err.message || 'No se pudo devolver.') } finally { setBusy(false) }
   }
 
+  const eliminar = async () => {
+    if (!detalle || busy) return
+    if (!api?.deleteVenta) { toast.error('Eliminar ventas solo en la app de escritorio.'); return }
+    const v = detalle.venta
+    const esFiado = !!detalle.clienteNombre
+    const noDevueltas = (detalle.items || []).filter((i) => !i.devuelto_en).length
+    let msg = `¿Eliminar la venta #${v.id} por ${formatPrice(v.total)}?\n\n`
+    msg += noDevueltas > 0 ? `Las ${noDevueltas} prenda(s) no devuelta(s) vuelven al inventario.\n` : 'Las prendas ya devueltas no se tocan.\n'
+    if (esFiado) msg += `Se cancelará el fiado de ${detalle.clienteNombre} por esta venta.\n`
+    msg += '\nLa venta desaparece de la lista y de los reportes. No se puede deshacer.'
+    if (!window.confirm(msg)) return
+    setBusy(true)
+    try {
+      const r = await api.deleteVenta(v.id)
+      if (!r?.ok) throw new Error(r?.message || 'No se pudo eliminar.')
+      toast.success(`Venta #${v.id} eliminada${r.stockRepuesto ? ` · ${r.stockRepuesto} prenda(s) al inventario` : ''}${r.eraFiado ? ' · fiado cancelado' : ''}.`)
+      setSel(null); setDetalle(null)
+      await cargar()
+      onChanged?.()
+      window.dispatchEvent(new CustomEvent('bazar:cuentas-changed'))
+    } catch (err) { toast.error(err.message || 'No se pudo eliminar.') } finally { setBusy(false) }
+  }
+
   const [scanModalOpen, setScanModalOpen] = useState(false)
   const [scanCode, setScanCode] = useState('')
 
@@ -647,6 +717,11 @@ function VentasWorkspace({ onChanged }) {
     <section className="pos-sr" aria-label="Consulta de ventas y devoluciones">
       <div className="pos-sr__top">
         <div className="pos-sr__filters">
+          <div className="pos-sr__rango" role="group" aria-label="Rango de días">
+            {[['hoy', 'Hoy'], ['7', '7 días'], ['todo', 'Todo']].map(([val, lbl]) => (
+              <button key={val} type="button" className={`pos-sr__rangobtn${rango === val ? ' is-on' : ''}`} onClick={() => aplicarRango(val)}>{lbl}</button>
+            ))}
+          </div>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Folio o código…" />
           <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
             <option value="todos">Todos los métodos</option>
@@ -654,8 +729,8 @@ function VentasWorkspace({ onChanged }) {
             <option value="transferencia">Transferencia</option>
             <option value="credito">Fiado</option>
           </select>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Desde" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Hasta" />
+          <input type="date" value={from} onChange={(e) => { setRango('custom'); setFrom(e.target.value) }} aria-label="Desde" />
+          <input type="date" value={to} onChange={(e) => { setRango('custom'); setTo(e.target.value) }} aria-label="Hasta" />
         </div>
         <div className="pos-sr__actions">
           <button type="button" className="pos-sr__actionbtn" onClick={() => void cargar()}>
@@ -669,6 +744,10 @@ function VentasWorkspace({ onChanged }) {
           <button type="button" className="pos-sr__actionbtn" disabled={!detalle || busy} onClick={() => { setScanCode(''); setScanModalOpen(true); }} style={{ color: 'var(--mlb-danger)' }}>
             <Barcode size={22} strokeWidth={2} />
             Devolver...
+          </button>
+          <button type="button" className="pos-sr__actionbtn" disabled={!detalle || busy} onClick={() => void eliminar()} style={{ color: 'var(--mlb-danger)' }}>
+            <Trash2 size={22} strokeWidth={2} />
+            Eliminar
           </button>
           <button type="button" className="pos-sr__actionbtn" onClick={() => setSel(null)}>
             <X size={22} strokeWidth={2} />
@@ -688,26 +767,33 @@ function VentasWorkspace({ onChanged }) {
               <thead>
                 <tr>
                   <th>Folio</th>
-                  <th>Fecha</th>
+                  <th>Hora</th>
                   <th style={{ textAlign: 'center' }}>Art.</th>
                   <th style={{ textAlign: 'right' }}>Total</th>
                 </tr>
               </thead>
-              <tbody>
-                {ventas.map((v) => (
-                  <tr key={v.id} className={sel === v.id ? 'is-selected' : ''} onClick={() => void abrir(v)} style={{ cursor: 'pointer' }}>
-                    <td style={{ fontFamily: 'var(--mlb-font-mono)', fontWeight: 700 }}>#{v.id}</td>
-                    <td>{fechaCortaVenta(v.created_at)}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      {v.item_count}
-                      {Number(v.returned_count) > 0 && <span className="pos-ventas__returned-chip" style={{ marginLeft: 4 }}>-{v.returned_count}</span>}
-                    </td>
-                    <td style={{ fontFamily: 'var(--mlb-font-mono)', fontWeight: 800, textAlign: 'right' }} className="pos-table-total">
-                      {formatPrice(v.total)}
-                    </td>
+              {gruposDia.map((g) => (
+                <tbody key={g.dia || 'sin'}>
+                  <tr className="pos-sr__daygroup">
+                    <td className="pos-sr__dayname" colSpan={2}>{etiquetaDia(g.dia)}</td>
+                    <td className="pos-sr__daycount" style={{ textAlign: 'center' }}>{g.items.length}</td>
+                    <td className="pos-sr__daytotal" style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)' }}>{formatPrice(g.total)}</td>
                   </tr>
-                ))}
-              </tbody>
+                  {g.items.map((v) => (
+                    <tr key={v.id} className={sel === v.id ? 'is-selected' : ''} onClick={() => void abrir(v)} style={{ cursor: 'pointer' }}>
+                      <td style={{ fontFamily: 'var(--mlb-font-mono)', fontWeight: 700 }}>#{v.id}</td>
+                      <td>{horaDeVenta(v.created_at)}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        {v.item_count}
+                        {Number(v.returned_count) > 0 && <span className="pos-ventas__returned-chip" style={{ marginLeft: 4 }}>-{v.returned_count}</span>}
+                      </td>
+                      <td style={{ fontFamily: 'var(--mlb-font-mono)', fontWeight: 800, textAlign: 'right' }} className="pos-table-total">
+                        {formatPrice(v.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
             </table>
           )}
         </div>
@@ -726,7 +812,6 @@ function VentasWorkspace({ onChanged }) {
                 ) : 'Público en general'}
               </span>
             </div>
-            <div className="pos-sr__dfield"><span className="pos-sr__dlabel">Vendedor</span><span className="pos-sr__dval">{detalle ? 'Admin' : '--'}</span></div>
           </div>
 
           <div className="pos-sr__ditems">
@@ -785,27 +870,35 @@ function VentasWorkspace({ onChanged }) {
                       <td>--</td>
                       <td style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)', fontWeight: 600 }}>$0.00</td>
                     </tr>
-                  ) : (
-                    <>
-                      <tr>
-                        <td>{metodoVentaLabel(detalle.venta.metodo)}</td>
-                        <td style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)', fontWeight: 600 }}>{formatPrice(detalle.venta.total)}</td>
-                      </tr>
-                      {Number(detalle.venta.cambio) > 0 && (
-                        <tr>
-                          <td>Cambio entregado</td>
-                          <td style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)', fontWeight: 600, color: 'var(--mlb-text-muted)' }}>{formatPrice(detalle.venta.cambio)}</td>
-                        </tr>
-                      )}
-                    </>
-                  )}
+                  ) : (() => {
+                    const v = detalle.venta
+                    const filas = []
+                    if (Number(v.monto_efectivo) > 0) filas.push(['Efectivo', Number(v.monto_efectivo)])
+                    if (Number(v.monto_transferencia) > 0) filas.push([`Transferencia${v.cuenta_bancaria ? ` · ${v.cuenta_bancaria}` : ''}`, Number(v.monto_transferencia)])
+                    if (Number(v.monto_vale) > 0) filas.push(['Vale', Number(v.monto_vale)])
+                    if (Number(v.monto_credito) > 0) filas.push([v.saldos_cliente_id ? 'A cuenta (fiado / saldo a favor)' : 'Saldo a favor', Number(v.monto_credito)])
+                    if (filas.length === 0) filas.push([metodoVentaLabel(v.metodo), Number(v.total) || 0])
+                    return (
+                      <>
+                        {filas.map(([lbl, val], i) => (
+                          <tr key={i}>
+                            <td>{lbl}</td>
+                            <td style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)', fontWeight: 600 }}>{formatPrice(val)}</td>
+                          </tr>
+                        ))}
+                        {Number(v.cambio) > 0 && (
+                          <tr>
+                            <td>Cambio entregado</td>
+                            <td style={{ textAlign: 'right', fontFamily: 'var(--mlb-font-mono)', fontWeight: 600, color: 'var(--mlb-text-muted)' }}>{formatPrice(v.cambio)}</td>
+                          </tr>
+                        )}
+                      </>
+                    )
+                  })()}
                 </tbody>
               </table>
             </div>
             <div className="pos-sr__totals">
-              <div className="pos-sr__trow"><span>Subtotal:</span> <strong>{detalle ? formatPrice(detalle.venta.total) : '$0.00'}</strong></div>
-              <div className="pos-sr__trow"><span>Descuento:</span> <strong>$0.00</strong></div>
-              <div className="pos-sr__trow"><span>Impuestos:</span> <strong>$0.00</strong></div>
               <div className="pos-sr__trow is-grand"><span>Total:</span> <strong>{detalle ? formatPrice(detalle.venta.total) : '$0.00'}</strong></div>
             </div>
           </div>
