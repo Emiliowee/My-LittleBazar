@@ -80,6 +80,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const [codigo, setCodigo] = useState('')
   const [conEnganche, setConEnganche] = useState(false)
   const [engEfec, setEngEfec] = useState('')
+  const [usarFavorF, setUsarFavorF] = useState(true) // la dueña decide si usa el saldo a favor
   const [valeInput, setValeInput] = useState('')
   const [valeInfo, setValeInfo] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -105,7 +106,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
   const valeDisp = valeInfo ? Math.max(0, Number(valeInfo.disponible) || 0) : 0
   const valeAplica = Math.round(Math.min(valeDisp, total) * 100) / 100
   const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplica) * 100) / 100)
-  const favorAplica = Math.round(Math.min(favor, adeudadoTrasVale) * 100) / 100
+  const favorAplica = usarFavorF ? Math.round(Math.min(favor, adeudadoTrasVale) * 100) / 100 : 0
   const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplica) * 100) / 100)
   const enganche = conEnganche ? Math.min(adeudadoTrasFavor, Number(engEfec) || 0) : 0
   const quedaDebiendo = Math.max(0, Math.round((adeudadoTrasFavor - enganche) * 100) / 100)
@@ -164,7 +165,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
       const res = await db.addSale({
         items: items.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad })),
         pagos: { efectivo: enganche, transferencia: 0, vale: valePago },
-        clienteId: clienteSel.id, fiar: true, notas: '',
+        clienteId: clienteSel.id, fiar: true, usarFavor: usarFavorF, notas: '',
       })
       if (!res?.ok) throw new Error('No se pudo registrar el fiado.')
       const debe = Number(res.faltante)
@@ -307,7 +308,7 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
             ) : null}
 
             {favor > 0 ? (
-              <div className="fiar2-side-favor">Saldo a favor: <strong>{formatPrice(favor)}</strong> <em>se aplicará</em></div>
+              <label className="fiar2-side-favor"><input type="checkbox" checked={usarFavorF} onChange={(e) => setUsarFavorF(e.target.checked)} /> Usar saldo a favor <strong>{formatPrice(favor)}</strong></label>
             ) : null}
 
             <div className="fiar2-side-valebox">

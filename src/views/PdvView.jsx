@@ -205,7 +205,7 @@ export function PdvView() {
 
   /* ── Cobro ─────────────────────────────────────────────────────── */
 
-  const cobrar = useCallback(async ({ pagos, clienteId, cuentaBancaria, fiar }) => {
+  const cobrar = useCallback(async ({ pagos, clienteId, cuentaBancaria, fiar, usarFavor }) => {
     if (busyRef.current) return
     if (cart.length === 0) { toast.error('El ticket está vacío.'); return }
     if (!Number.isFinite(total) || total <= 0) { toast.error('Total inválido.'); return }
@@ -223,6 +223,7 @@ export function PdvView() {
         clienteId,
         fiar: !!fiar,
         cuentaBancaria,
+        usarFavor: usarFavor !== false,
         notas: '',
       }
       const result = await api.addSale(payload)
@@ -865,6 +866,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
   const [modoFiar, setModoFiar] = useState(false)
   const [yendoFiar, setYendoFiar] = useState(false)
   const [activo, setActivo] = useState('efectivo')
+  const [usarFavor, setUsarFavor] = useState(true) // la dueña decide si usa el saldo a favor del cliente
   const [valeInfo, setValeInfo] = useState(null)
   const [valeOpen, setValeOpen] = useState(false)
   const [valeInput, setValeInput] = useState('')
@@ -891,7 +893,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
   const pagadoCaja = Math.round((valEfectivo + valTransferencia) * 100) / 100
   const valeAplicado = Math.round(Math.min(valeDisp, total) * 100) / 100
   const adeudadoTrasVale = Math.max(0, Math.round((total - valeAplicado) * 100) / 100)
-  const favorAplicado = Math.round(Math.min(maxSaldoFavor, adeudadoTrasVale) * 100) / 100
+  const favorAplicado = usarFavor ? Math.round(Math.min(maxSaldoFavor, adeudadoTrasVale) * 100) / 100 : 0
   const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplicado) * 100) / 100)
   const faltante = Math.max(0, Math.round((adeudadoTrasFavor - pagadoCaja) * 100) / 100)
   const cambio = Math.max(0, Math.round((pagadoCaja - adeudadoTrasFavor) * 100) / 100)
@@ -951,6 +953,7 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
     const base = {
       pagos: { efectivo: valEfectivo, transferencia: valTransferencia, vale: valePago },
       cuentaBancaria: valTransferencia > 0 ? cuenta : null,
+      usarFavor,
     }
     if (faltante > 0) { toast.error('Aún falta dinero para cubrir el total.'); return }
     onCobrar({ ...base, clienteId: clienteSelec?.id || null, fiar: false })
@@ -1102,10 +1105,13 @@ function ModalCobro({ total, cuentas, clientes, busy, onCobrar, onIrAFiar, onClo
                 </div>
               )}
 
-              {favorAplicado > 0 && (
-                <div className="summary-row" style={{ color: '#10b981', fontSize: '14px' }}>
-                  <span>Saldo a favor</span>
-                  <strong>-{formatPrice(favorAplicado)}</strong>
+              {maxSaldoFavor > 0 && (
+                <div className="summary-row" style={{ fontSize: '13px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', color: 'var(--mlb-text-secondary)', fontWeight: 600 }}>
+                    <input type="checkbox" checked={usarFavor} onChange={(e) => setUsarFavor(e.target.checked)} />
+                    Usar saldo a favor <span style={{ color: 'var(--mlb-text-muted)' }}>({formatPrice(maxSaldoFavor)})</span>
+                  </label>
+                  {favorAplicado > 0 ? <strong style={{ color: '#10b981' }}>-{formatPrice(favorAplicado)}</strong> : null}
                 </div>
               )}
 

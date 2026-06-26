@@ -88,10 +88,10 @@ function run() {
     'cuenta bancaria', 'transferencia sin cuenta se rechaza',
   )
 
-  // ── Caso 3: saldo a favor previo se aplica AUTOMÁTICAMENTE ──
+  // ── Caso 3: saldo a favor previo (de una DEVOLUCIÓN) baja lo que se paga hoy ──
   console.log('\n[Caso 3] Saldo a favor previo baja lo que se paga hoy')
   const ana = saldos.crearCliente(database, { nombre: 'Ana', nacimiento: '1985-03-03' }).clienteId
-  saldos.registrarMovimientos(database, ana, [{ tipo: 'abono', fecha: hoy, monto: 100, medio: 'efectivo', concepto: 'Saldo a favor inicial' }])
+  saldos.registrarMovimientos(database, ana, [{ tipo: 'descuento', fecha: hoy, monto: 100, concepto: 'Saldo a favor (devolución)' }])
   assert(saldoDe(database, ana) === -100, 'Ana arranca con 100 a favor (saldo neto -100)')
   const p3 = alta(480)
   const v3 = db.addSale({ items: [{ productoId: p3.id, cantidad: 1 }], pagos: { efectivo: 380 }, clienteId: ana })
@@ -118,7 +118,7 @@ function run() {
   // ── Caso 6: saldo a favor + PAGO DE MÁS → da cambio y consume el favor ──
   console.log('\n[Caso 6] Saldo a favor + pago de más: da CAMBIO y consume el favor (bug arreglado)')
   const rosa = saldos.crearCliente(database, { nombre: 'Rosa', nacimiento: '1988-08-08' }).clienteId
-  saldos.registrarMovimientos(database, rosa, [{ tipo: 'abono', fecha: hoy, monto: 100, medio: 'efectivo', concepto: 'Saldo a favor inicial' }])
+  saldos.registrarMovimientos(database, rosa, [{ tipo: 'descuento', fecha: hoy, monto: 100, concepto: 'Saldo a favor (devolución)' }])
   assert(saldoDe(database, rosa) === -100, 'Rosa arranca con 100 a favor')
   const p6 = alta(480)
   // Compra de 480; tiene 100 a favor (debería deber 380) y entrega 480 en efectivo.
@@ -135,6 +135,15 @@ function run() {
   const p7 = alta(480)
   const v7 = db.addSale({ items: [{ productoId: p7.id, cantidad: 1 }], pagos: { efectivo: 500 } })
   assert(v7.ok && v7.cambio === 20 && v7.faltante === 0, `cambio 20 (vino ${v7.cambio})`)
+
+  // ── Caso 8: la dueña puede NO usar el saldo a favor (usarFavor:false) ──
+  console.log('\n[Caso 8] usarFavor:false -> el saldo a favor NO se aplica (la dueña decide)')
+  const tere = saldos.crearCliente(database, { nombre: 'Tere', nacimiento: '1991-01-01' }).clienteId
+  saldos.registrarMovimientos(database, tere, [{ tipo: 'descuento', fecha: hoy, monto: 100, concepto: 'Saldo a favor (devolución)' }])
+  const p8 = alta(80)
+  const v8 = db.addSale({ items: [{ productoId: p8.id, cantidad: 1 }], pagos: { efectivo: 80 }, clienteId: tere, usarFavor: false })
+  assert(v8.ok && v8.favorAplicado === 0 && v8.faltante === 0, `no aplicó favor con el switch apagado (vino ${v8.favorAplicado})`)
+  assert(saldoDe(database, tere) === -100, `el saldo a favor de Tere queda intacto en 100 (vino ${saldoDe(database, tere)})`)
 
   console.log(`\nOK  test-cobro-mixto — ${passed} verificaciones pasaron`)
   console.log('    Pago mixto + saldo a favor PRIMERO (cambio del efectivo de más) + fiar.')

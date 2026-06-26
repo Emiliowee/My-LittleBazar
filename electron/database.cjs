@@ -3312,6 +3312,9 @@ function addSale(payload) {
   let montoTransferencia = transferencia
   let clienteId = Number(payload?.clienteId) || null
   let fiar = !!payload?.fiar
+  // La dueña decide si se usa el saldo a favor del cliente en esta venta (interruptor
+  // en cobro/fiar). Default true por compatibilidad; la UI manda false si lo apaga.
+  const usarFavor = payload?.usarFavor !== false
 
   if (payload?.metodo === 'efectivo' && payload?.pagoCon != null) montoEfectivo = Number(payload.pagoCon) || total
   if (payload?.metodo === 'transferencia') montoTransferencia = total
@@ -3361,7 +3364,7 @@ function addSale(payload) {
    * devuelve como CAMBIO. (Antes el favor se aplicaba después de la caja, así que
    * al pagar de más no se daba cambio y el sobrante quedaba atrapado como saldo a
    * favor — el bug que reportó la dueña.) Vale y favor no dan cambio; solo el efectivo. */
-  const favorDisponible = clienteId ? favorSaldosCliente(database, clienteId) : 0
+  const favorDisponible = (clienteId && usarFavor) ? favorSaldosCliente(database, clienteId) : 0
   const favorAplicado = Math.round(Math.min(favorDisponible, adeudadoTrasVale) * 100) / 100
   const adeudadoTrasFavor = Math.max(0, Math.round((adeudadoTrasVale - favorAplicado) * 100) / 100)
   const faltante = Math.max(0, Math.round((adeudadoTrasFavor - pagadoCaja) * 100) / 100)
@@ -4384,10 +4387,18 @@ function favorSaldosCliente(database, clienteId) {
   const r = database.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN tipo IN ('cargo','cargo_atraso','ajuste') THEN monto ELSE 0 END), 0) AS cargos,
-      COALESCE(SUM(CASE WHEN tipo IN ('abono','descuento') THEN monto ELSE 0 END), 0) AS pagos
+      COALESCE(SUM(CASE WHEN tipo = 'abono' THEN monto ELSE 0 END), 0) AS abonos,
+      COALESCE(SUM(CASE WHEN tipo = 'descuento' THEN monto ELSE 0 END), 0) AS descuentos
     FROM saldos_movimientos WHERE cliente_id = ? AND anulado = 0
   `).get(Number(clienteId))
-  const favor = (Number(r?.pagos) || 0) - (Number(r?.cargos) || 0)
+  /* El saldo a favor SOLO nace de DEVOLUCIONES (descuento) que superan la deuda
+   * neta. Un abono nunca genera saldo a favor (regla del negocio). Esto coincide
+   * con saldosLedger.js (que ya no convierte el sobrante de un abono en favor). */
+  const cargos = Number(r?.cargos) || 0
+  const abonos = Number(r?.abonos) || 0
+  const descuentos = Number(r?.descuentos) || 0
+  const deudaNeta = Math.max(0, cargos - abonos)
+  const favor = descuentos - deudaNeta
   return Math.max(0, Math.round(favor * 100) / 100)
 }
 
