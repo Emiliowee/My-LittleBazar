@@ -1405,31 +1405,6 @@ function getCuadernoTagGroups() {
   }))
 }
 
-function listPriceRulesAdmin() {
-  const database = getDb()
-  const rules = database
-    .prepare(`SELECT * FROM price_rules ORDER BY priority DESC, id DESC`)
-    .all()
-  const condStmt = database.prepare(
-    `SELECT c.group_id, c.option_id, g.name AS group_name, o.name AS option_name
-     FROM price_rule_conditions c
-     JOIN tag_groups g ON g.id = c.group_id
-     JOIN tag_options o ON o.id = c.option_id
-     WHERE c.rule_id = ?
-     ORDER BY g.display_order, g.name COLLATE NOCASE, o.name COLLATE NOCASE`,
-  )
-  return rules.map((r) => ({
-    id: r.id,
-    name: r.name,
-    price_min: Number(r.price_min),
-    price_max: Number(r.price_max),
-    priority: Number(r.priority) || 0,
-    active: Number(r.active) === 1,
-    notes: r.notes != null ? String(r.notes) : '',
-    conditions: condStmt.all(r.id),
-  }))
-}
-
 function cuadernoAddTagGroup(payload) {
   const database = getDb()
   const name = String(payload?.name || '').trim()
@@ -1578,29 +1553,6 @@ function cuadernoSetTagOptionActive(payload) {
   const row = database.prepare('SELECT id FROM tag_options WHERE id = ?').get(id)
   if (!row) throw new Error('La opción no existe.')
   database.prepare('UPDATE tag_options SET active = ? WHERE id = ?').run(active ? 1 : 0, id)
-  return { ok: true }
-}
-
-function cuadernoSetTagGroupStyle(payload) {
-  const database = getDb()
-  const id = Number(payload?.id)
-  if (!id) throw new Error('Grupo inválido.')
-  const notion_color = normalizeNotionColorKey(payload?.notionColor, 'gray')
-  const ex = database.prepare('SELECT id FROM tag_groups WHERE id = ?').get(id)
-  if (!ex) throw new Error('El grupo no existe.')
-  database.prepare('UPDATE tag_groups SET notion_color = ? WHERE id = ?').run(notion_color, id)
-  return { ok: true }
-}
-
-function cuadernoSetTagOptionStyle(payload) {
-  const database = getDb()
-  const id = Number(payload?.id)
-  if (!id) throw new Error('Opción inválida.')
-  const notion_color = normalizeNotionColorKey(payload?.notionColor, 'default')
-  const tag_icon = normalizeTagIcon(payload?.tagIcon)
-  const row = database.prepare('SELECT id FROM tag_options WHERE id = ?').get(id)
-  if (!row) throw new Error('La opción no existe.')
-  database.prepare('UPDATE tag_options SET notion_color = ?, tag_icon = ? WHERE id = ?').run(notion_color, tag_icon, id)
   return { ok: true }
 }
 
@@ -1765,256 +1717,6 @@ function cuadernoDeleteTagGroup(payload) {
     }
     database.prepare('DELETE FROM price_rule_conditions WHERE group_id = ?').run(gid)
     database.prepare('DELETE FROM tag_groups WHERE id = ?').run(gid)
-  })
-  run()
-  return { ok: true }
-}
-
-function cuadernoUpsertPriceRule(payload) {
-  const database = getDb()
-  const name = String(payload?.name || '').trim()
-  const price_min = Number(payload?.price_min)
-  const price_max = Number(payload?.price_max)
-  if (!name) throw new Error('La regla necesita un nombre.')
-  if (!Number.isFinite(price_min) || !Number.isFinite(price_max) || price_min < 0 || price_max < 0) {
-    throw new Error('Indicá precio mínimo y máximo válidos (≥ 0).')
-  }
-  if (price_min > price_max) throw new Error('El mínimo no puede ser mayor que el máximo.')
-  const priority = Number(payload?.priority)
-  const pr = Number.isFinite(priority) ? priority : 0
-  const active = payload?.active !== false ? 1 : 0
-  const notes = String(payload?.notes ?? '').trim()
-  const rawConds = Array.isArray(payload?.conditions) ? payload.conditions : []
-  const seenGroups = new Set()
-  const validConds = []
-  for (const c of rawConds) {
-    const gid = Number(c?.group_id ?? c?.groupId)
-    const oid = Number(c?.option_id ?? c?.optionId)
-    if (!gid || !oid) continue
-    if (seenGroups.has(gid)) throw new Error('Cada regla solo puede incluir una opción por grupo de tags.')
-    seenGroups.add(gid)
-    validConds.push({ group_id: gid, option_id: oid })
-  }
-
-  const existingId =
-    payload?.id != null && payload.id !== '' ? Number(payload.id) : null
-  if (existingId != null && !Number.isFinite(existingId)) throw new Error('ID de regla inválido.')
-
-  let outId = null
-  const run = database.transaction(() => {
-    if (existingId) {
-      const ex = database.prepare('SELECT id FROM price_rules WHERE id = ?').get(existingId)
-      if (!ex) throw new Error('La regla a editar no existe.')
-      database
-        .prepare(
-          `UPDATE price_rules SET name = ?, price_min = ?, price_max = ?, priority = ?, active = ?, notes = ?, updated_at = datetime('now') WHERE id = ?`,
-        )
-        .run(name, price_min, price_max, pr, active, notes, existingId)
-      database.prepare('DELETE FROM price_rule_conditions WHERE rule_id = ?').run(existingId)
-      outId = existingId
-    } else {
-      const ins = database.prepare(
-        `INSERT INTO price_rules (name, price_min, price_max, priority, active, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-      )
-      const info = ins.run(name, price_min, price_max, pr, active, notes)
-      outId = Number(info.lastInsertRowid)
-    }
-    const insC = database.prepare(
-      `INSERT INTO price_rule_conditions (rule_id, group_id, option_id) VALUES (?, ?, ?)`,
-    )
-    const verify = database.prepare(
-      `SELECT 1 FROM tag_options WHERE id = ? AND group_id = ? AND COALESCE(active,1) = 1`,
-    )
-    for (const c of validConds) {
-      if (!verify.get(c.option_id, c.group_id)) {
-        throw new Error('Alguna condición usa una opción inexistente, inactiva o de otro grupo.')
-      }
-      insC.run(outId, c.group_id, c.option_id)
-    }
-  })
-
-  try {
-    run()
-    return { ok: true, id: outId }
-  } catch (err) {
-    throw err instanceof Error && err.message.startsWith('Alguna') ? err : friendlySqliteError(err)
-  }
-}
-
-function cuadernoDeletePriceRule(payload) {
-  const database = getDb()
-  const id = Number(payload?.id)
-  if (!id) throw new Error('Regla inválida.')
-  const ex = database.prepare('SELECT id FROM price_rules WHERE id = ?').get(id)
-  if (!ex) throw new Error('La regla no existe.')
-  const run = database.transaction(() => {
-    database.prepare('DELETE FROM price_rule_conditions WHERE rule_id = ?').run(id)
-    database.prepare('DELETE FROM price_rules WHERE id = ?').run(id)
-  })
-  run()
-  return { ok: true }
-}
-
-function listTagPriceRulesSummary() {
-  const database = getDb()
-  return database
-    .prepare(
-      `SELECT o.id, o.name AS option_name, g.name AS group_name,
-        (SELECT COUNT(*) FROM tag_price_combo c WHERE c.anchor_option_id = o.id) AS combo_count
-       FROM tag_options o
-       JOIN tag_groups g ON g.id = o.group_id
-       WHERE COALESCE(o.is_price_rule, 0) = 1 AND COALESCE(o.active, 1) = 1
-       ORDER BY g.display_order, g.name COLLATE NOCASE, o.name COLLATE NOCASE`,
-    )
-    .all()
-    .map((r) => ({
-      id: r.id,
-      option_name: String(r.option_name || ''),
-      group_name: String(r.group_name || ''),
-      combo_count: Number(r.combo_count) || 0,
-    }))
-}
-
-/** Cuaderno UI: reglas con líneas legibles (ej. Calzón → algodón $30, licra $40). */
-function listTagPriceRulesForCuaderno() {
-  const database = getDb()
-  const anchors = database
-    .prepare(
-      `SELECT o.id AS anchor_option_id, o.name AS option_name, g.name AS group_name,
-        COALESCE(o.notion_color, 'default') AS notion_color, o.tag_icon AS tag_icon
-       FROM tag_options o
-       JOIN tag_groups g ON g.id = o.group_id
-       WHERE COALESCE(o.is_price_rule, 0) = 1 AND COALESCE(o.active, 1) = 1
-       ORDER BY g.display_order, g.name COLLATE NOCASE, o.name COLLATE NOCASE`,
-    )
-    .all()
-  const comboStmt = database.prepare(
-    `SELECT id, price FROM tag_price_combo WHERE anchor_option_id = ? ORDER BY sort_order ASC, id ASC`,
-  )
-  const partStmt = database.prepare(
-    `SELECT o.name AS oname
-     FROM tag_price_combo_part p
-     JOIN tag_options o ON o.id = p.option_id
-     WHERE p.combo_id = ?
-     ORDER BY o.name COLLATE NOCASE`,
-  )
-  return anchors.map((a) => {
-    const combos = comboStmt.all(a.anchor_option_id)
-    const lines = combos.map((c) => {
-      const names = partStmt.all(c.id).map((p) => String(p.oname || '').trim()).filter(Boolean)
-      const summaryLabel = names.length === 0 ? 'Solo (precio base)' : names.join(', ')
-      return {
-        summaryLabel,
-        price: c.price == null ? null : Number(c.price),
-      }
-    })
-    return {
-      anchor_option_id: Number(a.anchor_option_id),
-      option_name: String(a.option_name || ''),
-      group_name: String(a.group_name || ''),
-      notion_color: String(a.notion_color || 'default'),
-      tag_icon: a.tag_icon != null ? String(a.tag_icon) : null,
-      lines,
-    }
-  })
-}
-
-function setTagOptionPriceRule(payload) {
-  const database = getDb()
-  const optionId = Number(payload?.optionId)
-  const isRule = Boolean(payload?.isRule)
-  const rpRaw = payload?.rulePriority
-  const rulePriority =
-    rpRaw != null && String(rpRaw).trim() !== '' && Number.isFinite(Number(rpRaw))
-      ? Math.max(0, Math.floor(Number(rpRaw)))
-      : 0
-  if (!optionId) throw new Error('Opción de tag inválida.')
-  const row = database.prepare('SELECT id FROM tag_options WHERE id = ?').get(optionId)
-  if (!row) throw new Error('La opción no existe.')
-  const run = database.transaction(() => {
-    database
-      .prepare('UPDATE tag_options SET is_price_rule = ?, rule_priority = ? WHERE id = ?')
-      .run(isRule ? 1 : 0, isRule ? rulePriority : 0, optionId)
-    if (!isRule) {
-      database.prepare('DELETE FROM tag_price_combo WHERE anchor_option_id = ?').run(optionId)
-    }
-  })
-  run()
-  return { ok: true }
-}
-
-function getPriceCombosForAnchor(payload) {
-  const database = getDb()
-  const anchorOptionId = Number(payload?.anchorOptionId)
-  if (!anchorOptionId) throw new Error('Ancla inválida.')
-  const combos = database
-    .prepare(
-      `SELECT id, price, sort_order FROM tag_price_combo WHERE anchor_option_id = ? ORDER BY sort_order ASC, id ASC`,
-    )
-    .all(anchorOptionId)
-  const partStmt = database.prepare('SELECT option_id FROM tag_price_combo_part WHERE combo_id = ?')
-  const labelStmt = database.prepare(
-    `SELECT o.name AS oname, g.name AS gname FROM tag_options o JOIN tag_groups g ON g.id = o.group_id WHERE o.id = ?`,
-  )
-  return combos.map((c) => {
-    const companionIds = partStmt.all(c.id).map((p) => p.option_id)
-    const companionLabels = companionIds.map((oid) => {
-      const lb = labelStmt.get(oid)
-      return lb ? `${lb.gname}: ${lb.oname}` : String(oid)
-    })
-    return {
-      id: c.id,
-      price: c.price == null ? null : Number(c.price),
-      companionIds,
-      companionLabels,
-    }
-  })
-}
-
-function replacePriceCombosForAnchor(payload) {
-  const database = getDb()
-  const anchorOptionId = Number(payload?.anchorOptionId)
-  if (!anchorOptionId) throw new Error('Ancla inválida.')
-  const anchor = database.prepare('SELECT id, COALESCE(is_price_rule,0) AS ir FROM tag_options WHERE id = ?').get(anchorOptionId)
-  if (!anchor) throw new Error('La opción no existe.')
-  if (Number(anchor.ir) !== 1) throw new Error('Activá primero «Este tag es una regla de precio» para esta opción.')
-  const rawRows = Array.isArray(payload?.combos) ? payload.combos : []
-  const verifyOpt = database.prepare('SELECT id FROM tag_options WHERE id = ? AND COALESCE(active,1)=1')
-  const rows = []
-  for (let i = 0; i < rawRows.length; i++) {
-    const r = rawRows[i]
-    const companionIds = Array.isArray(r?.companionIds)
-      ? [...new Set(r.companionIds.map(Number).filter((n) => Number.isFinite(n) && n > 0))]
-      : []
-    if (companionIds.includes(anchorOptionId)) {
-      throw new Error('La combinación no puede incluir el mismo tag que actúa como regla.')
-    }
-    for (const cid of companionIds) {
-      if (!verifyOpt.get(cid)) throw new Error('Algún tag compañero no existe o está inactivo.')
-    }
-    let price = null
-    if (r?.price != null && String(r.price).trim() !== '') {
-      const p = Number(String(r.price).replace(',', '.'))
-      if (!Number.isFinite(p) || p < 0) throw new Error('Cada precio debe ser un número ≥ 0 o vacío (sin precio).')
-      price = p
-    }
-    rows.push({ companionIds, price, sort_order: i })
-  }
-  const delC = database.prepare('DELETE FROM tag_price_combo WHERE anchor_option_id = ?')
-  const insC = database.prepare(
-    `INSERT INTO tag_price_combo (anchor_option_id, sort_order, price, created_at) VALUES (?, ?, ?, datetime('now'))`,
-  )
-  const insP = database.prepare('INSERT INTO tag_price_combo_part (combo_id, option_id) VALUES (?, ?)')
-  const run = database.transaction(() => {
-    delC.run(anchorOptionId)
-    for (const row of rows) {
-      const info = insC.run(anchorOptionId, row.sort_order, row.price)
-      const comboId = Number(info.lastInsertRowid)
-      for (const oid of row.companionIds) {
-        insP.run(comboId, oid)
-      }
-    }
   })
   run()
   return { ok: true }
@@ -4647,10 +4349,6 @@ function getVentaForCredito(movimientoId) {
   return { venta, items }
 }
 
-function suggestByTags() {
-  return null
-}
-
 function getWelcomeSnapshot() {
   const database = getDb()
   const p = database
@@ -5242,44 +4940,6 @@ function deleteBanquetaSalida(salidaId) {
   return { ok: true }
 }
 
-/** Paridad con `zen_banqueta_snapshot` en Python: en banqueta, disponibles, planos de tienda. */
-function getBanquetaSidebarSnapshot() {
-  try {
-    const database = getDb()
-    const r1 = database
-      .prepare(
-        `SELECT COUNT(*) AS n FROM inventario_activo WHERE LOWER(TRIM(COALESCE(estado,''))) = 'en_banqueta'`,
-      )
-      .get()
-    const r2 = database
-      .prepare(
-        `SELECT COUNT(*) AS n FROM inventario_activo p
-         WHERE LOWER(TRIM(COALESCE(p.estado,''))) = 'disponible'
-           AND NOT EXISTS (SELECT 1 FROM venta_items vi WHERE vi.producto_id = p.id)`,
-      )
-      .get()
-    const planos = database
-      .prepare(
-        `SELECT tp.nombre AS nombre, COUNT(pi.id) AS cnt
-         FROM tienda_planos tp
-         LEFT JOIN plano_items pi ON pi.plano_id = tp.id
-         GROUP BY tp.id
-         ORDER BY tp.nombre COLLATE NOCASE`,
-      )
-      .all()
-    return {
-      enBanqueta: Number(r1?.n) || 0,
-      disponibles: Number(r2?.n) || 0,
-      planos: (planos || []).map((row) => ({
-        nombre: String(row.nombre || ''),
-        cnt: Number(row.cnt) || 0,
-      })),
-    }
-  } catch {
-    return { enBanqueta: 0, disponibles: 0, planos: [] }
-  }
-}
-
 module.exports = {
   initDatabase,
   getDb,
@@ -5307,9 +4967,7 @@ module.exports = {
   getSales,
   addSale,
   getCredits,
-  suggestByTags,
   getWelcomeSnapshot,
-  getBanquetaSidebarSnapshot,
   listBanquetaSalidas,
   getActiveBanquetaSalida,
   createBanquetaSalida,
@@ -5328,7 +4986,6 @@ module.exports = {
   nombreEtiquetaDesdeTagsPayload,
   getCuadernoTagGroups,
   getTagCatalogForManager,
-  listPriceRulesAdmin,
   cuadernoAddTagGroup,
   cuadernoAddTagOption,
   cuadernoBulkAddTagOptions,
@@ -5339,16 +4996,7 @@ module.exports = {
   cuadernoDeleteTagGroup,
   countProductsByTagOption,
   cuadernoSetTagOptionActive,
-  cuadernoSetTagGroupStyle,
-  cuadernoSetTagOptionStyle,
   cuadernoReorderTagGroups,
-  cuadernoUpsertPriceRule,
-  cuadernoDeletePriceRule,
-  listTagPriceRulesSummary,
-  listTagPriceRulesForCuaderno,
-  setTagOptionPriceRule,
-  getPriceCombosForAnchor,
-  replacePriceCombosForAnchor,
   listInvPricingRules,
   listInvRuleCustomFieldsFlat,
   getInvPricingRule,

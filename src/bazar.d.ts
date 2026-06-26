@@ -90,18 +90,12 @@ declare global {
         getReferenceSnapshot: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>
         getSales: (filters?: Record<string, unknown>) => Promise<unknown[]>
         addSale: (sale: Record<string, unknown>) => Promise<unknown>
-        suggestByTags: (tags: string[]) => Promise<unknown>
         getWelcomeSnapshot: () => Promise<{
           productosTotal: number
           productosDisponibles: number
           clientesTotal: number
           clientesConSaldo: number
           saldoTotalPendiente: number
-        }>
-        getBanquetaSidebarSnapshot: () => Promise<{
-          enBanqueta: number
-          disponibles: number
-          planos: Array<{ nombre: string; cnt: number }>
         }>
         listBanquetaSalidas: () => Promise<
           Array<{
@@ -212,23 +206,6 @@ declare global {
         cuadernoDeleteTagOption: (payload: { id: number }) => Promise<{ ok: boolean }>
         cuadernoDeleteTagGroup: (payload: { id: number }) => Promise<{ ok: boolean }>
         countProductsByTagOption: (optionId: number) => Promise<number>
-        listPriceRulesAdmin: () => Promise<
-          Array<{
-            id: number
-            name: string
-            price_min: number
-            price_max: number
-            priority: number
-            active: boolean
-            notes: string
-            conditions: Array<{
-              group_id: number
-              option_id: number
-              group_name: string
-              option_name: string
-            }>
-          }>
-        >
         cuadernoAddTagGroup: (payload: { name: string; notionColor?: string }) => Promise<{ ok: boolean; id: number }>
         cuadernoAddTagOption: (payload: {
           groupId: number
@@ -242,40 +219,7 @@ declare global {
         }) => Promise<{ ok: boolean }>
         cuadernoRenameTagOption: (payload: { id: number; name: string }) => Promise<{ ok: boolean }>
         cuadernoSetTagOptionActive: (payload: { id: number; active: boolean }) => Promise<{ ok: boolean }>
-        cuadernoSetTagGroupStyle: (payload: { id: number; notionColor: string }) => Promise<{ ok: boolean }>
-        cuadernoSetTagOptionStyle: (payload: {
-          id: number
-          notionColor: string
-          tagIcon?: string | null
-        }) => Promise<{ ok: boolean }>
         cuadernoReorderTagGroups: (payload: { orderedIds: number[] }) => Promise<{ ok: boolean }>
-        cuadernoUpsertPriceRule: (payload: Record<string, unknown>) => Promise<{ ok: boolean; id: number }>
-        cuadernoDeletePriceRule: (payload: { id: number }) => Promise<{ ok: boolean }>
-        listTagPriceRulesSummary: () => Promise<
-          Array<{ id: number; option_name: string; group_name: string; combo_count: number }>
-        >
-        listTagPriceRulesForCuaderno: () => Promise<
-          Array<{
-            anchor_option_id: number
-            option_name: string
-            group_name: string
-            notion_color?: string
-            tag_icon?: string | null
-            lines: Array<{ summaryLabel: string; price: number | null }>
-          }>
-        >
-        setTagOptionPriceRule: (payload: {
-          optionId: number
-          isRule: boolean
-          rulePriority?: number
-        }) => Promise<{ ok: boolean }>
-        getPriceCombosForAnchor: (payload: { anchorOptionId: number }) => Promise<
-          Array<{ id: number; price: number | null; companionIds: number[]; companionLabels: string[] }>
-        >
-        replacePriceCombosForAnchor: (payload: {
-          anchorOptionId: number
-          combos: Array<{ companionIds: number[]; price: number | string | null }>
-        }) => Promise<{ ok: boolean }>
         listInvPricingRules: () => Promise<
           Array<{
             id: number
