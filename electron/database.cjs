@@ -2676,20 +2676,39 @@ function computeNewPrice(old, opts) {
 
 const PREVIEW_CAP = 500
 
+/** Productos del catálogo activo que coinciden con una categoría (y marca opcional). */
+function queryProductosAjustePorCatMarca(database, categoria, marca) {
+  const cat = String(categoria || '').trim()
+  if (!cat) return []
+  const params = [cat.toLowerCase()]
+  let sql = `SELECT p.* FROM inventario_activo p WHERE LOWER(TRIM(COALESCE(p.categoria, ''))) = ?`
+  const mar = String(marca || '').trim()
+  if (mar) { sql += ` AND LOWER(TRIM(COALESCE(p.marca, ''))) = ?`; params.push(mar.toLowerCase()) }
+  sql += ' ORDER BY p.codigo ASC'
+  return database.prepare(sql).all(...params)
+}
+
+/**
+ * Productos que coinciden con el filtro del ajuste de precios. Si llega `categoria`
+ * se filtra por categoría (+marca opcional) — el modelo de la dueña; si no, por
+ * etiquetas del cuaderno (modo avanzado, compatibilidad).
+ */
+function matchProductosAjuste(database, payload) {
+  const categoria = String(payload?.categoria || '').trim()
+  if (categoria) return queryProductosAjustePorCatMarca(database, categoria, payload?.marca)
+  const rawIds = payload?.tagOptionIds ?? payload?.filterTags ?? []
+  const tagOptionIds = Array.isArray(rawIds) ? rawIds.map(Number).filter((n) => Number.isFinite(n)) : []
+  return alta.queryProductosAjustePorTags(database, Boolean(payload?.matchExact), tagOptionIds)
+}
+
 function previewPriceAdjust(payload) {
   const database = getDb()
-  const rawIds = payload?.tagOptionIds ?? payload?.filterTags ?? []
-  const tagOptionIds = Array.isArray(rawIds)
-    ? rawIds.map(Number).filter((n) => Number.isFinite(n))
-    : []
-  const matchExact = Boolean(payload?.matchExact)
-  const strict = matchExact
   const adjustMode = payload?.adjustMode || 'pct'
   const adjustValue = Number(payload?.adjustValue)
   const sumSign = payload?.sumSign === -1 ? -1 : 1
   const roundMode = payload?.roundMode || 'centavos'
 
-  const matched = alta.queryProductosAjustePorTags(database, strict, tagOptionIds)
+  const matched = matchProductosAjuste(database, payload)
   const rows = matched.map((p) => {
     const oldP = Number(p.precio) || 0
     const newP = computeNewPrice(oldP, { adjustMode, adjustValue, sumSign, roundMode })
@@ -2711,17 +2730,12 @@ function previewPriceAdjust(payload) {
 
 function applyPriceAdjust(payload) {
   const database = getDb()
-  const rawIds = payload?.tagOptionIds ?? payload?.filterTags ?? []
-  const tagOptionIds = Array.isArray(rawIds)
-    ? rawIds.map(Number).filter((n) => Number.isFinite(n))
-    : []
-  const matchExact = Boolean(payload?.matchExact)
   const adjustMode = payload?.adjustMode || 'pct'
   const adjustValue = Number(payload?.adjustValue)
   const sumSign = payload?.sumSign === -1 ? -1 : 1
   const roundMode = payload?.roundMode || 'centavos'
 
-  const matched = alta.queryProductosAjustePorTags(database, matchExact, tagOptionIds)
+  const matched = matchProductosAjuste(database, payload)
   if (matched.length === 0) return { ok: true, updated: 0 }
 
   const upd = database.prepare(

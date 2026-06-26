@@ -32,6 +32,11 @@ const fieldClass =
 export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup, inventorySearchRef }) {
   const pricePanelRef = useRef(null)
   const [step, setStep] = useState(0)
+  const [filtroModo, setFiltroModo] = useState('catmarca') // 'catmarca' (modelo de la dueña) | 'tags' (avanzado)
+  const [categoria, setCategoria] = useState('')
+  const [marca, setMarca] = useState('')
+  const [catList, setCatList] = useState([])
+  const [marcaList, setMarcaList] = useState([])
   const [tagsByGroup, setTagsByGroup] = useState({})
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false)
   const [matchExact, setMatchExact] = useState(false)
@@ -65,16 +70,28 @@ export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup
     }
     const raw = initialRef.current
     setTagsByGroup(raw && typeof raw === 'object' ? { ...raw } : {})
+    setCategoria(''); setMarca('')
+    // Categorías y marcas existentes (modelo de la dueña: precio por categoría+marca).
+    const inv = window.bazar?.db?.getInventoryList
+    if (inv) {
+      Promise.resolve(inv({ estadoIndex: 0, vistaIndex: 0, listTab: 'main' })).then((rows) => {
+        const arr = Array.isArray(rows) ? rows : []
+        setCatList([...new Set(arr.map((r) => String(r.categoria || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')))
+        setMarcaList([...new Set(arr.map((r) => String(r.marca || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')))
+      }).catch(() => {})
+    }
   }, [open])
 
-  useEffect(() => { setPreview((prev) => (prev ? null : prev)) }, [tagsByGroup, matchExact, adjustMode, pct, sumAmount, sumSign, fixedPrice, roundMode])
+  useEffect(() => { setPreview((prev) => (prev ? null : prev)) }, [filtroModo, categoria, marca, tagsByGroup, matchExact, adjustMode, pct, sumAmount, sumSign, fixedPrice, roundMode])
 
   const tagOptionIds = useMemo(() => optionIdsFromMap(tagsByGroup), [tagsByGroup])
+  const filtroListo = filtroModo === 'catmarca' ? !!categoria.trim() : tagOptionIds.length > 0
+  const filtroPayload = filtroModo === 'catmarca' ? { categoria: categoria.trim(), marca: marca.trim() } : { tagOptionIds, matchExact }
 
   const runPreview = async () => {
     const api = window.bazar?.db
     if (!api?.previewPriceAdjust) { toast.error('Disponible solo en Electron'); return }
-    if (tagOptionIds.length === 0) { toast.error('Elegí al menos un tag.'); return }
+    if (!filtroListo) { toast.error(filtroModo === 'catmarca' ? 'Elegí una categoría.' : 'Elegí al menos un tag.'); return }
 
     let adjustValue
     if (adjustMode === 'pct') adjustValue = parseDecimalInput(pct)
@@ -87,7 +104,7 @@ export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup
 
     setBusy(true)
     try {
-      const res = await api.previewPriceAdjust({ tagOptionIds, matchExact, adjustMode: adjustMode === 'sum' ? 'sum' : adjustMode === 'fixed' ? 'fixed' : 'pct', adjustValue, sumSign, roundMode })
+      const res = await api.previewPriceAdjust({ ...filtroPayload, adjustMode: adjustMode === 'sum' ? 'sum' : adjustMode === 'fixed' ? 'fixed' : 'pct', adjustValue, sumSign, roundMode })
       setPreview(res)
       if (res.total === 0) toast.message('Ningún artículo coincide')
       else setStep(1)
@@ -110,7 +127,7 @@ export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup
     }
     setBusy(true)
     try {
-      await dbApply({ tagOptionIds, matchExact, adjustMode: adjustMode === 'sum' ? 'sum' : adjustMode === 'fixed' ? 'fixed' : 'pct', adjustValue, sumSign, roundMode })
+      await dbApply({ ...filtroPayload, adjustMode: adjustMode === 'sum' ? 'sum' : adjustMode === 'fixed' ? 'fixed' : 'pct', adjustValue, sumSign, roundMode })
       toast.success(`Se actualizaron ${preview.total} precio(s)`)
       onApplied?.(); onClose(); setPreview(null); setStep(0)
     } catch (e) { toast.error(String(e.message || e)) }
@@ -129,20 +146,24 @@ export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup
         onClose={onClose}
         size="wide"
         title="Ajustar precios en masa"
-        description="Filtrá por tags y aplicá una fórmula de ajuste a todos los artículos que coincidan."
+        description="Elegí una categoría y marca (o etiquetas) y aplicá una fórmula de ajuste a todos los artículos que coincidan."
         headerRight={<ModalStepper steps={steps} current={step} onStepClick={(i) => i <= step && setStep(i)} />}
         footer={
           step === 0 ? (
             <>
               <div className="text-[11.5px] text-muted-foreground/75">
-                {tagOptionIds.length === 0 ? 'Elegí al menos un tag para continuar.' : `${tagOptionIds.length} tag(s) seleccionado(s).`}
+                {!filtroListo
+                  ? 'Elegí qué artículos ajustar para continuar.'
+                  : filtroModo === 'catmarca'
+                    ? `Categoría: ${categoria}${marca ? ` · ${marca}` : ' · todas las marcas'}`
+                    : `${tagOptionIds.length} tag(s) seleccionado(s).`}
               </div>
               <div className="flex items-center gap-2">
                 <ModalNavButton direction="back" label="Cancelar" onClick={onClose} />
                 <button
                   type="button"
                   onClick={runPreview}
-                  disabled={busy || tagOptionIds.length === 0}
+                  disabled={busy || !filtroListo}
                   className="inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12.5px] font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy ? 'Calculando…' : 'Ver vista previa'}
@@ -176,6 +197,10 @@ export function PriceAdjustDialog({ open, onClose, onApplied, initialTagsByGroup
         <div ref={pricePanelRef} tabIndex={-1} className="outline-none">
           {step === 0 ? (
             <FiltersStep
+              filtroModo={filtroModo} setFiltroModo={setFiltroModo}
+              categoria={categoria} setCategoria={setCategoria}
+              marca={marca} setMarca={setMarca}
+              catList={catList} marcaList={marcaList}
               tagOptionIds={tagOptionIds}
               tagsByGroup={tagsByGroup}
               onEditTags={() => setTagsDialogOpen(true)}
@@ -254,7 +279,7 @@ function OptionRadio({ checked, onChange, label, description, children }) {
   )
 }
 
-function FiltersStep({ tagOptionIds, tagsByGroup, onEditTags, matchExact, setMatchExact, adjustMode, setAdjustMode, pct, setPct, sumAmount, setSumAmount, sumSign, setSumSign, fixedPrice, setFixedPrice, roundMode, setRoundMode }) {
+function FiltersStep({ filtroModo, setFiltroModo, categoria, setCategoria, marca, setMarca, catList, marcaList, tagOptionIds, tagsByGroup, onEditTags, matchExact, setMatchExact, adjustMode, setAdjustMode, pct, setPct, sumAmount, setSumAmount, sumSign, setSumSign, fixedPrice, setFixedPrice, roundMode, setRoundMode }) {
   const tagCount = tagOptionIds.length
   return (
     <div className="grid grid-cols-1 gap-6 p-7 lg:grid-cols-2">
@@ -263,47 +288,81 @@ function FiltersStep({ tagOptionIds, tagsByGroup, onEditTags, matchExact, setMat
         <section>
           <SectionTitle
             icon={<TagIcon className="size-3.5" strokeWidth={1.75} />}
-            title="Filtro por tags"
-            description="Qué artículos se verán afectados por el ajuste."
+            title="Qué artículos ajustar"
+            description="Por categoría y marca (como pensás los precios), o por etiquetas."
           />
-          <button
-            type="button"
-            onClick={onEditTags}
-            className={cn(
-              'group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
-              tagCount > 0 ? 'border-primary/30 bg-primary/[0.04]' : 'border-dashed border-border/70 bg-transparent hover:border-border hover:bg-foreground/[0.03]',
-            )}
-          >
-            <span className={cn('inline-flex size-7 shrink-0 items-center justify-center rounded-md text-foreground/70', tagCount > 0 ? 'bg-primary/15 text-primary' : 'bg-muted/40')}>
-              <TagIcon className="size-3.5" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[12.5px] font-medium text-foreground/95">
-                {tagCount === 0 ? 'Elegir tags…' : `${tagCount} tag(s) seleccionado(s)`}
+          {/* Selector de modo */}
+          <div className="mb-3 inline-flex overflow-hidden rounded-lg border border-border/70">
+            <button type="button" onClick={() => setFiltroModo('catmarca')}
+              className={cn('px-3 py-1.5 text-[12px] font-medium transition-colors', filtroModo === 'catmarca' ? 'bg-foreground text-background' : 'text-foreground/80 hover:bg-muted/40')}>
+              Categoría y marca
+            </button>
+            <button type="button" onClick={() => setFiltroModo('tags')}
+              className={cn('border-l border-border/60 px-3 py-1.5 text-[12px] font-medium transition-colors', filtroModo === 'tags' ? 'bg-foreground text-background' : 'text-foreground/80 hover:bg-muted/40')}>
+              Etiquetas
+            </button>
+          </div>
+
+          {filtroModo === 'catmarca' ? (
+            <div className="space-y-3">
+              <div>
+                <div className="mb-1 text-[12px] font-medium text-foreground/90">Categoría</div>
+                <select className={fieldClass} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+                  <option value="">Elegí una categoría…</option>
+                  {catList.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
-              <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-                {tagCount === 0 ? 'Ningún filtro aplicado' : Object.values(tagsByGroup).filter(Boolean).slice(0, 6).map(String).join(' · ') + (Object.values(tagsByGroup).filter(Boolean).length > 6 ? ' …' : '')}
+              <div>
+                <div className="mb-1 text-[12px] font-medium text-foreground/90">Marca <span className="text-muted-foreground/70">(opcional)</span></div>
+                <select className={fieldClass} value={marca} onChange={(e) => setMarca(e.target.value)}>
+                  <option value="">Todas las marcas de esa categoría</option>
+                  {marcaList.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <p className="mt-1.5 text-[11px] text-muted-foreground/75">Ej: «Pantalón» + «Levis» ajusta solo esos. Sin marca, ajusta toda la categoría.</p>
               </div>
             </div>
-            <span className="shrink-0 text-[11px] text-muted-foreground/70 group-hover:text-foreground/80">
-              {tagCount === 0 ? 'Elegir' : 'Cambiar'}
-            </span>
-          </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onEditTags}
+                className={cn(
+                  'group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+                  tagCount > 0 ? 'border-primary/30 bg-primary/[0.04]' : 'border-dashed border-border/70 bg-transparent hover:border-border hover:bg-foreground/[0.03]',
+                )}
+              >
+                <span className={cn('inline-flex size-7 shrink-0 items-center justify-center rounded-md text-foreground/70', tagCount > 0 ? 'bg-primary/15 text-primary' : 'bg-muted/40')}>
+                  <TagIcon className="size-3.5" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] font-medium text-foreground/95">
+                    {tagCount === 0 ? 'Elegir tags…' : `${tagCount} tag(s) seleccionado(s)`}
+                  </div>
+                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
+                    {tagCount === 0 ? 'Ningún filtro aplicado' : Object.values(tagsByGroup).filter(Boolean).slice(0, 6).map(String).join(' · ') + (Object.values(tagsByGroup).filter(Boolean).length > 6 ? ' …' : '')}
+                  </div>
+                </div>
+                <span className="shrink-0 text-[11px] text-muted-foreground/70 group-hover:text-foreground/80">
+                  {tagCount === 0 ? 'Elegir' : 'Cambiar'}
+                </span>
+              </button>
 
-          <div className="mt-3 space-y-2">
-            <OptionRadio
-              checked={!matchExact}
-              onChange={() => setMatchExact(false)}
-              label="Contiene estos tags"
-              description="El artículo debe tener todos los tags seleccionados, pero puede tener otros además."
-            />
-            <OptionRadio
-              checked={matchExact}
-              onChange={() => setMatchExact(true)}
-              label="Coincide exactamente"
-              description="El artículo debe tener exactamente el mismo conjunto de tags, ni más ni menos."
-            />
-          </div>
+              <div className="mt-3 space-y-2">
+                <OptionRadio
+                  checked={!matchExact}
+                  onChange={() => setMatchExact(false)}
+                  label="Contiene estos tags"
+                  description="El artículo debe tener todos los tags seleccionados, pero puede tener otros además."
+                />
+                <OptionRadio
+                  checked={matchExact}
+                  onChange={() => setMatchExact(true)}
+                  label="Coincide exactamente"
+                  description="El artículo debe tener exactamente el mismo conjunto de tags, ni más ni menos."
+                />
+              </div>
+            </>
+          )}
         </section>
       </div>
 
