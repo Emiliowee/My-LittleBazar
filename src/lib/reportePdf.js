@@ -44,7 +44,7 @@ function printableValue(row, col) {
   return row?.[col.key] ?? ''
 }
 
-function renderTable(columns, rows) {
+function renderTable(columns, rows, titulo = '') {
   if (!columns.length) return '<div class="empty">Sin columnas para mostrar.</div>'
   if (!rows.length) return '<div class="empty">No hay registros para los criterios seleccionados.</div>'
 
@@ -57,8 +57,10 @@ function renderTable(columns, rows) {
       .join('')}</tr>`)
     .join('')
 
+  const caption = titulo ? `<caption>Detalle - ${esc(titulo)}</caption>` : ''
   return `<div class="table-wrapper">
     <table class="report-table">
+      ${caption}
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
     </table>
@@ -128,10 +130,11 @@ export function buildReportePdfHtml({
   
   const criteriosRows = normalizedPairs(criterios)
   const datosReporte = [
-    { label: 'Folio', value: folio },
+    { label: 'Folio interno', value: folio },
     { label: 'Generado', value: generado },
     { label: 'Periodo', value: periodoTexto || '-' },
     { label: 'Registros', value: String(rows.length) },
+    { label: 'Moneda', value: 'MXN - Pesos mexicanos' },
   ]
 
   return `<!doctype html>
@@ -401,10 +404,12 @@ export function buildReportePdfHtml({
     <header>
       <div class="header-left">
         <div class="brand">${esc(bazarNombre)}</div>
+        <div class="eyebrow" style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin:2px 0 6px;">Reporte administrativo interno</div>
         <h1>${esc(titulo)}</h1>
         ${descripcion ? `<p class="desc">${esc(descripcion)}</p>` : ''}
       </div>
       <div class="header-right">
+        <div class="meta-title" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Datos del negocio</div>
         ${datosReporte.map(r => `
           <div class="meta-row">
             <span class="meta-label">${esc(r.label)}</span>
@@ -414,11 +419,11 @@ export function buildReportePdfHtml({
       </div>
     </header>
     
-    ${criteriosRows.length ? renderPairsList('Criterios de Búsqueda', criteriosRows) : ''}
+    ${criteriosRows.length ? renderPairsList('Criterios aplicados', criteriosRows) : ''}
     
     ${renderMetrics(metricas)}
     
-    ${renderTable(cols, rows)}
+    ${renderTable(cols, rows, titulo)}
     
     ${nota ? `<div class="note"><strong>Observaciones:</strong> ${esc(nota)}</div>` : ''}
     

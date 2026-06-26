@@ -184,7 +184,7 @@ function MlbShell() {
         try {
           const data = JSON.parse(e.newValue)
           if (data?.path) goSection(data.path)
-        } catch (err) { /* ignore */ }
+        } catch { /* navigate_to corrupto: ignorar */ }
       }
     }
     window.addEventListener('storage', handleStorage)
