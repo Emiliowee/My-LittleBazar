@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('bazar', {
     searchProducts: (query) => ipcRenderer.invoke('db:searchProducts', query),
     nextCodigoMsr: () => ipcRenderer.invoke('db:nextCodigoMsr'),
     getMonserratDbPath: () => ipcRenderer.invoke('db:getMonserratDbPath'),
+    openBackupsFolder: () => ipcRenderer.invoke('db:openBackupsFolder'),
     resetToFactorySeed: () => ipcRenderer.invoke('db:resetToFactorySeed'),
     getTagGroupsForProduct: () => ipcRenderer.invoke('db:getTagGroupsForProduct'),
     getProductById: (id) => ipcRenderer.invoke('db:getProductById', id),

@@ -477,6 +477,18 @@ function registerIpc() {
   ipcMain.handle('db:searchProducts', (_, query) => db.searchProducts(query))
   ipcMain.handle('db:nextCodigoMsr', () => db.nextCodigoMsr())
   ipcMain.handle('db:getMonserratDbPath', () => db.getMonserratDbPath())
+  ipcMain.handle('db:openBackupsFolder', async () => {
+    try {
+      const dbPath = db.getMonserratDbPath()
+      const dir = path.join(path.dirname(dbPath), 'backups')
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+      const err = await shell.openPath(dir)
+      if (err) return { ok: false, message: err }
+      return { ok: true, path: dir }
+    } catch (e) {
+      return { ok: false, message: String(e?.message || e) }
+    }
+  })
   ipcMain.handle('db:resetToFactorySeed', () => {
     try {
       return db.resetMonserratDatabaseToSeed()

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowLeft, Building2, Paintbrush, Printer, Database, Info,
   ImageIcon, RotateCcw, AlertTriangle, Settings2, Tags, ChevronDown,
-  Smile, Search, ReceiptText, Ruler,
+  Smile, Search, ReceiptText, Ruler, Wallet, Plus, X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
@@ -24,6 +24,7 @@ const DEFAULT_LOGO = '/branding/logo.jpg'
 
 const SECTIONS = [
   { id: 'workspace',  label: 'Mi bazar',     icon: Building2 },
+  { id: 'cobro',      label: 'Cobro',        icon: Wallet },
   { id: 'categorias', label: 'Categorías',   icon: Tags },
   { id: 'appearance', label: 'Apariencia',   icon: Paintbrush },
   { id: 'printing',   label: 'Impresión',    icon: Printer },
@@ -138,6 +139,7 @@ export function LauncherSettingsView({ onBack, onOpenLabelEditor }) {
                 {active === 'appearance' ? <NebulaSettingsSection /> : (
                   <div className="max-w-3xl px-8 py-8">
                     {active === 'workspace'  ? <WorkspaceSection  settings={settings} onPatch={patch} onReload={reload} /> : null}
+                    {active === 'cobro'      ? <CobroSection settings={settings} onPatch={patch} /> : null}
                     {active === 'categorias' ? <CategoriasSection settings={settings} onPatch={patch} /> : null}
                     {active === 'printing'
                       ? (
@@ -192,6 +194,55 @@ function PremiumCard({ children, className }) {
 }
 
 /* ── Workspace ─────────────────────────────────────────────────────────── */
+function CobroSection({ settings, onPatch }) {
+  const cuentas = Array.isArray(settings?.cuentasBancarias) ? settings.cuentasBancarias : []
+  const [nombre, setNombre] = useState('')
+
+  const agregar = () => {
+    const n = nombre.trim()
+    if (!n) return
+    if (cuentas.some((c) => String(c.nombre || '').toLowerCase() === n.toLowerCase())) { toast.error('Ya tienes una cuenta con ese nombre.'); return }
+    const id = n.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || `cta-${Date.now()}`
+    onPatch({ cuentasBancarias: [...cuentas, { id, nombre: n, color: '#94a3b8' }] })
+    setNombre('')
+  }
+  const quitar = (id) => onPatch({ cuentasBancarias: cuentas.filter((c) => c.id !== id) })
+
+  return (
+    <div>
+      <SectionHeader title="Cobro" description="Las cuentas o tarjetas donde recibes dinero. Aparecen al cobrar por transferencia para registrar a dónde entró." />
+      <div className="max-w-xl rounded-2xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] p-5">
+        <div className="mb-4 flex gap-2">
+          <input
+            className="h-10 flex-1 rounded-lg border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-input)] px-3 text-[14px] text-[var(--mlb-text-primary)] outline-none focus:border-[var(--mlb-accent)]"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') agregar() }}
+            placeholder="Ej. BBVA, Mercado Pago, Tarjeta…"
+          />
+          <button type="button" onClick={agregar} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--mlb-accent)] px-4 text-[13px] font-semibold text-white">
+            <Plus size={16} /> Agregar
+          </button>
+        </div>
+        {cuentas.length === 0 ? (
+          <p className="text-[13px] text-[var(--mlb-text-muted)]">Aún no hay cuentas. Agrega las que uses para recibir transferencias.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {cuentas.map((c) => (
+              <div key={c.id} className="flex items-center justify-between rounded-lg border border-[var(--mlb-border)] bg-[var(--mlb-bg-app)] px-3 py-2.5">
+                <span className="text-[14px] font-medium text-[var(--mlb-text-primary)]">{c.nombre}</span>
+                <button type="button" onClick={() => quitar(c.id)} aria-label={`Quitar ${c.nombre}`} className="text-[var(--mlb-text-muted)] transition-colors hover:text-[var(--mlb-danger)]">
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function WorkspaceSection({ settings, onPatch }) {
   const [name, setName] = useState(String(settings.workspaceDisplayName ?? 'Mi bazar'))
 
@@ -559,6 +610,16 @@ function TicketPreview({ settings, design }) {
 /* ── Datos ─────────────────────────────────────────────────────────────── */
 function DataSection() {
   const [busy, setBusy] = useState(false)
+  const abrirRespaldos = async () => {
+    const api = window.bazar?.db?.openBackupsFolder
+    if (!api) { toast.error('Solo disponible en escritorio.'); return }
+    try {
+      const res = await api()
+      if (!res?.ok) toast.error(res?.message || 'No se pudo abrir la carpeta de respaldos.')
+    } catch (e) {
+      toast.error(String(e?.message || e))
+    }
+  }
   const resetDb = async () => {
     const api = window.bazar?.db?.resetToFactorySeed
     if (!api) { toast.error('Solo disponible en escritorio.'); return }
@@ -582,6 +643,22 @@ function DataSection() {
         description="El bazar almacena todo localmente mediante SQLite para garantizar máxima privacidad y rapidez."
       />
       <div className="grid max-w-2xl gap-6">
+        <PremiumCard className="p-8">
+          <div className="mb-3 flex items-center gap-3 text-[var(--mlb-text-primary)]">
+            <Database size={22} strokeWidth={2} className="text-[var(--mlb-accent)]" />
+            <h3 className="text-[18px] font-bold">Respaldos automáticos</h3>
+          </div>
+          <p className="mb-6 text-[14px] leading-relaxed text-[var(--mlb-text-secondary)]">
+            Cada día se guarda una copia de seguridad de toda tu información (se conservan los últimos 30 días). Si cambias de computadora, copia el archivo más reciente de esta carpeta para no perder nada.
+          </p>
+          <button
+            type="button"
+            onClick={() => void abrirRespaldos()}
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--mlb-border-strong)] bg-[var(--mlb-bg-panel)] px-6 text-[14px] font-semibold text-[var(--mlb-text-primary)] transition-colors hover:bg-[var(--mlb-bg-hover)]"
+          >
+            Abrir carpeta de respaldos
+          </button>
+        </PremiumCard>
         <PremiumCard className="p-8 border-[var(--mlb-danger)]/30 bg-[var(--mlb-danger)]/5">
           <div className="mb-4 flex items-center gap-3 text-[var(--mlb-danger)]">
             <AlertTriangle size={24} strokeWidth={2} />
