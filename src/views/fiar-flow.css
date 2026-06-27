@@ -288,3 +288,13 @@
 .fiar2-vale-meta { font-size: 12px; color: var(--mlb-text-muted); }
 .fiar2-vale-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
 .fiar2-vale-btn:hover { background: var(--mlb-bg-active); color: var(--mlb-accent-ink); border-color: var(--mlb-accent); }
+
+/* ── Modo oscuro: textos ambar de deuda y badge de foco (en claro son
+ *    cafe/crema oscuros que en oscuro pierden contraste o brillan). ──── */
+[data-theme="dark"] .fiar-foco-badge { background: rgba(239, 159, 39, 0.16); color: #f4c430; }
+[data-theme="dark"] .fiar2-cs-tabla dd.is-debe,
+[data-theme="dark"] .fiar2-ab-cli2-bal.is-debe,
+[data-theme="dark"] .fiar2-res-debe span,
+[data-theme="dark"] .fiar2-res-debe strong,
+[data-theme="dark"] .fiar2-ab-after2 span,
+[data-theme="dark"] .fiar2-ab-after2 strong { color: #f4c430; }

@@ -382,7 +382,7 @@
   border-radius: 50%;
   transition: background-color 160ms ease, color 160ms ease;
 }
-.pos-icon-btn:hover { background: #fee2e2; color: var(--mlb-danger); }
+.pos-icon-btn:hover { background: color-mix(in srgb, var(--mlb-danger) 13%, transparent); color: var(--mlb-danger); }
 
 .pos-cart__items {
   flex: 1;
@@ -541,8 +541,8 @@
 }
 
 .pos-checkout:disabled {
-  background-color: #e2e8f0;
-  color: #a0aec0;
+  background-color: var(--mlb-bg-active);
+  color: var(--mlb-text-muted);
   box-shadow: none;
   cursor: not-allowed;
   border-color: transparent;
@@ -1303,7 +1303,7 @@
   min-height: 0;
   gap: 12px;
   padding: 0 12px 12px 12px;
-  background: #f1f5f9; /* El fondo actuará como separador */
+  background: var(--mlb-bg-app); /* El fondo actuará como separador */
 }
 
 .pos-sr__master {
@@ -1796,7 +1796,7 @@
   cursor: pointer;
 }
 .posc-btn-confirm:hover:not(:disabled) { background: var(--mlb-accent-hover); }
-.posc-btn-confirm:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+.posc-btn-confirm:disabled { background: var(--mlb-bg-active); color: var(--mlb-text-muted); cursor: not-allowed; }
 .posc-btn-confirm.is-fiar { background: #db2777; }
 .posc-btn-confirm.is-fiar:hover:not(:disabled) { background: #be185d; }
 /* -- Premium Wireframe Checkout Modal -- */
@@ -2153,7 +2153,7 @@
 }
 
 .close-checkout-btn:hover {
-  background: #fee2e2;
+  background: color-mix(in srgb, var(--mlb-danger) 13%, transparent);
   color: var(--mlb-danger);
   transform: scale(1.05);
 }
@@ -2241,6 +2241,9 @@
 [data-theme="dark"] .pcb-row.is-on .pcb-row__ico { background: var(--mlb-bg-active); }
 [data-theme="dark"] .pos-stock-badge.is-error { background: rgba(255,69,58,0.14); color: #ff8f86; border-color: rgba(255,69,58,0.3); }
 [data-theme="dark"] .pos-stock-badge.is-warn { background: rgba(244,196,48,0.14); color: #f4c430; border-color: rgba(244,196,48,0.3); }
+[data-theme="dark"] .pos-ventas__tag.tag-efectivo { background: rgba(16,185,129,0.16); color: #6ee7b7; }
+[data-theme="dark"] .pos-ventas__tag.tag-transferencia { background: rgba(59,130,246,0.16); color: #93c5fd; }
+[data-theme="dark"] .pos-ventas__tag.tag-intercambio { background: rgba(181,101,29,0.20); color: #e0b080; }
 
 .pos-select-3d {
   background: #ffffff;
@@ -2361,7 +2364,7 @@
 }
 
 .numpad-del {
-  background: #fee2e2;
+  background: color-mix(in srgb, var(--mlb-danger) 13%, transparent);
   color: var(--mlb-danger);
   border-color: #fca5a5;
   border-bottom-color: #f87171;
