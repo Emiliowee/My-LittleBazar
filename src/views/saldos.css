@@ -438,42 +438,49 @@ select.sld-input { appearance: auto; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  background: var(--mlb-bg-app);
-  border-bottom: 1px solid var(--mlb-border-strong);
-  margin-bottom: 24px;
+  text-align: center;
+  padding: 34px 28px;
+  max-width: 580px;
+  margin: 2px auto 26px;
+  background: var(--mlb-bg-panel);
+  border: 1px solid var(--mlb-border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
 }
 .sld-hero-name {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--mlb-text-secondary);
   margin-bottom: 8px;
 }
 .sld-hero-balance {
-  font-size: 64px;
+  font-size: 58px;
   font-weight: 800;
   font-family: var(--mlb-font-mono);
   color: var(--mlb-text-primary);
   line-height: 1;
+  letter-spacing: -0.02em;
   margin-bottom: 24px;
 }
 .sld-hero-balance.is-ok {
-  color: #10b981;
+  color: var(--mlb-success);
 }
 .sld-hero-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .sld-hero-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 28px;
+  gap: 9px;
+  padding: 12px 22px;
   border-radius: 12px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
   border: none;
 }
 .sld-hero-btn-primary {
@@ -487,13 +494,14 @@ select.sld-input { appearance: auto; }
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
 }
 .sld-hero-btn-secondary {
-  background: transparent;
-  border: 2px solid var(--mlb-border-strong);
+  background: var(--mlb-bg-panel);
+  border: 1px solid var(--mlb-border-strong);
   color: var(--mlb-text-primary);
 }
 .sld-hero-btn-secondary:hover {
   background: var(--mlb-bg-hover);
-  border-color: var(--mlb-text-secondary);
+  border-color: var(--mlb-accent);
+  color: var(--mlb-accent-ink);
 }
 
 /* Premium Modals for Actions */
