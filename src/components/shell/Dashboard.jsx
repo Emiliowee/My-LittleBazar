@@ -6,8 +6,6 @@ import {
 import { formatPrice } from '@/lib/format'
 import { openPdvWindowAction } from '@/lib/openPdvWindow'
 import { useTheme } from '@/theme/ThemeProvider.jsx'
-import { findPlan } from '@/lib/plansCatalog'
-import { emojiDeCategoria, esRutaImagen, rutaAFileUrl } from '@/lib/categoriaEmoji'
 import './inicio-monserrat.css'
 
 
@@ -60,12 +58,8 @@ export function Dashboard({ onNavigate, settings }) {
   const dateLine = `${DAYS[now.getDay()]} · ${now.getDate()} de ${MONTHS[now.getMonth()]}`
 
   const ThemeIcon = themePref === 'light' ? SunMedium : themePref === 'dark' ? Moon : MonitorCog
-  const themeTitle = themePref === 'light' ? 'Tema claro (clic: oscuro)' : themePref === 'dark' ? 'Tema oscuro (clic: sistema)' : 'Tema del sistema (clic: claro)'
 
   const workspaceName = String(settings?.workspaceDisplayName || 'Mi Bazar').trim() || 'Mi Bazar'
-  const logoUrl = esRutaImagen(settings?.workspaceLogoPath) ? rutaAFileUrl(settings.workspaceLogoPath) : ''
-  const categoriasMeta = settings?.categoriasMeta && typeof settings.categoriasMeta === 'object' ? settings.categoriasMeta : {}
-  const plan = findPlan(settings?.selectedPlan)
 
   if (settings?.dashboardLayout === 'manga') {
     return (
@@ -150,7 +144,7 @@ export function Dashboard({ onNavigate, settings }) {
       {/* HEADER (Top Nav) */}
       <header className="keeby-nav">
         <div className="keeby-nav-left">
-          <span className="keeby-logo-text">my little bazar</span>
+          <span className="keeby-logo-text">{workspaceName}</span>
           <span className="keeby-trophy">👑 #1 Top Boutique App (MX)</span>
         </div>
         

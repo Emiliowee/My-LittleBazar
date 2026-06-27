@@ -355,14 +355,10 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
               <input className="fiar2-side-input" inputMode="decimal" value={engEfec} onChange={(e) => setEngEfec(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Monto en efectivo" />
             ) : null}
 
-            {favor > 0 ? (
-              <div className="fiar2-side-favor"><Check size={14} strokeWidth={2.4} /> Saldo a favor <strong>{formatPrice(favor)}</strong> se aplica a la deuda</div>
-            ) : null}
-
             <div className="fiar2-side-valebox">
-              <span className="fiar2-side-label">Vale</span>
+              <span className="fiar2-side-label">Vale (opcional)</span>
               {valeInfo ? (
-                <div className="fiar2-side-valechip">Vale {valeInfo.codigo} · −{formatPrice(valeAplica)}<button type="button" onClick={() => { setValeInfo(null); setValeInput('') }} aria-label="Quitar vale"><X size={13} strokeWidth={2.4} /></button></div>
+                <div className="fiar2-side-valechip">{valeInfo.codigo}<button type="button" onClick={() => { setValeInfo(null); setValeInput('') }} aria-label="Quitar vale"><X size={13} strokeWidth={2.4} /></button></div>
               ) : (
                 <div className="fiar2-side-code">
                   <input value={valeInput} onChange={(e) => setValeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') aplicarVale() }} placeholder="Código de vale" />
@@ -371,7 +367,14 @@ export function FiarScreen({ clientes, productos, categorias, categoriasMeta, dr
               )}
             </div>
 
-            <div className="fiar2-side-debe"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
+            {/* Resumen coherente: todo lo que baja la deuda en una sola lista. */}
+            <div className="fiar2-side-resumen">
+              <div className="fiar2-sr-line"><span>Total</span><span>{formatPrice(total)}</span></div>
+              {valeAplica > 0 ? <div className="fiar2-sr-line is-minus"><span>Vale {valeInfo?.codigo || ''}</span><span>− {formatPrice(valeAplica)}</span></div> : null}
+              {favorAplica > 0 ? <div className="fiar2-sr-line is-minus"><span>Saldo a favor</span><span>− {formatPrice(favorAplica)}</span></div> : null}
+              {enganche > 0 ? <div className="fiar2-sr-line is-minus"><span>Enganche</span><span>− {formatPrice(enganche)}</span></div> : null}
+              <div className="fiar2-sr-total"><span>Queda debiendo</span><strong>{formatPrice(quedaDebiendo)}</strong></div>
+            </div>
             <button type="button" className="fiar2-confirm" disabled={items.length === 0} onClick={() => setStep('confirmar')}>Continuar <ArrowRight size={18} strokeWidth={2.1} /></button>
           </aside>
 

@@ -321,7 +321,7 @@ function CuentasScreen({ rows, cargando, demo, workspace, filtroInicial, onNew, 
               <Search size={15} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, teléfono…" />
             </div>
-            <button className="sld-head__icon" aria-label="Vales emitidos" title="Vales" onClick={onVales}><Ticket size={18} strokeWidth={1.8} /></button>
+            <button className="sld-head__valesbtn" onClick={onVales}><Ticket size={16} strokeWidth={2} /> Vales</button>
             <button className="sld-head__icon" aria-label="Ajustes de interés por atraso" title="Interés por atraso" onClick={onAjustes}><Settings size={18} strokeWidth={1.8} /></button>
             <button className="sld-head__icon" aria-label="Nuevo cliente" onClick={onNew}><UserPlus size={18} strokeWidth={1.8} /></button>
           </div>

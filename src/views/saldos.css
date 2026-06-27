@@ -23,6 +23,8 @@
 .sld-head__search input:focus { outline: none; border-color: var(--mlb-accent); box-shadow: 0 0 0 3px var(--mlb-accent-soft); }
 .sld-head__icon { width: 36px; height: 36px; display: grid; place-items: center; border: none; border-radius: 9px; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); cursor: pointer; transition: background-color .15s, color .15s; }
 .sld-head__icon:hover { background: var(--mlb-accent); color: #fff; }
+.sld-head__valesbtn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: none; border-radius: 9px; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .15s, color .15s; }
+.sld-head__valesbtn:hover { background: var(--mlb-accent); color: #fff; }
 .sld-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 22px 36px; }
 .sld-container { margin: 0 auto; width: 100%; max-width: 1060px; }
 .sld-block { margin-top: 30px; }

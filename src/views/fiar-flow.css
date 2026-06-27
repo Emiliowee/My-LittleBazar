@@ -151,9 +151,15 @@
 .fiar2-side-valebox { display: flex; flex-direction: column; gap: 6px; }
 .fiar2-side-valechip { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 9px; background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); font-size: 13px; font-weight: 700; }
 .fiar2-side-valechip button { background: none; border: none; color: var(--mlb-accent-ink); cursor: pointer; display: flex; }
-.fiar2-side-debe { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding: 12px 14px; border-radius: 10px; background: rgba(183,121,31,.1); }
-.fiar2-side-debe span { font-size: 13px; font-weight: 700; color: #854f0b; }
-.fiar2-side-debe strong { font-family: var(--mlb-font-mono); font-size: 22px; font-weight: 800; color: #b7791f; }
+/* Resumen coherente de lo que baja la deuda (Total → −vale/−favor/−enganche → queda) */
+.fiar2-side-resumen { margin-top: auto; display: flex; flex-direction: column; gap: 7px; padding: 14px; border-radius: 12px; background: var(--mlb-bg-app); border: 1px solid var(--mlb-border); }
+.fiar2-sr-line { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--mlb-text-secondary); }
+.fiar2-sr-line > span:last-child { font-family: var(--mlb-font-mono); font-weight: 600; color: var(--mlb-text-primary); }
+.fiar2-sr-line.is-minus > span:last-child { color: var(--mlb-success); }
+.fiar2-sr-total { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; padding-top: 11px; border-top: 1px dashed var(--mlb-border); }
+.fiar2-sr-total > span { font-size: 13px; font-weight: 700; color: var(--mlb-text-secondary); }
+.fiar2-sr-total > strong { font-family: var(--mlb-font-mono); font-size: 24px; font-weight: 800; color: #b7791f; }
+[data-theme="dark"] .fiar2-sr-total > strong { color: #f4c430; }
 
 .fiar2-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: none; border-radius: 12px; background: var(--mlb-accent); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; border-bottom: 4px solid #c01456; transition: background-color .15s; }
 .fiar2-confirm:hover { background: var(--mlb-accent-hover); }
