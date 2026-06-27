@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   ScanLine, Shirt, SunMedium, Moon, MonitorCog, ArrowUpRight,
-  Settings as SettingsIcon, Plus, WalletCards,
+  Settings as SettingsIcon, Plus, WalletCards, LineChart, Tag
 } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
 import { openPdvWindowAction } from '@/lib/openPdvWindow'
@@ -145,102 +145,147 @@ export function Dashboard({ onNavigate, settings }) {
   }
 
   return (
-    <div className="ini">
-      {/* Greeting */}
-      <div className="ini-greet" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className="ini-greet__pattern" style={{ backgroundImage: HANGER_PATTERN, backgroundRepeat: 'repeat', backgroundSize: '60px' }} aria-hidden />
+    <div className="keeby-replica-wrapper">
+      
+      {/* HEADER (Top Nav) */}
+      <header className="keeby-nav">
+        <div className="keeby-nav-left">
+          <span className="keeby-logo-text">my little bazar</span>
+          <span className="keeby-trophy">👑 #1 Top Boutique App (MX)</span>
+        </div>
         
-        {/* Decoración removida por petición del usuario para una vista más limpia */}
+        <div className="keeby-nav-center">
+          {greeting} — {dateLine}
+        </div>
+        
+        <div className="keeby-nav-right">
+          <button className="keeby-pill" onClick={cycleTheme}>
+            <ThemeIcon size={14} /> Tema
+          </button>
+          <button className="keeby-pill" onClick={() => void onNavigate?.('ajustes')}>
+            <SettingsIcon size={14} /> Ajustes
+          </button>
+          <button className="keeby-pill black-pill" onClick={() => void onNavigate?.('inventario')}>
+            <Shirt size={14} /> Ver Catálogo
+          </button>
+        </div>
+      </header>
 
-        <div className="ini-greet__content">
-          <span className="ini-greet__logo">
-            {logoUrl
-              ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <HangerIcon size={30} />}
-          </span>
-          <div className="ini-greet__text">
-            <span className="ini-greet__eyebrow">{workspaceName} · saldos, ropa y más…</span>
-            <h1 className="ini-greet__title">{greeting}</h1>
-            <span className="ini-greet__date">{dateLine}{plan ? ` · ${plan.name}` : ''}</span>
-          </div>
-        </div>
-        <div className="ini-greet__actions">
-          <button type="button" className="ini-iconbtn" title={themeTitle} aria-label={themeTitle} onClick={cycleTheme}><ThemeIcon size={19} strokeWidth={1.7} /></button>
-          <button type="button" className="ini-iconbtn" title="Ajustes" aria-label="Abrir ajustes" onClick={() => onNavigate?.('ajustes')}><SettingsIcon size={19} strokeWidth={1.7} /></button>
-        </div>
-      </div>
-
-      {/* Métricas */}
-      {resumen ? (
-        <div className="ini-metrics">
-          <button type="button" className="ini-metric ini-metric--btn" onClick={() => void onNavigate?.('inventario')}>
-            <span className="ini-metric__label">Prendas disponibles</span>
-            <span className="ini-metric__value">{Number(resumen.productosDisponibles) || 0}</span>
-          </button>
-          <button type="button" className="ini-metric ini-metric--btn" onClick={() => void onNavigate?.('saldos')}>
-            <span className="ini-metric__label">Clientes con saldo</span>
-            <span className="ini-metric__value">{Number(resumen.clientesConSaldo) || 0}</span>
-          </button>
-          <button type="button" className="ini-metric ini-metric--btn ini-metric--oro" onClick={() => void onNavigate?.('saldos')}>
-            <span className="ini-metric__label">Por cobrar en la calle</span>
-            <span className="ini-metric__value">{formatPrice(Number(resumen.saldoTotalPendiente) || 0)}</span>
-          </button>
-        </div>
-      ) : null}
-
-      {/* Atajos */}
-      <div className="ini-block">
-        <h3 className="ini-title">Atajos</h3>
-        <div className="ini-shortcuts">
-          <button type="button" className="ini-shortcut" onClick={() => void openPdvWindowAction()}>
-            <span className="ini-shortcut__icon is-pink"><ScanLine size={23} strokeWidth={1.7} /></span>
-            <span className="ini-shortcut__info"><h4>Punto de venta</h4><span>Cobrar al momento</span></span>
-            <span className="ini-shortcut__meta"><kbd>F1</kbd><ArrowUpRight size={15} strokeWidth={1.8} /></span>
-          </button>
-          <button type="button" className="ini-shortcut" onClick={() => void onNavigate?.('inventario')}>
-            <span className="ini-shortcut__icon"><Shirt size={23} strokeWidth={1.7} /></span>
-            <span className="ini-shortcut__info"><h4>Inventario</h4><span>Catálogo de prendas</span></span>
-            <span className="ini-shortcut__meta"><kbd>F2</kbd><ArrowUpRight size={15} strokeWidth={1.8} /></span>
-          </button>
-          <button type="button" className="ini-shortcut" onClick={() => void onNavigate?.('saldos')}>
-            <span className="ini-shortcut__icon"><WalletCards size={23} strokeWidth={1.7} /></span>
-            <span className="ini-shortcut__info"><h4>Saldos</h4><span>Cuentas de clientes</span></span>
-            <span className="ini-shortcut__meta"><ArrowUpRight size={15} strokeWidth={1.8} /></span>
-          </button>
-        </div>
-      </div>
-
-      {/* Ingresos recientes */}
-      <div className="ini-block" style={{ flex: 1, minHeight: 0 }}>
-        <div className="ini-block__head">
-          <h3 className="ini-title">{recientes.length > 0 ? 'Ingresos recientes' : 'Empezá a registrar tu inventario'}</h3>
-          <button type="button" className="ini-link" onClick={() => void onNavigate?.('inventario')}>Ver inventario</button>
-        </div>
-        {recientes.length > 0 ? (
-          <div className="ini-recent">
-            {recientes.map((r, i) => {
-              const ic = emojiDeCategoria(r.categoria, categoriasMeta)
-              const fecha = String(r?.fecha_ingreso ?? r?.created_at ?? '').slice(0, 10)
-              return (
-                <button key={r.id ?? i} type="button" className="ini-recent__item" onClick={() => void onNavigate?.('inventario')}>
-                  <span className="ini-recent__emoji">{esRutaImagen(ic) ? <img src={rutaAFileUrl(ic)} alt="" /> : ic}</span>
-                  <span className="ini-recent__info">
-                    <h4>{r?.descripcion || r?.codigo || 'Sin nombre'}</h4>
-                    <span>{r?.codigo}{fecha ? ` · ${fecha}` : ''}</span>
-                  </span>
-                  <span className="ini-recent__amount">{formatPrice(Number(r?.precio) || 0)}</span>
-                </button>
-              )
-            })}
+      {/* METRICS (Huge Typography like 0 100%) */}
+      <main className="keeby-main-metrics">
+        {resumen ? (
+          <div className="keeby-huge-numbers">
+            <div className="keeby-metric-group">
+              <span className="keeby-huge-val">{Number(resumen.productosDisponibles) || 0}</span>
+              <span className="keeby-huge-label">Prendas</span>
+            </div>
+            <div className="keeby-metric-group">
+              <span className="keeby-huge-val">{Number(resumen.clientesTotal) || 0}</span>
+              <span className="keeby-huge-label">Clientes{Number(resumen.clientesConSaldo) > 0 ? ` · ${Number(resumen.clientesConSaldo)} deben` : ''}</span>
+            </div>
+            <div className="keeby-metric-group">
+              <span className="keeby-huge-val">{formatPrice(Number(resumen.saldoTotalPendiente) || 0)}</span>
+              <span className="keeby-huge-label">Por cobrar</span>
+            </div>
           </div>
         ) : (
-          <button type="button" className="ini-shortcut" style={{ marginTop: 4 }} onClick={() => void onNavigate?.('inventario')}>
-            <span className="ini-shortcut__icon is-pink"><Plus size={22} strokeWidth={1.8} /></span>
-            <span className="ini-shortcut__info"><h4>Registrá tu primera prenda</h4><span>Abrí el inventario para empezar el catálogo.</span></span>
-            <span className="ini-shortcut__meta"><ArrowUpRight size={15} strokeWidth={1.8} /></span>
-          </button>
+          <div className="keeby-huge-numbers">
+            <div className="keeby-metric-group">
+              <span className="keeby-huge-val">0</span>
+              <span className="keeby-huge-label">Prendas Registradas</span>
+            </div>
+          </div>
         )}
-      </div>
+      </main>
+
+      {/* THE BOUTIQUE GRID (Minimalist Action Tiles) */}
+      <section className="boutique-grid-section">
+        <div className="boutique-grid">
+          
+          {/* Main Card: Vender (Accent Soft) */}
+          <button className="boutique-card boutique-card-accent" onClick={() => void openPdvWindowAction()}>
+            <div className="boutique-card-content large-content">
+              <div className="boutique-icon-ring"><ScanLine size={36} strokeWidth={2} /></div>
+              <div className="boutique-text-wrap">
+                <span className="boutique-title">Punto de Venta</span>
+                <span className="boutique-sub">Registrar ventas o apartados rápidos</span>
+              </div>
+            </div>
+            <div className="boutique-card-glow"></div>
+          </button>
+
+          <div className="boutique-column">
+            {/* Card: Inventario */}
+            <button className="boutique-card" onClick={() => void onNavigate?.('inventario')}>
+              <div className="boutique-card-content row-content">
+                <div className="boutique-icon"><Shirt size={24} strokeWidth={1.5} /></div>
+                <div className="boutique-text-wrap">
+                  <span className="boutique-title">Catálogo</span>
+                  <span className="boutique-sub">Gestionar prendas</span>
+                </div>
+              </div>
+            </button>
+
+            {/* Card: Saldos */}
+            <button className="boutique-card" onClick={() => void onNavigate?.('saldos')}>
+              <div className="boutique-card-content row-content">
+                <div className="boutique-icon"><WalletCards size={24} strokeWidth={1.5} /></div>
+                <div className="boutique-text-wrap">
+                  <span className="boutique-title">Saldos</span>
+                  <span className="boutique-sub">Cuentas por cobrar</span>
+                </div>
+              </div>
+            </button>
+          </div>
+          
+          <div className="boutique-column">
+            {/* Card: Reportes */}
+            <button className="boutique-card" onClick={() => void onNavigate?.('reportes')}>
+              <div className="boutique-card-content row-content">
+                <div className="boutique-icon"><LineChart size={24} strokeWidth={1.5} /></div>
+                <div className="boutique-text-wrap">
+                  <span className="boutique-title">Reportes</span>
+                  <span className="boutique-sub">Ventas e ingresos</span>
+                </div>
+              </div>
+            </button>
+
+            {/* Card: Etiquetas */}
+            <button className="boutique-card" onClick={() => void onNavigate?.('etiquetas')}>
+              <div className="boutique-card-content row-content">
+                <div className="boutique-icon"><Tag size={24} strokeWidth={1.5} /></div>
+                <div className="boutique-text-wrap">
+                  <span className="boutique-title">Etiquetas</span>
+                  <span className="boutique-sub">Imprimir códigos</span>
+                </div>
+              </div>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* FOOTER (Bottom Nav) */}
+      <footer className="keeby-footer">
+        <div className="keeby-footer-left">
+          <div className="keeby-pill gray-pill">
+            <span className="dot" style={{ background: '#ff453a' }}></span> Actividad: {recientes.length}
+          </div>
+        </div>
+        
+        <div className="keeby-footer-center">
+          <button className="keeby-pill black-pill" onClick={() => void onNavigate?.('reportes')}>
+            <LineChart size={14} /> Ver Reportes
+          </button>
+        </div>
+        
+        <div className="keeby-footer-right">
+          <button className="keeby-icon-btn" onClick={() => window.location.reload()}>
+            ↻ Restart
+          </button>
+        </div>
+      </footer>
+
     </div>
   )
 }
