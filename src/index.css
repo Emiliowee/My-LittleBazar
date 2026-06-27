@@ -22,8 +22,23 @@ body,
 :root {
   --radius: 0.75rem;
 
-  /* ── MLB tokens (dark default en :root; light en [data-theme="light"]).
-   * `--mlb-bg-desktop` es el lienzo de ventana; `--mlb-bg-app` es el área de trabajo. */
+  /* Keeby Native Theme Tokens (Dark Default) */
+  --keeby-bg-desktop: #000000;
+  --keeby-bg-app: #121212;
+  --keeby-bg-surface: rgba(255, 255, 255, 0.04);
+  --keeby-bg-surface-hover: rgba(255, 255, 255, 0.08);
+  --keeby-bg-surface-active: rgba(255, 255, 255, 0.12);
+  --keeby-ink-main: rgba(255, 255, 255, 0.95);
+  --keeby-ink-muted: rgba(255, 255, 255, 0.5);
+  --keeby-ink-faint: rgba(255, 255, 255, 0.2);
+  --keeby-border-light: 1px solid rgba(255, 255, 255, 0.06);
+  --keeby-border-strong: 1px solid rgba(255, 255, 255, 0.12);
+  --keeby-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --keeby-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --keeby-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --keeby-bg-gradient: radial-gradient(circle at 50% -20%, #1a1a24 0%, #000000 100%);
+
+  /* `--mlb-bg-desktop` es el lienzo de ventana; `--mlb-bg-app` es el área de trabajo. */
   /* Dark "Linear": no negro total — gris-pizarra levantado, neutro con un
    * pelín de frío, bordes hairline. Cómodo de noche y con buen contraste. */
   --mlb-bg-desktop: #0c0d10;
@@ -144,6 +159,22 @@ body,
  * elige light, este bloque los sobreescribe. Los tokens shadcn (--background
  * etc) ya están bien en :root para light, así que solo tocamos los --mlb-*. */
 [data-theme="light"] {
+  /* Keeby Native Theme Tokens (Light Mode) */
+  --keeby-bg-desktop: #e5e5ea;
+  --keeby-bg-app: #ffffff;
+  --keeby-bg-surface: rgba(255, 255, 255, 0.7);
+  --keeby-bg-surface-hover: rgba(255, 255, 255, 0.9);
+  --keeby-bg-surface-active: rgba(255, 255, 255, 1);
+  --keeby-ink-main: rgba(0, 0, 0, 0.9);
+  --keeby-ink-muted: rgba(0, 0, 0, 0.5);
+  --keeby-ink-faint: rgba(0, 0, 0, 0.2);
+  --keeby-border-light: 1px solid rgba(0, 0, 0, 0.08);
+  --keeby-border-strong: 1px solid rgba(0, 0, 0, 0.15);
+  --keeby-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --keeby-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --keeby-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --keeby-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e5e5ea 100%);
+
   /* Boutique Monserrat (paleta del mock pos-ui aprobado): gris azulado
    * muy suave de fondo, superficies blancas puras que flotan encima. */
   --mlb-bg-desktop: #eef1f4;
@@ -251,7 +282,7 @@ body,
 
 .mlb-glass {
   position: relative;
-  background: var(--mlb-bg-desktop);
+  background: var(--keeby-bg-gradient);
   border: none;
   border-radius: 0;
   box-shadow: none;
