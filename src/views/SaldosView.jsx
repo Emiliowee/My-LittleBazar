@@ -155,7 +155,7 @@ export function SaldosView() {
   const [cuentas, setCuentas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [config, setConfig] = useState(SALDOS_CONFIG_DEFAULT)
-  const [workspace, setWorkspace] = useState('Monserrat')
+  const [workspace, setWorkspace] = useState('Mi Bazar')
   const [modo, setModo] = useState('cuentas') // cuentas | nuevo | hoja
   const [selectedId, setSelectedId] = useState(null)
   const [filtroInicial, setFiltroInicial] = useState('todas')

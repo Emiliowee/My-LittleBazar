@@ -6,6 +6,7 @@ import {
 import { openPdvWindowAction } from '@/lib/openPdvWindow'
 import { useEnabledModules } from '@/hooks/useEnabledModules.js'
 import { GanchoMark } from '@/components/premium/MonserratMark'
+import { esRutaImagen, rutaAFileUrl } from '@/lib/categoriaEmoji'
 import { cn } from '@/lib/utils'
 
 /**
@@ -34,17 +35,23 @@ const SALDOS_SUBACCIONES = [
 export function MlbWorkspaceRail({ section, onNavigate, onBackHome }) {
   const { isEnabled } = useEnabledModules()
   const items = ITEMS.filter((it) => it.always || isEnabled(it.moduleId))
-  const [nombre, setNombre] = useState('Monserrat')
+  const [nombre, setNombre] = useState('Mi Bazar')
+  const [logo, setLogo] = useState('')
   const [saldosSub, setSaldosSub] = useState('cuentas')
 
   useEffect(() => {
     let alive = true
-    void window.bazar?.settings?.get?.().then((s) => {
+    const cargar = () => window.bazar?.settings?.get?.().then((s) => {
       if (!alive || !s) return
       const n = String(s.workspaceDisplayName || '').trim()
-      if (n) setNombre(n)
+      setNombre(n || 'Mi Bazar')
+      setLogo(String(s.workspaceLogoPath || '').trim())
     }).catch(() => {})
-    return () => { alive = false }
+    void cargar()
+    // Refresca si cambian los ajustes (logo/nombre) en otra pantalla.
+    const onChanged = () => void cargar()
+    window.addEventListener('mlb:settings-changed', onChanged)
+    return () => { alive = false; window.removeEventListener('mlb:settings-changed', onChanged) }
   }, [])
 
   useEffect(() => {
@@ -68,16 +75,26 @@ export function MlbWorkspaceRail({ section, onNavigate, onBackHome }) {
         className="mlb-focus-ring group mb-5 flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[var(--mlb-bg-hover)]"
         title="Ir al inicio"
       >
-        <span
-          className="grid size-9 shrink-0 place-items-center rounded-full"
-          style={{
-            background: 'oklch(0.93 0.035 20)',
-            boxShadow: '0 0 0 2px var(--mlb-oro)',
-          }}
-          aria-hidden
-        >
-          <GanchoMark size={20} strokeWidth={7} className="text-[oklch(0.24_0.01_25)]" />
-        </span>
+        {logo && esRutaImagen(logo) ? (
+          <img
+            src={rutaAFileUrl(logo)}
+            alt=""
+            className="size-9 shrink-0 rounded-full object-cover"
+            style={{ boxShadow: '0 0 0 2px var(--mlb-oro)' }}
+            aria-hidden
+          />
+        ) : (
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-full"
+            style={{
+              background: 'oklch(0.93 0.035 20)',
+              boxShadow: '0 0 0 2px var(--mlb-oro)',
+            }}
+            aria-hidden
+          >
+            <GanchoMark size={20} strokeWidth={7} className="text-[oklch(0.24_0.01_25)]" />
+          </span>
+        )}
         <span className="min-w-0">
           <span className="block truncate text-[14px] font-bold tracking-[-0.01em] text-[var(--mlb-text-primary)]">
             {nombre}

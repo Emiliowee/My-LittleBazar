@@ -45,6 +45,8 @@ export function LauncherSettingsView({ onBack, onOpenLabelEditor }) {
   const patch = useCallback(async (partial) => {
     setSettings((s) => ({ ...(s || {}), ...partial }))
     try { await window.bazar?.settings?.set?.(partial) } catch { /* noop */ }
+    // Avisar a la sidebar / encabezados para que refresquen logo y nombre en vivo.
+    try { window.dispatchEvent(new CustomEvent('mlb:settings-changed')) } catch { /* noop */ }
   }, [])
 
   return (

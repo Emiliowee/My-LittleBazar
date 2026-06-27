@@ -54,6 +54,8 @@ export function PdvView() {
   const [productos, setProductos] = useState([])
   const [productosLoading, setProductosLoading] = useState(true)
   const [categoriasMeta, setCategoriasMeta] = useState({})
+  const [bazarNombre, setBazarNombre] = useState('Mi Bazar')
+  const [bazarLogo, setBazarLogo] = useState('')
   const [cuentas, setCuentas] = useState(CUENTAS_DEFAULT)
   const [categoria, setCategoria] = useState('Todo')
   const [search, setSearch] = useState('')
@@ -93,6 +95,8 @@ export function PdvView() {
     settingsApi.get().then((s) => {
       if (!alive || !s) return
       if (s.categoriasMeta && typeof s.categoriasMeta === 'object') setCategoriasMeta(s.categoriasMeta)
+      setBazarNombre(String(s.workspaceDisplayName || '').trim() || 'Mi Bazar')
+      setBazarLogo(String(s.workspaceLogoPath || '').trim())
       const custom = parseCuentas(s)
       if (custom) setCuentas(custom)
     }).catch(() => {})
@@ -304,13 +308,17 @@ export function PdvView() {
       <aside className="pos-sidebar">
         <div className="pos-brand">
           <span className="pos-brand__logo">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3a2.5 2.5 0 0 0-2.5 2.5c0 1.25.5 2.25 1.5 3L8 11.5 2 17h20l-6-5.5-3-3c1-.75 1.5-1.75 1.5-3A2.5 2.5 0 0 0 12 3z" />
-              <path d="M12 5.5v3" /><path d="M2 17h20v2H2z" />
-            </svg>
+            {bazarLogo && esRutaImagen(bazarLogo) ? (
+              <img src={fileUrl(bazarLogo)} alt="" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3a2.5 2.5 0 0 0-2.5 2.5c0 1.25.5 2.25 1.5 3L8 11.5 2 17h20l-6-5.5-3-3c1-.75 1.5-1.75 1.5-3A2.5 2.5 0 0 0 12 3z" />
+                <path d="M12 5.5v3" /><path d="M2 17h20v2H2z" />
+              </svg>
+            )}
           </span>
           <span className="pos-brand__text">
-            <h1>Monserrat</h1>
+            <h1>{bazarNombre}</h1>
             <span>Punto de venta</span>
           </span>
         </div>

@@ -24,17 +24,19 @@ body,
 
   /* ── MLB tokens (dark default en :root; light en [data-theme="light"]).
    * `--mlb-bg-desktop` es el lienzo de ventana; `--mlb-bg-app` es el área de trabajo. */
-  --mlb-bg-desktop: #0e0e0e;
-  --mlb-bg-app: #161616;
-  --mlb-bg-panel: #1f1f1f;
-  --mlb-bg-panel-dark: #111111;
-  --mlb-bg-input: rgba(255, 255, 255, 0.08);
-  --mlb-bg-hover: rgba(255, 255, 255, 0.09);
-  --mlb-bg-active: rgba(255, 255, 255, 0.14);
+  /* Dark "Linear": no negro total — gris-pizarra levantado, neutro con un
+   * pelín de frío, bordes hairline. Cómodo de noche y con buen contraste. */
+  --mlb-bg-desktop: #0c0d10;
+  --mlb-bg-app: #17181c;
+  --mlb-bg-panel: #1e2025;
+  --mlb-bg-panel-dark: #131418;
+  --mlb-bg-input: rgba(255, 255, 255, 0.05);
+  --mlb-bg-hover: rgba(255, 255, 255, 0.065);
+  --mlb-bg-active: rgba(255, 255, 255, 0.10);
 
-  --mlb-text-primary: #ececec;
-  --mlb-text-secondary: #9d9d9d;
-  --mlb-text-muted: #6c6c6c;
+  --mlb-text-primary: #e9eaee;
+  --mlb-text-secondary: #9b9da7;
+  --mlb-text-muted: #6c6e79;
 
   /* Rosa boutique Monserrat (mock pos-ui) — en dark sube la luz para
    * respirar sobre fondo oscuro. El dorado es material precioso: solo
@@ -197,20 +199,20 @@ body,
   --shadow-lg: 0 8px 24px -6px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
   --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.7), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
 
-  /* Fondos: alineados al MLB (negro + glass real). Mantenemos la escala
-   * neutra (sin tinte morado) para encajar con el coral. */
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.94 0.005 0);
-  --card: oklch(0.18 0.005 0);
-  --card-foreground: oklch(0.94 0.005 0);
-  --popover: oklch(0.19 0.005 0);
-  --popover-foreground: oklch(0.94 0.005 0);
+  /* Fondos "Linear": gris-pizarra levantado, neutro con un pelín de frío
+   * (hue 270) para que combine con el rosa sin verse negro plano. */
+  --background: oklch(0.205 0.006 270);
+  --foreground: oklch(0.93 0.005 270);
+  --card: oklch(0.245 0.006 270);
+  --card-foreground: oklch(0.93 0.005 270);
+  --popover: oklch(0.255 0.006 270);
+  --popover-foreground: oklch(0.93 0.005 270);
 
-  --secondary: oklch(0.24 0.005 0);
-  --secondary-foreground: oklch(0.94 0.005 0);
-  --muted: oklch(0.22 0.005 0);
-  --muted-foreground: oklch(0.62 0.01 0);
-  --accent: oklch(0.26 0 0);
+  --secondary: oklch(0.27 0.006 270);
+  --secondary-foreground: oklch(0.93 0.005 270);
+  --muted: oklch(0.265 0.006 270);
+  --muted-foreground: oklch(0.65 0.012 270);
+  --accent: oklch(0.30 0.006 270);
   --accent-foreground: oklch(0.95 0 0);
 
   --destructive: oklch(0.65 0.21 22);
@@ -220,9 +222,9 @@ body,
   --warning: oklch(0.78 0.15 78);
   --warning-foreground: oklch(0.15 0 0);
 
-  --border: oklch(0.28 0.005 0);
-  --input: oklch(0.28 0.005 0);
-  --ring: oklch(0.72 0 0);
+  --border: oklch(0.30 0.006 270);
+  --input: oklch(0.30 0.006 270);
+  --ring: oklch(0.72 0.01 270);
 
   --chart-1: oklch(0.78 0 0);
   --chart-2: oklch(0.68 0.14 200);
@@ -230,15 +232,15 @@ body,
   --chart-4: oklch(0.62 0.16 295);
   --chart-5: oklch(0.74 0.18 142);
 
-  /* Sidebar: ligeramente más oscuro que el lienzo, con el mismo coral. */
-  --sidebar: oklch(0.10 0 0);
-  --sidebar-foreground: oklch(0.92 0.005 0);
+  /* Sidebar: un punto más oscuro que el lienzo (vitrina), tono Linear. */
+  --sidebar: oklch(0.175 0.006 270);
+  --sidebar-foreground: oklch(0.92 0.005 270);
   --sidebar-primary: oklch(0.84 0 0);
-  --sidebar-primary-foreground: oklch(0.12 0 0);
-  --sidebar-accent: oklch(0.22 0 0);
-  --sidebar-accent-foreground: oklch(0.94 0.005 0);
-  --sidebar-border: oklch(0.22 0.005 0);
-  --sidebar-ring: oklch(0.72 0 0);
+  --sidebar-primary-foreground: oklch(0.16 0 0);
+  --sidebar-accent: oklch(0.27 0.006 270);
+  --sidebar-accent-foreground: oklch(0.94 0.005 270);
+  --sidebar-border: oklch(0.27 0.006 270);
+  --sidebar-ring: oklch(0.72 0.01 270);
   --sidebar-muted-foreground: oklch(0.58 0.01 0);
 }
 

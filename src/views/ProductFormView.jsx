@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { formatPrice } from '@/lib/format'
-import { detectMarcaCategoria } from '@/lib/altaDetect'
+import { detectMarcaCategoria, CATEGORIAS_BASE } from '@/lib/altaDetect'
 import { emojiDeCategoria, esRutaImagen, rutaAFileUrl } from '@/lib/categoriaEmoji'
 import { suggestRefPrice } from '@/lib/priceHint'
 import { buildAltaSuggestions } from '@/lib/altaSuggest'
@@ -126,10 +126,14 @@ export function ProductFormView({ productId, initialCodigo, cloneFromId, onClose
     return () => { alive = false }
   }, [])
 
-  const categorias = useMemo(
-    () => [...new Set(invRows.map((r) => String(r.categoria || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
-    [invRows],
-  )
+  /* Categorías para el datalist y la detección: las que ya usaste + las que
+   * configuraste (Ajustes → Categorías) + las base de fábrica. Así en una
+   * instalación nueva (sin productos) el autollenado y la lista ya funcionan. */
+  const categorias = useMemo(() => {
+    const propias = invRows.map((r) => String(r.categoria || '').trim()).filter(Boolean)
+    const config = Object.keys(catMeta || {})
+    return [...new Set([...propias, ...config, ...CATEGORIAS_BASE])].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [invRows, catMeta])
   const marcas = useMemo(
     () => [...new Set(invRows.map((r) => String(r.marca || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
     [invRows],

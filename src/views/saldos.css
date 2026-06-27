@@ -39,6 +39,7 @@
 
 /* ── Deck (hero rosa boutique — reemplaza el índigo, sin cursor) ────── */
 .sld-deck { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; border-radius: 20px; padding: 22px 26px; background: linear-gradient(135deg, #fffcfb 0%, var(--mlb-accent-soft) 100%); border: 1px solid color-mix(in srgb, var(--mlb-accent) 18%, transparent); box-shadow: 0 10px 30px rgba(255,107,158,0.06); }
+[data-theme="dark"] .sld-deck { background: linear-gradient(135deg, var(--mlb-bg-panel) 0%, var(--mlb-accent-soft) 100%); box-shadow: none; }
 [data-theme="dark"] .sld-deck { background: linear-gradient(135deg, var(--mlb-bg-panel) 0%, color-mix(in srgb, var(--mlb-accent) 14%, var(--mlb-bg-panel)) 100%); border-color: color-mix(in srgb, var(--mlb-accent) 24%, transparent); }
 .sld-deck__left { flex: 1 1 0; min-width: 210px; display: flex; flex-direction: column; }
 .sld-deck__apps { flex: 0 0 auto; display: flex; gap: 18px; }

@@ -233,6 +233,8 @@ export function LabelEditor({ open, onClose, initialTemplateId = null, onDirty, 
       try {
         const s = await window.bazar?.settings?.get?.()
         setLogoPath(String(s?.workspaceLogoPath || ''))
+        const nombreBazar = String(s?.workspaceDisplayName || '').trim()
+        if (nombreBazar) setSampleOverride((prev) => ({ ...prev, empresa: nombreBazar }))
         setLabelLogoOpts({
           labelLogoStyle: s?.labelLogoStyle === 'original' ? 'original' : 'thermal',
           labelLogoWarmth: Number.isFinite(Number(s?.labelLogoWarmth)) ? Number(s.labelLogoWarmth) : 0,

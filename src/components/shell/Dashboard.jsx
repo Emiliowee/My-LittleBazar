@@ -58,7 +58,7 @@ export function Dashboard({ onNavigate, settings }) {
   const ThemeIcon = themePref === 'light' ? SunMedium : themePref === 'dark' ? Moon : MonitorCog
   const themeTitle = themePref === 'light' ? 'Tema claro (clic: oscuro)' : themePref === 'dark' ? 'Tema oscuro (clic: sistema)' : 'Tema del sistema (clic: claro)'
 
-  const workspaceName = String(settings?.workspaceDisplayName || 'Monserrat').trim() || 'Monserrat'
+  const workspaceName = String(settings?.workspaceDisplayName || 'Mi Bazar').trim() || 'Mi Bazar'
   const categoriasMeta = settings?.categoriasMeta && typeof settings.categoriasMeta === 'object' ? settings.categoriasMeta : {}
   const plan = findPlan(settings?.selectedPlan)
 
