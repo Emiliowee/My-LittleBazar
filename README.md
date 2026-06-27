@@ -135,7 +135,20 @@ src/
 scripts/             Pruebas y auditorías ejecutables
 build/               Recursos del instalador (icono)
 docs/MANUAL.md       Guía de uso para la tienda
+docs/especificacion/ Especificación técnica y funcional (el "libro" del sistema)
 ```
+
+---
+
+## Documentación
+
+- **[Especificación técnica y funcional](docs/especificacion/README.md)** — el
+  "libro" completo del sistema: visión, **requisitos y compatibilidad**,
+  instalación, arquitectura, modelo de datos, módulos, **reglas de negocio del
+  dinero**, operación/respaldos, seguridad, solución de problemas, glosario y
+  estado/roadmap (12 capítulos).
+- **[Guía de uso (MANUAL)](docs/MANUAL.md)** — cómo se usa día a día en la tienda
+  ("El día completo").
 
 ---
 
