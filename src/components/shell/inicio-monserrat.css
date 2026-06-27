@@ -29,13 +29,13 @@
   align-items: center;
   color: #fff;
   border: none;
-  /* Hero vivo: rosa→magenta con luz de oro (identidad Monserrat). */
+  /* Hero suave y "caro": rosa pastel con luz de oro, mezcla soñada (no saturado). */
   background:
-    radial-gradient(120% 135% at 0% 0%, rgba(255, 173, 201, 0.95) 0%, transparent 46%),
-    radial-gradient(120% 130% at 100% 4%, rgba(244, 196, 48, 0.85) 0%, transparent 42%),
-    radial-gradient(150% 165% at 100% 100%, #b8336f 0%, transparent 60%),
-    linear-gradient(135deg, #ff6b9e 0%, #e24b86 55%, #b23a78 100%);
-  box-shadow: 0 18px 42px -16px rgba(194, 71, 126, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    radial-gradient(90% 130% at 10% 6%, rgba(255, 190, 214, 0.95) 0%, transparent 55%),
+    radial-gradient(85% 120% at 96% 8%, rgba(255, 222, 176, 0.72) 0%, transparent 50%),
+    radial-gradient(130% 150% at 90% 118%, rgba(208, 120, 170, 0.5) 0%, transparent 62%),
+    linear-gradient(125deg, #ff97bb 0%, #f37aac 55%, #d870a6 100%);
+  box-shadow: 0 16px 40px -18px rgba(216, 112, 166, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 [data-theme="dark"] .ini-greet {
   background:
@@ -53,7 +53,7 @@
   right: -40px;
   width: 320px;
   height: 320px;
-  opacity: 0.14;
+  opacity: 0.07;
   filter: brightness(0) invert(1);
   transform: rotate(15deg);
   pointer-events: none;

@@ -1,6 +1,6 @@
 /* ── Flujo Fiar (dentro del PDV) — LLENA la pantalla como la venta ───── */
 
-.fiar2 { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--mlb-bg-app); overflow: hidden; }
+.fiar2 { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--mlb-bg-app); overflow: hidden; }
 
 /* Barra compacta: volver + stepper (centrado, arriba del todo) + badge */
 .fiar2-bar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--mlb-border); background: var(--mlb-bg-panel); }
@@ -256,3 +256,24 @@
   .fiar2-abono2 { flex-direction: column; }
   .fiar2-ab-side2 { width: auto; border-left: none; border-top: 1px solid var(--mlb-border); }
 }
+
+/* Ver vales desde el PDV (Abonar y fiar) */
+.fiar2-vales-link { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.fiar2-vales-link:hover { color: var(--mlb-accent-ink); border-color: var(--mlb-accent); }
+.fiar2-vales-ov { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.fiar2-vales { width: min(440px, 92%); max-height: 80%; display: flex; flex-direction: column; background: var(--mlb-bg-panel); border: 1px solid var(--mlb-border); border-radius: 16px; box-shadow: var(--mlb-shadow-panel); overflow: hidden; }
+.fiar2-vales-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--mlb-border); }
+.fiar2-vales-head strong { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--mlb-text-primary); }
+.fiar2-vales-head button { border: none; background: none; color: var(--mlb-text-muted); cursor: pointer; display: grid; place-items: center; padding: 4px; border-radius: 6px; }
+.fiar2-vales-head button:hover { background: var(--mlb-bg-hover); color: var(--mlb-text-primary); }
+.fiar2-vales-search { margin: 12px 16px 8px; height: 36px; border-radius: 9px; border: 1px solid var(--mlb-border-strong); background: var(--mlb-bg-input); padding: 0 12px; font-size: 13px; color: var(--mlb-text-primary); outline: none; }
+.fiar2-vales-search:focus { border-color: var(--mlb-accent); }
+.fiar2-vales-list { overflow-y: auto; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.fiar2-vales-empty { font-size: 13px; color: var(--mlb-text-muted); padding: 14px 4px; }
+.fiar2-vale { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--mlb-border); border-radius: 11px; }
+.fiar2-vale.is-usado { opacity: 0.55; }
+.fiar2-vale-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fiar2-vale-cod { font-family: var(--mlb-font-mono); font-size: 15px; font-weight: 800; letter-spacing: 1px; color: var(--mlb-text-primary); }
+.fiar2-vale-meta { font-size: 12px; color: var(--mlb-text-muted); }
+.fiar2-vale-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
+.fiar2-vale-btn:hover { background: var(--mlb-bg-active); color: var(--mlb-accent-ink); border-color: var(--mlb-accent); }

@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Minus, Package, IdCard, Check, ShoppingBag, Banknote, Smartphone } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Minus, Package, IdCard, Check, ShoppingBag, Banknote, Smartphone, Ticket, Copy, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
+import { imprimirVale } from '@/lib/valeTicket'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
 import './fiar-flow.css'
@@ -43,11 +44,13 @@ function FotoId({ ruta }) {
 }
 
 export function AccionScreen({ onBack, onAbonar, onFiar }) {
+  const [valesOpen, setValesOpen] = useState(false)
   return (
     <div className="fiar2">
       <div className="fiar2-bar">
         <button type="button" className="fiar2-back" onClick={onBack} aria-label="Volver"><ArrowLeft size={20} strokeWidth={1.9} /></button>
         <div className="fiar2-titles"><strong>Abonar y fiar</strong><span>Elige qué vas a hacer con el cliente</span></div>
+        <button type="button" className="fiar2-vales-link" onClick={() => setValesOpen(true)}><Ticket size={16} strokeWidth={1.9} /> Ver vales</button>
       </div>
       <div className="fiar2-accion">
         <button type="button" className="fiar2-half fiar2-half--abonar" onClick={onAbonar}>
@@ -60,6 +63,49 @@ export function AccionScreen({ onBack, onAbonar, onFiar }) {
           <span className="fiar2-half-nom">Fiar</span>
           <small>Llevar mercancía a crédito</small>
         </button>
+      </div>
+      {valesOpen ? <ValesMini onClose={() => setValesOpen(false)} /> : null}
+    </div>
+  )
+}
+
+/** Lista compacta de vales en el PDV: ver, copiar el código y reimprimir. */
+function ValesMini({ onClose }) {
+  const [vales, setVales] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [q, setQ] = useState('')
+  useEffect(() => {
+    let alive = true
+    const fn = window.bazar?.db?.listVales
+    if (!fn) { setCargando(false); return }
+    Promise.resolve(fn()).then((r) => { if (alive) setVales(Array.isArray(r) ? r : []) })
+      .catch(() => {}).finally(() => { if (alive) setCargando(false) })
+    return () => { alive = false }
+  }, [])
+  const filtrados = vales.filter((v) => !q.trim() || String(v.codigo).toUpperCase().includes(q.trim().toUpperCase()))
+  const copiar = async (cod) => { try { await navigator.clipboard.writeText(cod); toast.success(`Código ${cod} copiado.`) } catch { toast.error('No se pudo copiar.') } }
+  return (
+    <div className="fiar2-vales-ov" onClick={onClose}>
+      <div className="fiar2-vales" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Vales emitidos">
+        <div className="fiar2-vales-head">
+          <strong><Ticket size={17} strokeWidth={2} /> Vales emitidos</strong>
+          <button type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
+        </div>
+        <input className="fiar2-vales-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por código…" />
+        <div className="fiar2-vales-list">
+          {cargando ? <p className="fiar2-vales-empty">Cargando…</p>
+            : filtrados.length === 0 ? <p className="fiar2-vales-empty">{vales.length === 0 ? 'Aún no hay vales emitidos.' : 'Ningún vale con ese código.'}</p>
+            : filtrados.map((v) => (
+              <div key={v.codigo} className={`fiar2-vale ${v.activo ? '' : 'is-usado'}`}>
+                <div className="fiar2-vale-main">
+                  <span className="fiar2-vale-cod">{v.codigo}</span>
+                  <span className="fiar2-vale-meta">{v.activo ? `${formatPrice(v.disponible)} disponible` : 'Usado'}</span>
+                </div>
+                <button type="button" className="fiar2-vale-btn" title="Copiar código" onClick={() => copiar(v.codigo)}><Copy size={15} /></button>
+                <button type="button" className="fiar2-vale-btn" title="Reimprimir / PDF" onClick={() => imprimirVale(v)}><Printer size={15} /></button>
+              </div>
+            ))}
+        </div>
       </div>
     </div>
   )

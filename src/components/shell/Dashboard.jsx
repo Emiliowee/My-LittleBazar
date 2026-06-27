@@ -38,6 +38,7 @@ function HangerIcon({ size = 32 }) {
 
 export function Dashboard({ onNavigate, settings }) {
   const [recientes, setRecientes] = useState([])
+  const [resumen, setResumen] = useState(null)
   const { themePref, cycleTheme } = useTheme()
 
   useEffect(() => {
@@ -47,6 +48,9 @@ export function Dashboard({ onNavigate, settings }) {
     api.getInventoryList({ search: '', estadoIndex: 0, vistaIndex: 0, listTab: 'main' })
       .then((rows) => { if (alive && Array.isArray(rows)) setRecientes(rows.slice(0, 4)) })
       .catch(() => {})
+    if (api.getWelcomeSnapshot) {
+      api.getWelcomeSnapshot().then((s) => { if (alive && s) setResumen(s) }).catch(() => {})
+    }
     return () => { alive = false }
   }, [])
 
@@ -165,6 +169,24 @@ export function Dashboard({ onNavigate, settings }) {
           <button type="button" className="ini-iconbtn" title="Ajustes" aria-label="Abrir ajustes" onClick={() => onNavigate?.('ajustes')}><SettingsIcon size={19} strokeWidth={1.7} /></button>
         </div>
       </div>
+
+      {/* Métricas */}
+      {resumen ? (
+        <div className="ini-metrics">
+          <button type="button" className="ini-metric ini-metric--btn" onClick={() => void onNavigate?.('inventario')}>
+            <span className="ini-metric__label">Prendas disponibles</span>
+            <span className="ini-metric__value">{Number(resumen.productosDisponibles) || 0}</span>
+          </button>
+          <button type="button" className="ini-metric ini-metric--btn" onClick={() => void onNavigate?.('saldos')}>
+            <span className="ini-metric__label">Clientes con saldo</span>
+            <span className="ini-metric__value">{Number(resumen.clientesConSaldo) || 0}</span>
+          </button>
+          <button type="button" className="ini-metric ini-metric--btn ini-metric--oro" onClick={() => void onNavigate?.('saldos')}>
+            <span className="ini-metric__label">Por cobrar en la calle</span>
+            <span className="ini-metric__value">{formatPrice(Number(resumen.saldoTotalPendiente) || 0)}</span>
+          </button>
+        </div>
+      ) : null}
 
       {/* Atajos */}
       <div className="ini-block">
