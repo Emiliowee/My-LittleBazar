@@ -65,8 +65,7 @@ export function MlbWorkspaceRail({ section, onNavigate, onBackHome }) {
 
   return (
     <nav
-      className="flex w-[212px] shrink-0 flex-col overflow-y-auto border-r border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-3 pb-3 pt-4"
-      style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+      className="flex w-[212px] shrink-0 flex-col overflow-y-auto border-r border-[var(--mlb-border)] bg-[var(--mlb-bg-panel-dark)] px-3 pb-3 pt-4"
       aria-label="Navegación del bazar"
     >
       {/* Identidad */}
@@ -172,7 +171,7 @@ function SidebarItem({ icon: Icon, label, hint, active, onClick }) {
       className={cn(
         'mlb-focus-ring group flex h-[38px] w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[13.5px] transition-colors',
         active
-          ? 'bg-[var(--mlb-bg-active)] font-semibold text-[var(--mlb-accent)] shadow-[var(--shadow-sm)]'
+          ? 'bg-[var(--mlb-bg-panel)] font-semibold text-[var(--mlb-accent)] shadow-[var(--shadow-xs)]'
           : 'font-medium text-[var(--mlb-text-secondary)] hover:bg-[var(--mlb-bg-hover)] hover:text-[var(--mlb-text-primary)]',
       )}
     >

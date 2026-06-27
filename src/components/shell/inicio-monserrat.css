@@ -31,10 +31,8 @@
   /* Sobrio: superficie limpia, hairline, sombra suave. La identidad entra solo
    * como acento (eyebrow rosa + aro de oro en el logo). */
   background: var(--mlb-bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--mlb-border);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 [data-theme="dark"] .ini-greet {
   background: var(--mlb-bg-panel);
@@ -70,7 +68,7 @@
 
 .ini-greet__text { display: flex; flex-direction: column; gap: 3px; }
 .ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--mlb-accent-ink); text-transform: uppercase; }
-.ini-greet__title { font-family: var(--mlb-font-display); font-size: 42px; font-style: normal; font-weight: 800; line-height: 1.04; letter-spacing: -0.02em; color: var(--mlb-text-primary); }
+.ini-greet__title { font-family: var(--mlb-font-display); font-size: 42px; font-style: normal; font-weight: 800; line-height: 1.04; letter-spacing: -0.025em; color: var(--mlb-text-primary); }
 .ini-greet__date { font-size: 13.5px; color: var(--mlb-text-muted); margin-top: 2px; }
 
 .ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 8px; }
@@ -87,15 +85,13 @@
 .ini-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ini-metric {
   background: var(--mlb-bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--mlb-border);
   border-radius: 16px;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
 }
 .ini-metric__label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--mlb-text-muted); text-transform: uppercase; }
 .ini-metric__value { font-family: var(--mlb-font-display); font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--mlb-text-primary); }
@@ -118,62 +114,52 @@
 .ini-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ini-shortcut {
   background: var(--mlb-bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--mlb-border);
-  border-radius: 24px;
-  padding: 24px 20px;
+  border-radius: 18px;
+  padding: 18px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 15px;
   cursor: pointer;
-  text-align: center;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  transition: transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
 }
 .ini-shortcut:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   border-color: var(--mlb-border-strong);
   box-shadow: var(--shadow-md);
-  background: var(--mlb-bg-panel-dark);
+  background: var(--mlb-bg-panel);
 }
-.ini-shortcut:active { transform: translateY(2px) scale(0.98); box-shadow: var(--shadow-sm); }
+.ini-shortcut:active { transform: scale(0.97) translateY(0); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
 
 .ini-shortcut__icon {
-  width: 56px; height: 56px; border-radius: 16px;
+  width: 46px; height: 46px; border-radius: 12px;
   background: var(--mlb-bg-input); color: var(--mlb-text-secondary);
   display: grid; place-items: center; flex-shrink: 0;
-  transition: all 0.2s ease;
 }
-.ini-shortcut:hover .ini-shortcut__icon { transform: scale(1.05); }
 .ini-shortcut__icon.is-pink { background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
 
-.ini-shortcut__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.ini-shortcut__info h4 { font-size: 15px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ini-shortcut__info span { font-size: 13px; font-weight: 500; color: var(--mlb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ini-shortcut__meta { display: none; } /* Keeby es más limpio, no muestra botones de atajo en los pads grandes */
+.ini-shortcut__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ini-shortcut__info h4 { font-size: 14.5px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__info span { font-size: 12px; color: var(--mlb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--mlb-text-muted); }
+.ini-shortcut__meta kbd { font-family: var(--mlb-font-mono); font-size: 10px; background: var(--mlb-bg-input); padding: 2px 6px; border-radius: 4px; }
 
 /* ── Ingresos recientes ──────────────────────────────────────────── */
 
 .ini-recent { display: flex; flex-direction: column; gap: 6px; }
 .ini-recent__item {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 20px; border-radius: 16px;
-  background: var(--mlb-bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 14px;
   border: 1px solid var(--mlb-border);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 160ms ease, transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 .ini-recent__item:hover {
-  background: var(--mlb-bg-panel-dark);
-  border-color: var(--mlb-border-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-2px);
-}
-.ini-recent__item:active {
-  transform: translateY(1px) scale(0.99);
+  background: var(--mlb-bg-panel);
+  border-color: var(--mlb-border);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.03);
+  transform: translateY(-1px);
 }
 .ini-recent__emoji {
   width: 40px; height: 40px; border-radius: 9px;

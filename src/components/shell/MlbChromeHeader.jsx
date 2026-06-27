@@ -25,7 +25,7 @@ export function MlbChromeHeader({ section = null, children = null }) {
   const center = sectionLabel ?? children
   return (
     <header
-      className="relative z-[100] grid h-[52px] shrink-0 grid-cols-[1fr_auto_1fr] items-center bg-transparent px-4"
+      className="relative z-[100] grid h-9 min-h-[36px] shrink-0 grid-cols-[1fr_auto_1fr] items-stretch border-b border-[var(--mlb-border)] bg-[var(--mlb-bg-panel-dark)] pl-3 pr-1"
     >
       {/* Brand a la izquierda */}
       <div
@@ -33,14 +33,14 @@ export function MlbChromeHeader({ section = null, children = null }) {
         style={{ WebkitAppRegion: 'drag' }}
       >
         <span className="mlb-brand-dot shrink-0" aria-hidden />
-        <span className="truncate text-[13px] font-semibold tracking-[0.02em] text-[var(--mlb-text-primary)]">
+        <span className="truncate text-[11.5px] font-semibold tracking-[-0.005em] text-[var(--mlb-text-primary)]">
           My Little Bazar
         </span>
       </div>
 
       {/* Breadcrumb / sección actual */}
       <div
-        className="flex cursor-default items-center justify-center px-3 text-[13px] font-medium tracking-[0.02em] text-[var(--mlb-text-muted)] select-none"
+        className="flex cursor-default items-center justify-center px-3 text-[11px] font-medium tracking-[0.02em] text-[var(--mlb-text-muted)] select-none"
         style={{ WebkitAppRegion: 'drag' }}
         onDoubleClick={() => window.bazar?.window?.toggleMaximize?.()}
       >

@@ -296,11 +296,12 @@ function createWindow() {
     minHeight: 600,
     autoHideMenuBar: true,
     /* macOS: titlebar nativa con tráfico oculto. Win/Linux: sin frame.
-     * En Windows 11 se habilita Mica Material.
-     */
+     * Ventana OPACA: el tema (claro/oscuro) lo controla 100% el CSS de la app,
+     * no el material translúcido del SO. Fondo sólido = sin parpadeo al abrir
+     * y sin costo de compositing de Mica. (El experimento Mica/vidrio se retiró
+     * porque hacía que el modo oscuro dependiera del tema de Windows.) */
     frame: process.platform === 'darwin',
-    backgroundColor: process.platform === 'darwin' ? '#0e0e0e' : '#00000000',
-    backgroundMaterial: process.platform === 'win32' ? 'mica' : undefined,
+    backgroundColor: '#0e0e0e',
     roundedCorners: true,
     icon: icon || undefined,
     webPreferences: {
@@ -418,8 +419,7 @@ function createPdvWindow() {
   } else {
     opts.frame = false
     opts.transparent = false
-    opts.backgroundColor = '#00000000'
-    opts.backgroundMaterial = 'mica'
+    opts.backgroundColor = '#171717'
   }
 
   pdvWindow = new BrowserWindow(opts)
