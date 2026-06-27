@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Handshake, CircleDollarSign, Search, X, Plus, Mi
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
 import { imprimirVale } from '@/lib/valeTicket'
+import { copyText } from '@/lib/copyText'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
 import './fiar-flow.css'
@@ -83,7 +84,7 @@ export function ValesMini({ onClose }) {
     return () => { alive = false }
   }, [])
   const filtrados = vales.filter((v) => !q.trim() || String(v.codigo).toUpperCase().includes(q.trim().toUpperCase()))
-  const copiar = async (cod) => { try { await navigator.clipboard.writeText(cod); toast.success(`Código ${cod} copiado.`) } catch { toast.error('No se pudo copiar.') } }
+  const copiar = async (cod) => { (await copyText(cod)) ? toast.success(`Código ${cod} copiado.`) : toast.error('No se pudo copiar.') }
   return (
     <div className="fiar2-vales-ov" onClick={onClose}>
       <div className="fiar2-vales" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Vales emitidos">

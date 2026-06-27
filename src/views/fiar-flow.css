@@ -7,6 +7,9 @@
 .fiar2-back { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
 .fiar2-back:hover { background: var(--mlb-bg-active); color: var(--mlb-text-primary); }
 .fiar2-bar-pad { width: 34px; flex: none; }
+.fiar2-titles { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.fiar2-titles strong { font-size: 15px; font-weight: 700; color: var(--mlb-text-primary); }
+.fiar2-titles span { font-size: 12px; color: var(--mlb-text-muted); }
 .fiar2-stepper { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .fiar2-stp { display: inline-flex; align-items: center; gap: 8px; color: var(--mlb-text-muted); }
 .fiar2-stp-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; background: var(--mlb-bg-panel); border: 2px solid var(--mlb-border); flex: none; }
@@ -29,6 +32,8 @@
 .fiar2-half:hover { background: var(--mlb-bg-hover); }
 .fiar2-half--fiar { background: var(--mlb-accent-soft); }
 .fiar2-half--fiar:hover { background: color-mix(in srgb, var(--mlb-accent) 16%, var(--mlb-bg-panel)); }
+[data-theme="dark"] .fiar2-half--fiar { background: rgba(255, 127, 170, 0.06); }
+[data-theme="dark"] .fiar2-half--fiar:hover { background: rgba(255, 127, 170, 0.11); }
 .fiar2-half-ic { width: 92px; height: 92px; border-radius: 26px; display: grid; place-items: center; background: var(--mlb-bg-panel); box-shadow: var(--shadow-sm); }
 .fiar2-half--abonar .fiar2-half-ic { color: var(--mlb-success); }
 .fiar2-half--fiar .fiar2-half-ic { color: var(--mlb-accent-ink); }

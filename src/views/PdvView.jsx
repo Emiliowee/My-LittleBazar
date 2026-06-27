@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
 import { imprimirVale } from '@/lib/valeTicket'
+import { copyText } from '@/lib/copyText'
 import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
@@ -672,9 +673,9 @@ function VentasWorkspace({ onChanged }) {
       if (res.vale?.codigo) {
         // Copiamos el código al portapapeles de una vez y mostramos el modal con
         // botón Copiar/Imprimir, para que la dueña lo pueda dar al instante.
-        try { await navigator.clipboard.writeText(res.vale.codigo) } catch { /* noop */ }
+        const copiado = await copyText(res.vale.codigo)
         setValeGenerado({ codigo: res.vale.codigo, monto: res.vale.monto, nota: `Devolución de ${item.codigo_snapshot || ''}`.trim() })
-        toast.success(`Vale ${res.vale.codigo} generado · código copiado.`, { duration: 12000 })
+        toast.success(`Vale ${res.vale.codigo} generado${copiado ? ' · código copiado' : ''}.`, { duration: 12000 })
       } else if (res.ventaEsCredito) {
         let msg = `Devuelta. Se canceló ${formatPrice(res.deudaCancelada || 0)} del fiado${res.clienteNombre ? ` de ${res.clienteNombre}` : ''}.`
         if ((res.excedente || 0) > 0) {
@@ -721,7 +722,7 @@ function VentasWorkspace({ onChanged }) {
 
   const handleClienteClick = () => {
     if (!detalle?.clienteNombre) return
-    if (navigator.clipboard) navigator.clipboard.writeText(detalle.clienteNombre)
+    void copyText(detalle.clienteNombre)
     localStorage.setItem('navigate_to', JSON.stringify({ path: 'saldos', search: detalle.clienteNombre, ts: Date.now() }))
     toast.success('Abriendo cliente en la ventana principal...', { duration: 3000 })
   }
@@ -966,7 +967,7 @@ function VentasWorkspace({ onChanged }) {
               <div style={{ fontSize: 14, color: 'var(--mlb-text-secondary)', marginTop: 2 }}>{formatPrice(valeGenerado.monto)} disponible</div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-              <button type="button" className="pos-confirm-btn" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => { navigator.clipboard?.writeText(valeGenerado.codigo).then(() => toast.success('Código copiado.')).catch(() => {}) }}><Copy size={16} /> Copiar código</button>
+              <button type="button" className="pos-confirm-btn" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={async () => { (await copyText(valeGenerado.codigo)) ? toast.success('Código copiado.') : toast.error('No se pudo copiar.') }}><Copy size={16} /> Copiar código</button>
               <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 12, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => imprimirVale(valeGenerado)}><Printer size={16} /> Imprimir</button>
             </div>
           </div>

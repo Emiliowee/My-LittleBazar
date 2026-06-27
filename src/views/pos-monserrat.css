@@ -698,6 +698,7 @@
 }
 .pos-confirm-btn:hover:not(:disabled) { background: var(--mlb-accent-hover); }
 .pos-confirm-btn:active:not(:disabled) { transform: scale(0.98); }
+[data-theme="dark"] .pos-confirm-btn { box-shadow: none; }
 .pos-confirm-btn:disabled { background: var(--mlb-bg-active); color: var(--mlb-text-muted); box-shadow: none; cursor: not-allowed; }
 
 /* Campos genéricos en modales (cuenta, cliente, enganche) */

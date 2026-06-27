@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner'
 import { SALDOS_CONFIG_DEFAULT, calcularCuentaSaldos, daysAgoIso, todayIso } from '@/lib/saldosLedger'
 import { imprimirVale } from '@/lib/valeTicket'
+import { copyText } from '@/lib/copyText'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import './saldos.css'
@@ -1094,8 +1095,8 @@ function ValesModal({ workspace, onClose }) {
   const totalDisp = activos.reduce((s, v) => s + (Number(v.disponible) || 0), 0)
 
   const copiar = async (codigo) => {
-    try { await navigator.clipboard.writeText(codigo); toast.success(`Código ${codigo} copiado.`) }
-    catch { toast.error('No se pudo copiar el código.') }
+    if (await copyText(codigo)) toast.success(`Código ${codigo} copiado.`)
+    else toast.error('No se pudo copiar el código.')
   }
 
   return (

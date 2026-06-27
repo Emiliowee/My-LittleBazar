@@ -85,7 +85,7 @@
 .ini-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ini-metric {
   background: var(--mlb-bg-panel);
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid var(--mlb-border);
   border-radius: 16px;
   padding: 18px;
   display: flex;
@@ -114,7 +114,7 @@
 .ini-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .ini-shortcut {
   background: var(--mlb-bg-panel);
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid var(--mlb-border);
   border-radius: 18px;
   padding: 18px;
   display: flex;
@@ -127,8 +127,8 @@
 }
 .ini-shortcut:hover {
   transform: translateY(-2px);
-  border-color: rgba(0,0,0,0.08);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.04);
+  border-color: var(--mlb-border-strong);
+  box-shadow: var(--shadow-md);
   background: var(--mlb-bg-panel);
 }
 .ini-shortcut:active { transform: scale(0.97) translateY(0); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
@@ -152,7 +152,7 @@
 .ini-recent__item {
   display: flex; align-items: center; gap: 14px;
   padding: 12px 14px; border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.02);
+  border: 1px solid var(--mlb-border);
   transition: background-color 160ms ease, transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 .ini-recent__item:hover {

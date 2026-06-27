@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, clipboard } = require('electron')
 
 contextBridge.exposeInMainWorld('bazar', {
   runtime: {
@@ -132,6 +132,11 @@ contextBridge.exposeInMainWorld('bazar', {
   },
   shell: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  },
+  clipboard: {
+    /** Copiar texto al portapapeles (confiable en la app instalada, a diferencia
+     *  de navigator.clipboard que falla en contexto file://). */
+    writeText: (text) => { try { clipboard.writeText(String(text ?? '')); return true } catch { return false } },
   },
   labels: {
     list: () => ipcRenderer.invoke('labels:list'),

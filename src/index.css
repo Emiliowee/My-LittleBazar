@@ -41,8 +41,10 @@ body,
   /* Rosa boutique Monserrat (mock pos-ui) — en dark sube la luz para
    * respirar sobre fondo oscuro. El dorado es material precioso: solo
    * para momentos especiales, nunca decoración masiva. */
-  --mlb-accent: #ff7faa;
-  --mlb-accent-hover: #ff97ba;
+  /* Rosa de RELLENO un punto más profundo en dark: como botón con texto blanco
+   * el #ff7faa quedaba glary; #ef5f93 se ve cómodo y mantiene buen contraste. */
+  --mlb-accent: #ef5f93;
+  --mlb-accent-hover: #f47aa6;
   --mlb-accent-ink: #ff9cbd;
   --mlb-accent-soft: rgba(255, 127, 170, 0.16);
   --mlb-accent-ring: rgba(255, 127, 170, 0.35);
