@@ -3,6 +3,7 @@ import {
   Search, Barcode, Trash2, ShoppingBag, X, Plus, Minus, ArrowRight, User,
   Banknote, Smartphone, Handshake, Check, ArrowLeft, RefreshCcw,
   ShoppingCart, Printer, ReceiptText, BarChart3, Store, CalendarDays, Tag,
+  Ticket, Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
@@ -11,7 +12,7 @@ import { ipcErrorMessage } from '@/lib/ipcErrorMessage'
 import { productSellableError } from '@/lib/productSellable'
 import { emojiDeCategoria as emojiDe, esRutaImagen, rutaAFileUrl as fileUrl } from '@/lib/categoriaEmoji'
 import { calcularCuentaSaldos } from '@/lib/saldosLedger'
-import { AccionScreen, FiarScreen, AbonarScreen } from './FiarFlow'
+import { AccionScreen, FiarScreen, AbonarScreen, ValesMini } from './FiarFlow'
 import { corteDelDia, totalFiadoAfuera } from '@/lib/reportes'
 import { banquetaPrecioParaToggleVendido } from '@/lib/banquetaPrint'
 import './pos-monserrat.css'
@@ -585,6 +586,8 @@ function VentasWorkspace({ onChanged }) {
   const [sel, setSel] = useState(null)
   const [detalle, setDetalle] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [valesOpen, setValesOpen] = useState(false)
+  const [valeGenerado, setValeGenerado] = useState(null)
   const [query, setQuery] = useState('')
   const [metodo, setMetodo] = useState('todos')
   const [rango, setRango] = useState('hoy')
@@ -667,9 +670,11 @@ function VentasWorkspace({ onChanged }) {
       const res = await api.registrarDevolucionRapida({ ventaItemId: item.id, codigo: item.codigo_snapshot, montoReembolso: montoRenglon, metodoReembolso })
       if (!res?.ok) throw new Error(res?.message || 'No se pudo devolver.')
       if (res.vale?.codigo) {
-        toast.success(`Vale ${res.vale.codigo} por ${formatPrice(res.vale.monto)}.`, { duration: 12000 })
-        const imprimir = window.confirm(`VALE generado\n\nCódigo: ${res.vale.codigo}\nMonto: ${formatPrice(res.vale.monto)}\n\n¿Imprimir el vale ahora?\n(Aceptar = imprimir / Guardar como PDF · Cancelar = solo anotarlo)`)
-        if (imprimir) imprimirVale({ codigo: res.vale.codigo, monto: res.vale.monto, nota: `Devolución de ${item.codigo_snapshot || ''}`.trim() })
+        // Copiamos el código al portapapeles de una vez y mostramos el modal con
+        // botón Copiar/Imprimir, para que la dueña lo pueda dar al instante.
+        try { await navigator.clipboard.writeText(res.vale.codigo) } catch { /* noop */ }
+        setValeGenerado({ codigo: res.vale.codigo, monto: res.vale.monto, nota: `Devolución de ${item.codigo_snapshot || ''}`.trim() })
+        toast.success(`Vale ${res.vale.codigo} generado · código copiado.`, { duration: 12000 })
       } else if (res.ventaEsCredito) {
         let msg = `Devuelta. Se canceló ${formatPrice(res.deudaCancelada || 0)} del fiado${res.clienteNombre ? ` de ${res.clienteNombre}` : ''}.`
         if ((res.excedente || 0) > 0) {
@@ -744,6 +749,10 @@ function VentasWorkspace({ onChanged }) {
           <button type="button" className="pos-sr__actionbtn" onClick={() => void cargar()}>
             <RefreshCcw size={22} strokeWidth={2} />
             Actualizar
+          </button>
+          <button type="button" className="pos-sr__actionbtn" onClick={() => setValesOpen(true)}>
+            <Ticket size={22} strokeWidth={2} />
+            Vales
           </button>
           <button type="button" className="pos-sr__actionbtn" disabled={!detalle} onClick={() => void reimprimir()}>
             <Printer size={22} strokeWidth={2} />
@@ -938,6 +947,28 @@ function VentasWorkspace({ onChanged }) {
               </div>
               <button type="submit" className="pos-confirm-btn" disabled={!scanCode.trim()}>Buscar y Devolver</button>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {valesOpen ? <ValesMini onClose={() => setValesOpen(false)} /> : null}
+
+      {valeGenerado ? (
+        <div className="pos-modal-overlay" onClick={() => setValeGenerado(null)}>
+          <div className="pos-modal pos-modal--cash" onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal__head">
+              <h2>Vale generado</h2>
+              <button type="button" className="pos-modal__close" onClick={() => setValeGenerado(null)}><X size={20} strokeWidth={2} /></button>
+            </div>
+            <p style={{ margin: '0 0 12px', color: 'var(--mlb-text-muted)', fontSize: 13, lineHeight: 1.4 }}>Entrégaselo al cliente. Lo podrá usar en su próxima compra. (Ya quedó copiado.)</p>
+            <div style={{ textAlign: 'center', padding: '12px 0', border: '2px dashed var(--mlb-accent)', borderRadius: 12, background: 'var(--mlb-accent-soft)' }}>
+              <div style={{ fontFamily: 'var(--mlb-font-mono)', fontSize: 34, fontWeight: 800, letterSpacing: 3, color: 'var(--mlb-text-primary)' }}>{valeGenerado.codigo}</div>
+              <div style={{ fontSize: 14, color: 'var(--mlb-text-secondary)', marginTop: 2 }}>{formatPrice(valeGenerado.monto)} disponible</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button type="button" className="pos-confirm-btn" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => { navigator.clipboard?.writeText(valeGenerado.codigo).then(() => toast.success('Código copiado.')).catch(() => {}) }}><Copy size={16} /> Copiar código</button>
+              <button type="button" className="pos-tool__ghost" style={{ flex: 1, padding: 12, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => imprimirVale(valeGenerado)}><Printer size={16} /> Imprimir</button>
+            </div>
           </div>
         </div>
       ) : null}

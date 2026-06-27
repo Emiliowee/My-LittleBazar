@@ -266,7 +266,7 @@
 /* Ver vales desde el PDV (Abonar y fiar) */
 .fiar2-vales-link { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--mlb-border); background: var(--mlb-bg-app); color: var(--mlb-text-secondary); font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .fiar2-vales-link:hover { color: var(--mlb-accent-ink); border-color: var(--mlb-accent); }
-.fiar2-vales-ov { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.fiar2-vales-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 9000; }
 .fiar2-vales { width: min(440px, 92%); max-height: 80%; display: flex; flex-direction: column; background: var(--mlb-bg-panel); border: 1px solid var(--mlb-border); border-radius: 16px; box-shadow: var(--mlb-shadow-panel); overflow: hidden; }
 .fiar2-vales-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--mlb-border); }
 .fiar2-vales-head strong { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--mlb-text-primary); }

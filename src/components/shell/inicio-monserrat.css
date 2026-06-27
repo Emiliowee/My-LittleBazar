@@ -1,289 +1,178 @@
 /* ─────────────────────────────────────────────────────────────────────
- * Inicio Monserrat — Exact Keeby Web Replica (Typing Test Aesthetic)
+ * Inicio Monserrat — dashboard del mock pos-ui aprobado.
+ * Greeting card con gradiente rosa + patrón de ganchos, métricas,
+ * atajos y ingresos recientes. Sobre tokens del sistema.
  * ──────────────────────────────────────────────────────────────────── */
 
-.keeby-replica-wrapper {
+.ini {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 22px 26px 28px;
   display: flex;
   flex-direction: column;
+  gap: 22px;
   background: var(--mlb-bg-app);
   font-family: var(--mlb-font);
-  color: var(--mlb-text-primary);
 }
 
-/* ── 1. HEADER (Top Nav) ── */
-.keeby-nav {
+/* ── Greeting card ───────────────────────────────────────────────── */
+
+.ini-greet {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 30px 32px;
+  min-height: 130px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 32px 48px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.keeby-nav-left { display: flex; align-items: center; gap: 12px; }
-.keeby-logo-text { color: var(--mlb-accent); font-weight: 800; font-size: 16px; letter-spacing: -0.03em; }
-.keeby-trophy { color: var(--mlb-text-muted); font-weight: 500; }
-
-.keeby-nav-center { color: var(--mlb-text-secondary); font-weight: 500; font-variant-numeric: tabular-nums; }
-
-.keeby-nav-right { display: flex; gap: 8px; align-items: center; }
-
-/* Pills */
-.keeby-pill {
+  color: var(--mlb-text-primary);
+  /* Sobrio: superficie limpia, hairline, sombra suave. La identidad entra solo
+   * como acento (eyebrow rosa + aro de oro en el logo). */
   background: var(--mlb-bg-panel);
   border: 1px solid var(--mlb-border);
-  border-radius: 9999px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mlb-text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s;
-}
-.keeby-pill:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
-.keeby-pill:active { transform: translateY(1px); }
-
-.keeby-pill.black-pill {
-  background: var(--mlb-text-primary); color: var(--mlb-bg-app); border-color: transparent;
-}
-
-.keeby-pill.gray-pill {
-  background: var(--mlb-bg-hover); border-color: transparent;
-}
-
-/* ── 2. METRICS (Huge Typography) ── */
-.keeby-main-metrics {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 0 60px;
-}
-
-.keeby-huge-numbers {
-  display: flex;
-  gap: 80px;
-  align-items: baseline;
-}
-
-.keeby-metric-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.keeby-huge-val {
-  font-family: var(--mlb-font-display);
-  font-size: 110px;
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  color: var(--mlb-text-primary);
-}
-[data-theme="dark"] .keeby-huge-val { color: #f0f0f0; }
-
-.keeby-huge-label {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--mlb-text-muted);
-  margin-top: 8px;
-}
-
-/* ── 3. BOUTIQUE ACTION TILES (Flat & Minimalist) ── */
-.boutique-grid-section {
-  display: flex;
-  justify-content: center;
-  position: relative;
-  padding-bottom: 60px;
-}
-
-.boutique-grid {
-  display: grid;
-  grid-template-columns: 320px 280px 280px;
-  gap: 20px;
-}
-
-.boutique-column {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Base Card CSS (Flat, Glassy, Clean) */
-.boutique-card {
-  appearance: none; border: none; outline: none; padding: 0;
-  position: relative;
-  background: var(--mlb-bg-panel);
-  border: 1px solid var(--mlb-border);
-  border-radius: 24px;
-  cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s;
-  text-align: left;
-  width: 100%;
+}
+[data-theme="dark"] .ini-greet {
+  background: var(--mlb-bg-panel);
+  border-color: var(--mlb-border);
+}
+
+.ini-greet__pattern {
+  position: absolute;
+  top: -70px;
+  right: -50px;
+  width: 300px;
+  height: 300px;
+  opacity: 0.05;
+  transform: rotate(15deg);
+  pointer-events: none;
+}
+
+.ini-greet__content { position: relative; z-index: 1; display: flex; align-items: center; gap: 20px; }
+
+.ini-greet__logo {
+  width: 62px;
+  height: 62px;
+  background: var(--mlb-accent-soft);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: none;
+  color: var(--mlb-accent-ink);
+  box-shadow: 0 0 0 2px var(--mlb-oro-suave);
+  flex-shrink: 0;
   overflow: hidden;
 }
-.boutique-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--mlb-border-strong);
-}
-.boutique-card:active {
-  transform: translateY(1px);
-  box-shadow: var(--shadow-sm);
-  transition-duration: 0.1s;
-}
 
-.boutique-card-content {
-  display: flex;
-  position: relative;
-  z-index: 1;
-}
+.ini-greet__text { display: flex; flex-direction: column; gap: 3px; }
+.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--mlb-accent-ink); text-transform: uppercase; }
+.ini-greet__title { font-family: var(--mlb-font-display); font-size: 42px; font-style: normal; font-weight: 800; line-height: 1.04; letter-spacing: -0.025em; color: var(--mlb-text-primary); }
+.ini-greet__date { font-size: 13.5px; color: var(--mlb-text-muted); margin-top: 2px; }
 
-/* Layouts inside cards */
-.large-content {
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  height: 280px;
-  padding: 32px;
-  gap: 24px;
+.ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 8px; }
+.ini-iconbtn {
+  background: transparent; border: 1px solid var(--mlb-border); color: var(--mlb-text-muted);
+  cursor: pointer; padding: 9px; border-radius: 10px;
+  display: grid; place-items: center;
+  transition: background-color 160ms ease, color 160ms ease;
 }
+.ini-iconbtn:hover { background: var(--mlb-bg-hover); color: var(--mlb-text-primary); }
 
-.row-content {
-  flex-direction: row;
-  align-items: center;
-  height: 130px;
-  padding: 24px;
-  gap: 20px;
-}
+/* ── Métricas ────────────────────────────────────────────────────── */
 
-/* Typography inside cards */
-.boutique-text-wrap {
+.ini-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ini-metric {
+  background: var(--mlb-bg-panel);
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: var(--shadow-xs);
 }
-.boutique-title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--mlb-text-primary);
-  line-height: 1.2;
-}
-.boutique-sub {
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.7;
-  color: var(--mlb-text-secondary);
-  line-height: 1.4;
-}
+.ini-metric__label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--mlb-text-muted); text-transform: uppercase; }
+.ini-metric__value { font-family: var(--mlb-font-display); font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--mlb-text-primary); }
+.ini-metric--oro { border-color: color-mix(in srgb, var(--mlb-oro) 45%, transparent); background: linear-gradient(135deg, var(--mlb-oro-suave), transparent 55%), var(--mlb-bg-panel); }
+.ini-metric--oro .ini-metric__value { color: var(--mlb-text-primary); }
+.ini-metric--btn { cursor: pointer; text-align: left; font: inherit; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.ini-metric--btn:hover { border-color: var(--mlb-accent); box-shadow: var(--shadow-sm); }
+.ini-metric--btn:active { transform: scale(0.99); }
 
-.boutique-icon {
-  color: var(--mlb-text-secondary);
-  transition: color 0.2s, transform 0.25s cubic-bezier(0.2, 0, 0, 1);
-}
-.boutique-card:hover .boutique-icon {
-  color: var(--mlb-text-primary);
-  transform: scale(1.05);
-}
+/* ── Bloques ─────────────────────────────────────────────────────── */
 
-/* Accent Card (Vender) */
-.boutique-card-accent {
-  border-color: var(--mlb-accent-ring);
-  background: var(--mlb-bg-panel); /* Ensure it stays clean */
-}
-.boutique-card-accent:hover {
-  border-color: var(--mlb-accent);
-  box-shadow: var(--mlb-shadow-accent);
-}
+.ini-block { display: flex; flex-direction: column; gap: 11px; }
+.ini-block__head { display: flex; justify-content: space-between; align-items: center; }
+.ini-title { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--mlb-text-muted); text-transform: uppercase; }
+.ini-link { font-size: 13px; color: var(--mlb-text-muted); background: none; border: none; cursor: pointer; }
+.ini-link:hover { color: var(--mlb-text-primary); text-decoration: underline; }
 
-.boutique-icon-ring {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  background: var(--mlb-accent-soft);
-  color: var(--mlb-accent);
+/* ── Atajos ──────────────────────────────────────────────────────── */
+
+.ini-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ini-shortcut {
+  background: var(--mlb-bg-panel);
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 18px;
+  padding: 18px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), background 0.2s;
+  gap: 15px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  transition: transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
 }
-.boutique-card-accent:hover .boutique-icon-ring {
-  transform: scale(1.05) rotate(-3deg);
-  background: var(--mlb-accent);
-  color: #fff;
+.ini-shortcut:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.04);
+  background: var(--mlb-bg-panel);
 }
-.boutique-card-accent:hover .boutique-title {
-  color: var(--mlb-accent);
-}
+.ini-shortcut:active { transform: scale(0.97) translateY(0); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
 
-.boutique-card-glow {
-  position: absolute;
-  bottom: -50px;
-  right: -50px;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, var(--mlb-accent-soft) 0%, transparent 70%);
-  pointer-events: none;
-  opacity: 0.2;
-  transition: opacity 0.3s, transform 0.4s;
+.ini-shortcut__icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: var(--mlb-bg-input); color: var(--mlb-text-secondary);
+  display: grid; place-items: center; flex-shrink: 0;
 }
-.boutique-card-accent:hover .boutique-card-glow {
-  opacity: 0.8;
-  transform: scale(1.2);
-}
+.ini-shortcut__icon.is-pink { background: var(--mlb-accent-soft); color: var(--mlb-accent-ink); }
 
+.ini-shortcut__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ini-shortcut__info h4 { font-size: 14.5px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__info span { font-size: 12px; color: var(--mlb-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-shortcut__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--mlb-text-muted); }
+.ini-shortcut__meta kbd { font-family: var(--mlb-font-mono); font-size: 10px; background: var(--mlb-bg-input); padding: 2px 6px; border-radius: 4px; }
 
+/* ── Ingresos recientes ──────────────────────────────────────────── */
 
-/* ── 4. FOOTER (Bottom Nav) ── */
-.keeby-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 48px 48px;
+.ini-recent { display: flex; flex-direction: column; gap: 6px; }
+.ini-recent__item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.02);
+  transition: background-color 160ms ease, transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
+.ini-recent__item:hover {
+  background: var(--mlb-bg-panel);
+  border-color: var(--mlb-border);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.03);
+  transform: translateY(-1px);
+}
+.ini-recent__emoji {
+  width: 40px; height: 40px; border-radius: 9px;
+  background: var(--mlb-bg-input); display: grid; place-items: center;
+  font-size: 21px; flex-shrink: 0;
+}
+.ini-recent__emoji img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
+.ini-recent__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ini-recent__info h4 { font-size: 14px; font-weight: 600; color: var(--mlb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-recent__info span { font-size: 12px; color: var(--mlb-text-muted); font-family: var(--mlb-font-mono); }
+.ini-recent__amount { font-family: var(--mlb-font-mono); font-size: 15px; font-weight: 700; color: var(--mlb-text-primary); white-space: nowrap; }
+.ini-recent__empty { padding: 18px 12px; font-size: 13.5px; color: var(--mlb-text-muted); }
 
-.keeby-footer-left,
-.keeby-footer-center,
-.keeby-footer-right {
-  display: flex;
-  gap: 12px;
-}
-
-.dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  display: inline-block;
-}
-
-.keeby-icon-btn {
-  background: none; border: none; font-size: 13px; font-weight: 600; color: var(--mlb-text-muted); cursor: pointer;
-  display: flex; align-items: center; gap: 6px;
-}
-.keeby-icon-btn:hover { color: var(--mlb-text-primary); }
-
-@media (max-width: 950px) {
-  .boutique-grid { grid-template-columns: repeat(2, 1fr); }
-  .boutique-card-accent { grid-column: span 2; }
-  .large-content { height: 160px; flex-direction: row; justify-content: flex-start; align-items: center; }
-}
-@media (max-width: 900px) {
-  .keeby-huge-numbers { gap: 40px; }
-  .keeby-huge-val { font-size: 80px; }
-}
-@media (max-width: 600px) {
-  .boutique-grid { grid-template-columns: 1fr; }
-  .boutique-card-accent { grid-column: span 1; }
-  .keeby-huge-numbers { flex-direction: column; gap: 20px; align-items: center; }
-  .keeby-huge-val { font-size: 60px; }
-  .keeby-nav, .keeby-footer { padding: 24px; flex-direction: column; gap: 16px; }
+@media (max-width: 720px) {
+  .ini-metrics, .ini-shortcuts { grid-template-columns: 1fr; }
 }

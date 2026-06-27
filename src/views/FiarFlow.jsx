@@ -70,7 +70,7 @@ export function AccionScreen({ onBack, onAbonar, onFiar }) {
 }
 
 /** Lista compacta de vales en el PDV: ver, copiar el código y reimprimir. */
-function ValesMini({ onClose }) {
+export function ValesMini({ onClose }) {
   const [vales, setVales] = useState([])
   const [cargando, setCargando] = useState(true)
   const [q, setQ] = useState('')
