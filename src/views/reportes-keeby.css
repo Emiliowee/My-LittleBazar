@@ -1,0 +1,62 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Reportes — acabado "glass" inspirado en Keeby (vidrio translúcido + crisp).
+ * Keeby (app de sonidos de teclado en Mac) usa material Glass/Liquid Glass:
+ * superficies translúcidas, línea de luz superior, hovers limpios.
+ * Aquí se adapta a la identidad sobria: vidrio sutil + UN acento (rosa).
+ * Solo añade superficie/sheen; el borde y el layout siguen en Tailwind.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.rep-glass {
+  position: relative;
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--mlb-bg-panel) 90%, transparent),
+      color-mix(in oklab, var(--mlb-bg-panel) 74%, transparent));
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+}
+
+/* Línea de luz superior — el “canto de vidrio”. */
+.rep-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 40%);
+  pointer-events: none;
+}
+[data-theme="dark"] .rep-glass::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%);
+}
+
+/* Métrica crisp y grande (Keeby presume números nítidos). */
+.rep-metric-value {
+  font-family: var(--mlb-font-mono, var(--mlb-font));
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.04;
+  font-variant-numeric: tabular-nums;
+  color: var(--mlb-text-primary);
+}
+
+/* Línea “qué responde” del reporte: la pregunta humana en cursiva discreta. */
+.rep-responde {
+  position: relative;
+  padding-left: 11px;
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--mlb-text-secondary);
+}
+.rep-responde::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--mlb-accent);
+  opacity: 0.7;
+}

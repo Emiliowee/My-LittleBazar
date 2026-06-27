@@ -31,6 +31,7 @@ import {
   PageHeaderDivider,
   SearchField,
 } from '@/components/premium'
+import './reportes-keeby.css'
 
 const REPORTES = [
   {
@@ -534,7 +535,7 @@ function ReportCard({ reporte, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-xl border bg-[var(--mlb-bg-panel)] p-5 text-left transition-all duration-200 hover:border-[var(--mlb-border-focus)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mlb-accent-ring)] ${
+      className={`rep-glass group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--mlb-border-focus)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mlb-accent-ring)] ${
         active
           ? 'border-[var(--mlb-accent)] shadow-[0_0_0_1px_var(--mlb-accent)]'
           : 'border-[var(--mlb-border)] shadow-[var(--shadow-xs)]'
@@ -557,6 +558,9 @@ function ReportCard({ reporte, active, onClick }) {
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--mlb-text-secondary)]">
           {reporte.descripcion}
         </p>
+        {reporte.responde ? (
+          <p className="rep-responde mt-3">{reporte.responde}</p>
+        ) : null}
       </div>
 
       <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
@@ -970,11 +974,11 @@ export function ReportesView() {
 
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {reporte.metricas.map((m) => (
-              <div key={m.label} className="group relative overflow-hidden rounded-xl border border-[var(--mlb-border)] bg-[var(--mlb-bg-panel)] px-5 py-4 shadow-[var(--mlb-shadow-card)] transition-transform hover:-translate-y-0.5">
+              <div key={m.label} className="rep-glass group relative overflow-hidden rounded-xl border border-[var(--mlb-border)] px-5 py-4 shadow-[var(--mlb-shadow-card)] transition-transform hover:-translate-y-0.5">
                 <div className="absolute -right-6 -top-6 size-24 rounded-full bg-[var(--mlb-bg-hover)] opacity-50 blur-xl transition-all group-hover:bg-[var(--mlb-accent-soft)]"></div>
                 <div className="relative">
                   <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mlb-text-muted)]">{m.label}</div>
-                  <div className="mt-1.5 font-mono text-[24px] font-bold tracking-tight tabular-nums text-[var(--mlb-text-primary)]">{m.value}</div>
+                  <div className="rep-metric-value mt-1.5">{m.value}</div>
                 </div>
               </div>
             ))}
