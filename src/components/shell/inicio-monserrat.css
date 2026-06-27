@@ -21,27 +21,40 @@
 .ini-greet {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  padding: 22px 28px;
+  border-radius: 24px;
+  padding: 34px 34px;
+  min-height: 152px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--mlb-bg-panel);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+  color: #fff;
+  border: none;
+  /* Hero vivo: rosa→magenta con luz de oro (identidad Monserrat). */
+  background:
+    radial-gradient(120% 135% at 0% 0%, rgba(255, 173, 201, 0.95) 0%, transparent 46%),
+    radial-gradient(120% 130% at 100% 4%, rgba(244, 196, 48, 0.85) 0%, transparent 42%),
+    radial-gradient(150% 165% at 100% 100%, #b8336f 0%, transparent 60%),
+    linear-gradient(135deg, #ff6b9e 0%, #e24b86 55%, #b23a78 100%);
+  box-shadow: 0 18px 42px -16px rgba(194, 71, 126, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 [data-theme="dark"] .ini-greet {
-  background: var(--mlb-bg-panel);
-  border-color: rgba(255, 255, 255, 0.05);
+  background:
+    radial-gradient(120% 135% at 0% 0%, rgba(255, 127, 170, 0.5) 0%, transparent 50%),
+    radial-gradient(120% 130% at 100% 4%, rgba(244, 196, 48, 0.4) 0%, transparent 44%),
+    radial-gradient(150% 165% at 100% 100%, #7a2350 0%, transparent 62%),
+    linear-gradient(135deg, #c14d7c 0%, #8d3a63 55%, #5d2745 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 18px 46px -18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .ini-greet__pattern {
   position: absolute;
-  top: -50px;
-  right: -50px;
-  width: 300px;
-  height: 300px;
-  opacity: 0.1;
+  top: -60px;
+  right: -40px;
+  width: 320px;
+  height: 320px;
+  opacity: 0.14;
+  filter: brightness(0) invert(1);
   transform: rotate(15deg);
   pointer-events: none;
 }
@@ -49,32 +62,33 @@
 .ini-greet__content { position: relative; z-index: 1; display: flex; align-items: center; gap: 22px; }
 
 .ini-greet__logo {
-  width: 70px;
-  height: 70px;
-  background: var(--mlb-bg-panel);
+  width: 68px;
+  height: 68px;
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  color: var(--mlb-text-primary);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.ini-greet__text { display: flex; flex-direction: column; gap: 3px; }
-.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--mlb-accent-ink); text-transform: uppercase; }
-.ini-greet__title { font-family: var(--mlb-font-display); font-size: 32px; font-style: normal; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; color: var(--mlb-text-primary); }
-.ini-greet__date { font-size: 13.5px; color: var(--mlb-text-muted); margin-top: 2px; }
+.ini-greet__text { display: flex; flex-direction: column; gap: 4px; }
+.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.13em; color: rgba(255, 255, 255, 0.82); text-transform: uppercase; }
+.ini-greet__title { font-family: var(--mlb-font-display); font-size: 38px; font-style: italic; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: #fff; }
+.ini-greet__date { font-size: 13.5px; color: rgba(255, 255, 255, 0.78); margin-top: 2px; }
 
-.ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 6px; }
+.ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 8px; }
 .ini-iconbtn {
-  background: transparent; border: none; color: var(--mlb-text-muted);
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff;
   cursor: pointer; padding: 9px; border-radius: 50%;
   display: grid; place-items: center;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition: background-color 180ms ease, transform 180ms ease;
 }
-.ini-iconbtn:hover { background: rgba(255, 255, 255, 0.55); color: var(--mlb-text-primary); }
-[data-theme="dark"] .ini-iconbtn:hover { background: var(--mlb-bg-hover); }
+.ini-iconbtn:hover { background: rgba(255, 255, 255, 0.28); color: #fff; transform: translateY(-1px); }
 
 /* ── Métricas ────────────────────────────────────────────────────── */
 

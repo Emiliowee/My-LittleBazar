@@ -59,6 +59,7 @@ export function Dashboard({ onNavigate, settings }) {
   const themeTitle = themePref === 'light' ? 'Tema claro (clic: oscuro)' : themePref === 'dark' ? 'Tema oscuro (clic: sistema)' : 'Tema del sistema (clic: claro)'
 
   const workspaceName = String(settings?.workspaceDisplayName || 'Mi Bazar').trim() || 'Mi Bazar'
+  const logoUrl = esRutaImagen(settings?.workspaceLogoPath) ? rutaAFileUrl(settings.workspaceLogoPath) : ''
   const categoriasMeta = settings?.categoriasMeta && typeof settings.categoriasMeta === 'object' ? settings.categoriasMeta : {}
   const plan = findPlan(settings?.selectedPlan)
 
@@ -148,8 +149,10 @@ export function Dashboard({ onNavigate, settings }) {
         {/* Decoración removida por petición del usuario para una vista más limpia */}
 
         <div className="ini-greet__content">
-          <span className="ini-greet__logo" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}>
-            <img src="branding/logo.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scale(1.05)' }} />
+          <span className="ini-greet__logo">
+            {logoUrl
+              ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <HangerIcon size={30} />}
           </span>
           <div className="ini-greet__text">
             <span className="ini-greet__eyebrow">{workspaceName} · saldos, ropa y más…</span>
