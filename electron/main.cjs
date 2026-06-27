@@ -1404,12 +1404,36 @@ function registerIpc() {
  * existente no pierda acceso a Banqueta solo porque actualizamos a la
  * arquitectura modular.
  */
+/**
+ * Actualizaciones automáticas (electron-updater + GitHub Releases).
+ * Solo en la app INSTALADA: busca una versión nueva al abrir, la descarga sola
+ * y la instala al cerrar la app. En desarrollo no hace nada. Si no hay internet
+ * o falla, no molesta (solo registra el error). Así la tienda recibe mejoras sin
+ * tener que reinstalar a mano: basta con publicar una versión nueva (tag vX.Y.Z).
+ */
+function setupAutoUpdate() {
+  if (!app.isPackaged) return
+  try {
+    const { autoUpdater } = require('electron-updater')
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.on('error', (e) => console.error('[autoUpdate]', e?.message || e))
+    autoUpdater.on('update-downloaded', (info) => console.log('[autoUpdate] lista para instalar:', info?.version || ''))
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {})
+    // Re-chequear cada 6 h por si la caja queda abierta todo el día.
+    setInterval(() => { try { autoUpdater.checkForUpdatesAndNotify().catch(() => {}) } catch { /* noop */ } }, 6 * 60 * 60 * 1000)
+  } catch (e) {
+    console.error('[autoUpdate] no disponible:', e?.message || e)
+  }
+}
+
 app.whenReady().then(() => {
   settingsStore = createSettingsStore(app.getPath('userData'))
   labelTemplatesStore = createLabelTemplatesStore(app.getPath('userData'))
   db.initDatabase()
   registerIpc()
   createWindow()
+  setupAutoUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

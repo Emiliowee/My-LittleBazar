@@ -1,7 +1,7 @@
 {
   "name": "my-little-bazar",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "engines": {
     "node": ">=20 <25"
@@ -46,6 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "electron-updater": "^6.8.9",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",
@@ -104,7 +105,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
@@ -122,6 +125,13 @@
       "target": "dmg",
       "icon": "build/icon.png"
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Emiliowee",
+        "repo": "My-LittleBazar",
+        "releaseType": "release"
+      }
+    ]
   }
 }

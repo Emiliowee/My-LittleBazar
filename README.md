@@ -80,11 +80,26 @@ que compila el instalador en `windows-latest` (donde el permiso de symlink ya ex
 publica como artefacto. Para sacar una versión:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0      # dispara el build y adjunta el .exe al Release
+# subí la versión en package.json (p. ej. 1.0.3) y luego:
+git tag v1.0.3
+git push origin v1.0.3      # el CI compila y PUBLICA el .exe + latest.yml en Releases
 ```
 
 También puedes lanzarlo a mano desde la pestaña **Actions → Build installer → Run workflow**.
+
+### Actualizaciones automáticas (electron-updater)
+
+La app instalada **se actualiza sola**. Al abrir, busca una versión más nueva en
+**GitHub Releases**, la descarga en segundo plano y la instala al cerrar — sin
+reinstalar a mano. Cómo funciona el ciclo:
+
+1. Subís `version` en `package.json` y empujás un tag `vX.Y.Z`.
+2. El CI compila y **publica** en Releases el `.exe`, el `latest.yml` y el `.blockmap`
+   (electron-builder con `--publish always`; los metadatos los lee el updater).
+3. La caja de la tienda detecta la versión nueva al abrir y se actualiza sola.
+
+> El auto-update funciona **a partir de la v1.0.2** (la primera que lo incluye). La
+> tienda instala esa una vez; de ahí en adelante, todo es automático.
 
 ---
 

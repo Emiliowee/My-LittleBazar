@@ -1,8 +1,10 @@
 name: Build installer
 
-# Compila el instalador de Windows en un runner con privilegios (windows-latest),
-# evitando el muro de symlinks de winCodeSign que aparece en máquinas locales sin
-# Modo de programador. Se dispara al empujar un tag vX.Y.Z o manualmente.
+# Compila y PUBLICA el instalador de Windows en un runner con privilegios
+# (windows-latest), evitando el muro de symlinks de winCodeSign de las máquinas
+# locales sin Modo de programador. Al empujar un tag vX.Y.Z, electron-builder sube
+# a la Release: el .exe + latest.yml + .blockmap — lo que electron-updater necesita
+# para que la app instalada se ACTUALICE SOLA. También se puede lanzar a mano.
 
 on:
   push:
@@ -29,22 +31,19 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Compilar instalador
-        run: npm run build
+      - name: Compilar y publicar instalador (+ metadatos de auto-update)
+        run: npm run build -- --publish always
         env:
+          # Token del propio Actions para publicar en Releases (auto-update).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No firmamos (sin certificado); evita que electron-builder intente firmar.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Subir instalador como artefacto
+      - name: Subir instalador como artefacto (respaldo)
         uses: actions/upload-artifact@v4
         with:
           name: My-Little-Bazar-Setup
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/latest.yml
           if-no-files-found: error
-
-      - name: Adjuntar al Release (solo en tags)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release/*.exe
-          generate_release_notes: true
