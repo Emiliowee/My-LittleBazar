@@ -21,74 +21,64 @@
 .ini-greet {
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
-  padding: 34px 34px;
-  min-height: 152px;
+  border-radius: 20px;
+  padding: 30px 32px;
+  min-height: 130px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #fff;
-  border: none;
-  /* Hero suave y "caro": rosa pastel con luz de oro, mezcla soñada (no saturado). */
-  background:
-    radial-gradient(90% 130% at 10% 6%, rgba(255, 190, 214, 0.95) 0%, transparent 55%),
-    radial-gradient(85% 120% at 96% 8%, rgba(255, 222, 176, 0.72) 0%, transparent 50%),
-    radial-gradient(130% 150% at 90% 118%, rgba(208, 120, 170, 0.5) 0%, transparent 62%),
-    linear-gradient(125deg, #ff97bb 0%, #f37aac 55%, #d870a6 100%);
-  box-shadow: 0 16px 40px -18px rgba(216, 112, 166, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: var(--mlb-text-primary);
+  /* Sobrio: superficie limpia, hairline, sombra suave. La identidad entra solo
+   * como acento (eyebrow rosa + aro de oro en el logo). */
+  background: var(--mlb-bg-panel);
+  border: 1px solid var(--mlb-border);
+  box-shadow: var(--shadow-sm);
 }
 [data-theme="dark"] .ini-greet {
-  background:
-    radial-gradient(120% 135% at 0% 0%, rgba(255, 127, 170, 0.5) 0%, transparent 50%),
-    radial-gradient(120% 130% at 100% 4%, rgba(244, 196, 48, 0.4) 0%, transparent 44%),
-    radial-gradient(150% 165% at 100% 100%, #7a2350 0%, transparent 62%),
-    linear-gradient(135deg, #c14d7c 0%, #8d3a63 55%, #5d2745 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 18px 46px -18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: var(--mlb-bg-panel);
+  border-color: var(--mlb-border);
 }
 
 .ini-greet__pattern {
   position: absolute;
-  top: -60px;
-  right: -40px;
-  width: 320px;
-  height: 320px;
-  opacity: 0.07;
-  filter: brightness(0) invert(1);
+  top: -70px;
+  right: -50px;
+  width: 300px;
+  height: 300px;
+  opacity: 0.05;
   transform: rotate(15deg);
   pointer-events: none;
 }
 
-.ini-greet__content { position: relative; z-index: 1; display: flex; align-items: center; gap: 22px; }
+.ini-greet__content { position: relative; z-index: 1; display: flex; align-items: center; gap: 20px; }
 
 .ini-greet__logo {
-  width: 68px;
-  height: 68px;
-  background: rgba(255, 255, 255, 0.16);
+  width: 62px;
+  height: 62px;
+  background: var(--mlb-accent-soft);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  color: #fff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(6px);
+  border: none;
+  color: var(--mlb-accent-ink);
+  box-shadow: 0 0 0 2px var(--mlb-oro-suave);
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.ini-greet__text { display: flex; flex-direction: column; gap: 4px; }
-.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.13em; color: rgba(255, 255, 255, 0.82); text-transform: uppercase; }
-.ini-greet__title { font-family: var(--mlb-font-display); font-size: 38px; font-style: italic; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: #fff; }
-.ini-greet__date { font-size: 13.5px; color: rgba(255, 255, 255, 0.78); margin-top: 2px; }
+.ini-greet__text { display: flex; flex-direction: column; gap: 3px; }
+.ini-greet__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--mlb-accent-ink); text-transform: uppercase; }
+.ini-greet__title { font-family: var(--mlb-font-display); font-size: 34px; font-style: normal; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; color: var(--mlb-text-primary); }
+.ini-greet__date { font-size: 13.5px; color: var(--mlb-text-muted); margin-top: 2px; }
 
 .ini-greet__actions { position: relative; z-index: 1; display: flex; gap: 8px; }
 .ini-iconbtn {
-  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff;
-  cursor: pointer; padding: 9px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--mlb-border); color: var(--mlb-text-muted);
+  cursor: pointer; padding: 9px; border-radius: 10px;
   display: grid; place-items: center;
-  transition: background-color 180ms ease, transform 180ms ease;
+  transition: background-color 160ms ease, color 160ms ease;
 }
-.ini-iconbtn:hover { background: rgba(255, 255, 255, 0.28); color: #fff; transform: translateY(-1px); }
+.ini-iconbtn:hover { background: var(--mlb-bg-hover); color: var(--mlb-text-primary); }
 
 /* ── Métricas ────────────────────────────────────────────────────── */
 
