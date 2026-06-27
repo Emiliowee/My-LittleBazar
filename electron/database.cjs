@@ -2799,6 +2799,12 @@ function ensureVentasSchema(database) {
       FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE RESTRICT
     );
     CREATE INDEX IF NOT EXISTS idx_venta_items_venta ON venta_items(venta_id);
+    /* Rendimiento: las consultas calientes filtran/ordenan ventas por fecha
+     * (reportes, "consultar ventas por dia") y buscan items por producto
+     * ("lo que se llevo" / compras del cliente). Sin estos indices el costo
+     * crece linealmente con los meses de operacion. */
+    CREATE INDEX IF NOT EXISTS idx_ventas_created_at ON ventas(created_at);
+    CREATE INDEX IF NOT EXISTS idx_venta_items_producto ON venta_items(producto_id);
   `)
   /* Migración: agregar devuelto_en si la tabla viene de una versión vieja. */
   const cols = database.prepare(`PRAGMA table_info(venta_items)`).all()

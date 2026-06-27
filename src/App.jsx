@@ -10,13 +10,16 @@ import { Omnibar } from '@/components/shell/Omnibar'
 import { Dashboard } from '@/components/shell/Dashboard'
 import { MlbFooterNav } from '@/components/shell/MlbFooterNav'
 
-import { LauncherSettingsView } from '@/components/shell/LauncherSettingsView'
 import { MlbWorkspaceRail } from '@/components/shell/MlbWorkspace'
-import { InventoryView } from '@/views/InventoryView'
-import { SaldosView } from '@/views/SaldosView'
-import { ReportesView } from '@/views/ReportesView'
-import { LabelEditor } from '@/components/label-editor/LabelEditor'
-import { LabelTemplatesHub } from '@/components/label-editor/LabelTemplatesHub'
+/* Vistas pesadas en carga diferida: el arranque solo trae el Inicio; cada
+ * modulo (su JS) se descarga la primera vez que se abre. Menos bundle inicial
+ * = la app abre mas rapido. */
+const LauncherSettingsView = React.lazy(() => import('@/components/shell/LauncherSettingsView').then((m) => ({ default: m.LauncherSettingsView })))
+const InventoryView = React.lazy(() => import('@/views/InventoryView').then((m) => ({ default: m.InventoryView })))
+const SaldosView = React.lazy(() => import('@/views/SaldosView').then((m) => ({ default: m.SaldosView })))
+const ReportesView = React.lazy(() => import('@/views/ReportesView').then((m) => ({ default: m.ReportesView })))
+const LabelEditor = React.lazy(() => import('@/components/label-editor/LabelEditor').then((m) => ({ default: m.LabelEditor })))
+const LabelTemplatesHub = React.lazy(() => import('@/components/label-editor/LabelTemplatesHub').then((m) => ({ default: m.LabelTemplatesHub })))
 import { openPdvWindowAction } from '@/lib/openPdvWindow'
 import { useBarcode } from '@/hooks/useBarcode'
 import { useScannerKeymapFix } from '@/hooks/useScannerKeymapFix'
@@ -328,6 +331,7 @@ function MlbShell() {
                       transition={{ duration: 0.18, ease: PREMIUM_EASE }}
                       className="flex h-full min-h-0 flex-col"
                     >
+                      <React.Suspense fallback={<ViewFallback />}>
                       {section === 'inventario' && (
                         <ErrorBoundary onBack={() => void goSection('inicio')}>
                           <InventoryView />
@@ -356,6 +360,7 @@ function MlbShell() {
                           />
                         </ErrorBoundary>
                       )}
+                      </React.Suspense>
                     </motion.div>
                   </AnimatePresence>
                 </main>
@@ -366,6 +371,14 @@ function MlbShell() {
       </motion.div>
 
       <Toaster position="bottom-right" />
+    </div>
+  )
+}
+
+function ViewFallback() {
+  return (
+    <div className="grid min-h-0 flex-1 place-items-center text-[12px] text-[var(--mlb-text-muted)]">
+      Cargando…
     </div>
   )
 }
